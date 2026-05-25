@@ -1,0 +1,2167 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PlanSync CR — Bell Architecture</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ── ICONS inline via SVG sprite – no CDN needed ── */
+:root{
+  --bg:#f5f3f0;--bg2:#ece9e4;--bg3:#e2ddd6;
+  --panel:#ffffff;--panel2:#f7f5f2;
+  --border:#ddd9d3;--border2:#ccc7bf;
+  --text:#2a2520;--text2:#4a4540;--text3:#8a8178;
+  --blue:#5c3d1e;--blue-bg:#f5ede6;--blue-lt:#e8d5c4;
+  --green:#1a7a4a;--green-bg:#e8f5ee;
+  --amber:#c47a00;--amber-bg:#fef3d8;
+  --red:#c0392b;--red-bg:#fdecea;
+  --purple:#6b3fa0;--purple-bg:#f0ebfa;
+  --r:10px;--r2:14px;
+  --shadow:0 1px 4px rgba(0,0,0,.08),0 4px 16px rgba(0,0,0,.05);
+  --shadow2:0 2px 8px rgba(0,0,0,.1),0 8px 32px rgba(0,0,0,.08);
+  font-family:'DM Sans',sans-serif;font-size:14px;color:var(--text)
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);overflow:hidden;height:100vh;font-family:inherit}
+
+/* ── SVG icon helper ── */
+.ico{display:inline-block;width:16px;height:16px;vertical-align:middle;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+.ico-lg{width:19px;height:19px}
+.ico-sm{width:14px;height:14px}
+.ico-xs{width:12px;height:12px}
+
+/* ── LAYOUT ── */
+.app{display:flex;height:100vh}
+.sidebar{width:238px;background:var(--panel);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0}
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+
+/* ── SIDEBAR ── */
+.sb-head{padding:13px 12px 10px;border-bottom:1px solid var(--border);flex-shrink:0}
+.logo{display:flex;align-items:center;gap:9px;margin-bottom:11px}
+.logo-mark{width:26px;height:26px;background:var(--blue);border-radius:7px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700;letter-spacing:-.5px;flex-shrink:0}
+.logo-name{font-size:15px;font-weight:600;letter-spacing:-.3px}
+.proj-pill{display:flex;align-items:center;gap:7px;background:var(--bg2);border-radius:var(--r);padding:7px 9px;cursor:pointer;border:1px solid transparent;width:100%;text-align:left;font-family:inherit;transition:border-color .15s}
+.proj-pill:hover{border-color:var(--border2)}
+.pdot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.pp-name{font-size:12.5px;font-weight:500;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pp-type{font-size:10px;color:var(--text3);background:var(--panel);border-radius:4px;padding:1px 5px;flex-shrink:0}
+
+.sb-body{flex:1;overflow-y:auto;display:flex;flex-direction:column}
+
+/* Project list in sidebar */
+.sb-proj-list{padding:8px 8px 0}
+.sb-proj-hd{font-size:10px;font-weight:600;color:var(--text3);letter-spacing:.06em;text-transform:uppercase;padding:6px 6px 4px;display:flex;align-items:center;justify-content:space-between}
+.proj-item{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:var(--r);cursor:pointer;transition:all .12s;border:1px solid transparent;margin-bottom:3px}
+.proj-item:hover{background:var(--bg2);border-color:var(--border)}
+.proj-item.active-proj{background:var(--blue-bg);border-color:var(--blue-lt)}
+.proj-item-dot{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.proj-item-info{flex:1;min-width:0}
+.proj-item-name{font-size:12.5px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.proj-item-sub{font-size:10.5px;color:var(--text3);margin-top:1px;display:flex;align-items:center;gap:5px}
+.proj-prog{width:36px;height:3px;border-radius:2px;background:var(--bg3);overflow:hidden;flex-shrink:0}
+.proj-prog-fill{height:100%;border-radius:2px}
+
+/* Nav sections */
+.sb-nav{padding:4px 8px}
+.nl{font-size:10px;font-weight:600;color:var(--text3);letter-spacing:.06em;text-transform:uppercase;padding:10px 6px 4px}
+.ni{display:flex;align-items:center;gap:8px;padding:6.5px 8px;border-radius:8px;cursor:pointer;font-size:13px;color:var(--text2);border:none;background:none;width:100%;text-align:left;font-family:inherit;transition:all .12s;margin-bottom:1px}
+.ni:hover{background:var(--bg2);color:var(--text)}
+.ni.active{background:var(--blue-bg);color:var(--blue);font-weight:500}
+.ni-ico{width:22px;display:flex;justify-content:center;flex-shrink:0}
+.nb{font-size:9.5px;padding:1.5px 5px;border-radius:8px;background:var(--bg2);color:var(--text3);margin-left:auto}
+.nb.ok{background:var(--green-bg);color:var(--green)}
+
+.sb-foot{padding:8px 7px;border-top:1px solid var(--border);flex-shrink:0}
+.av{display:flex;align-items:center;justify-content:center;border-radius:50%;font-size:11px;font-weight:600;flex-shrink:0}
+
+/* ── TOPBAR ── */
+.topbar{background:var(--panel);border-bottom:1px solid var(--border);padding:0 20px;height:52px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;gap:12px}
+.tb-left{display:flex;align-items:center;gap:10px;flex:1;min-width:0}
+.tb-right{display:flex;gap:6px;align-items:center;flex-shrink:0}
+.btn{display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border:1px solid var(--border2);border-radius:var(--r);background:var(--panel);color:var(--text);font-size:12px;cursor:pointer;font-weight:500;font-family:inherit;transition:all .12s;white-space:nowrap}
+.btn:hover{background:var(--bg2)}
+.btn-p{background:var(--blue);color:#fff;border-color:var(--blue)}
+.btn-p:hover{background:#3d2510;border-color:#3d2510}
+.btn-sm{padding:5px 10px;font-size:11.5px}
+.btn-g{border-color:transparent;background:transparent}
+.btn-g:hover{background:var(--bg2)}
+.notif-w{position:relative}
+.notif-dot{position:absolute;top:-3px;right:-3px;width:15px;height:15px;background:#e03131;color:#fff;border-radius:50%;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center}
+
+/* ── TICKER ── */
+
+
+/* ── TABBAR ── */
+.tabbar{display:flex;background:var(--panel);border-bottom:1px solid var(--border);flex-shrink:0;overflow-x:auto}
+.tab{padding:10px 15px;font-size:12px;font-weight:500;border:none;background:none;cursor:pointer;color:var(--text3);border-bottom:2px solid transparent;white-space:nowrap;font-family:inherit;transition:color .12s}
+.tab:hover{color:var(--text)}
+.tab.active{color:var(--blue);border-bottom-color:var(--blue)}
+
+/* ── CONTENT ── */
+.content{flex:1;overflow-y:auto}
+.pad{padding:18px 22px}
+
+/* ── BADGES ── */
+.badge{font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;white-space:nowrap}
+.bgreen{background:var(--green-bg);color:var(--green)}
+.bamber{background:var(--amber-bg);color:var(--amber)}
+.bblue{background:var(--blue-bg);color:var(--blue)}
+.bred{background:var(--red-bg);color:var(--red)}
+.bpurple{background:var(--purple-bg);color:var(--purple)}
+.bgray{background:var(--bg2);color:var(--text3)}
+.vpill{font-size:10px;padding:2px 6px;background:var(--blue-bg);color:var(--blue);border-radius:5px;font-weight:500;font-family:'DM Mono',monospace}
+.tag{font-size:10px;padding:1.5px 6px;border-radius:4px;margin-left:5px}
+.tred{background:var(--red-bg);color:var(--red)}.tamber{background:var(--amber-bg);color:var(--amber)}
+.tblue{background:var(--blue-bg);color:var(--blue)}.tgreen{background:var(--green-bg);color:var(--green)}
+.tpurple{background:var(--purple-bg);color:var(--purple)}.tgray{background:var(--bg2);color:var(--text3)}
+
+/* ── PROJECT CARDS (main view) ── */
+.proj-cards{display:flex;flex-direction:column;gap:10px}
+.pcard{background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:20px;cursor:pointer;transition:border-color .15s,box-shadow .15s}
+.pcard:hover{border-color:var(--border2);box-shadow:var(--shadow)}
+.pcard.activep{border-color:var(--blue);border-width:1.5px}
+.prog-bar{height:4px;border-radius:2px;background:var(--bg2);overflow:hidden;margin-top:5px}
+.prog-fill{height:100%;border-radius:2px}
+.meta-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;border-top:1px solid var(--border);padding-top:13px;margin-top:2px}
+.meta-n{font-size:20px;font-weight:600;letter-spacing:-.3px}
+.meta-l{font-size:10px;color:var(--text3);margin-top:1px}
+.av-stack{display:flex}
+.av-sm{width:24px;height:24px;border-radius:50%;border:2px solid var(--panel);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:600;margin-left:-5px}
+.av-sm:first-child{margin-left:0}
+
+/* ── DOC LIST ── */
+.doc-row{display:flex;align-items:center;gap:12px;background:var(--panel);border:1px solid var(--border);border-radius:var(--r);padding:11px 14px;margin-bottom:7px;cursor:pointer;transition:all .12s}
+.doc-row:hover{border-color:var(--border2);box-shadow:var(--shadow)}
+.doc-icon{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+
+/* ── DETAIL PANEL ── */
+.detail-panel{width:0;background:var(--panel);border-left:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;overflow:hidden;transition:width .25s}
+.detail-panel.open{width:356px}
+.dp-head{padding:13px 15px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-shrink:0}
+.dp-body{flex:1;overflow-y:auto;padding:15px}
+.dp-foot{padding:10px 15px;border-top:1px solid var(--border);display:flex;gap:7px;flex-shrink:0}
+.fi{margin-bottom:12px}
+.fi label{display:block;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
+.fi input,.fi select,.fi textarea{width:100%;padding:7px 10px;border:1px solid var(--border2);border-radius:8px;font-size:12.5px;background:var(--bg);color:var(--text);outline:none;font-family:inherit;transition:border-color .12s}
+.fi input:focus,.fi select:focus,.fi textarea:focus{border-color:var(--blue);background:var(--panel)}
+.fi textarea{resize:vertical;min-height:64px}
+.fi-2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.sec-hd{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin:15px 0 8px;padding-top:13px;border-top:1px solid var(--border)}
+.sec-hd:first-child{margin-top:0;padding-top:0;border-top:none}
+.v-row{display:flex;align-items:center;gap:7px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;margin-bottom:5px;font-size:12px}
+.v-row.cur{border-color:var(--blue);background:var(--blue-bg)}
+
+/* ── MEMBRES ── */
+.mem-row{display:flex;align-items:center;gap:11px;background:var(--panel);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;margin-bottom:8px;cursor:pointer;transition:border-color .12s}
+.mem-row:hover{border-color:var(--border2)}
+.perm-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:7px;margin-top:10px}
+.pi{width:28px;height:28px;border-radius:7px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .12s}
+.pi.on{background:var(--green-bg);color:var(--green)}
+.pi.off{background:var(--bg2);color:var(--text3)}
+.fold-row{display:flex;align-items:center;gap:9px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;margin-bottom:5px;font-size:12px}
+.tog{width:18px;height:18px;border-radius:4px;border:1.5px solid var(--border2);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .12s}
+.tog.on{background:var(--blue);border-color:var(--blue);color:#fff}
+
+/* ── CHECKLISTS ── */
+.cl-group{background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);margin-bottom:10px;overflow:hidden}
+.cl-item{display:flex;align-items:flex-start;gap:9px;padding:9px 14px;border-bottom:1px solid var(--border);transition:background .1s}
+.cl-item:last-child{border-bottom:none}
+.cl-item:hover{background:var(--bg2)}
+.cl-chk{width:17px;height:17px;border-radius:4px;border:1.5px solid var(--border2);flex-shrink:0;margin-top:1.5px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s}
+.cl-chk.done{background:var(--blue);border-color:var(--blue)}
+.cl-chk.arch{background:var(--bg2);border-style:dashed;opacity:.5}
+.cl-act{display:flex;gap:3px;opacity:0;transition:opacity .12s;flex-shrink:0}
+.cl-item:hover .cl-act{opacity:1}
+.add-row{padding:8px 14px;border-top:1px solid var(--border);display:flex;gap:6px;background:var(--bg)}
+.add-row input{flex:1;padding:6px 9px;border:1px solid var(--border2);border-radius:7px;font-size:12px;background:var(--panel);color:var(--text);outline:none;font-family:inherit}
+.add-row input:focus{border-color:var(--blue)}
+.sum-bar{display:flex;gap:14px;background:var(--bg2);border-radius:var(--r);padding:11px 14px;margin-bottom:12px;align-items:center;border:1px solid var(--border)}
+
+/* ── AUDIT ── */
+.aud-row{display:flex;gap:10px;margin-bottom:7px}
+.aud-ic{width:32px;height:32px;border-radius:50%;background:var(--bg2);display:flex;align-items:center;justify-content:center;flex-shrink:0;border:1px solid var(--border)}
+.aud-card{flex:1;background:var(--panel);border:1px solid var(--border);border-radius:var(--r);padding:9px 13px}
+
+/* ── PLU ── */
+.plu-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.plu-f{background:var(--panel);border:1px solid var(--border);border-radius:var(--r);padding:11px 14px}
+
+/* ── MODAL ── */
+.mo-ov{position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;z-index:100;backdrop-filter:blur(2px)}
+.mo-box{background:var(--panel);border-radius:var(--r2);padding:24px;width:460px;border:1px solid var(--border);box-shadow:var(--shadow2);max-height:90vh;overflow-y:auto}
+.mo-box h3{font-size:15px;font-weight:600;margin-bottom:16px}
+.mo-foot{display:flex;gap:7px;margin-top:16px;justify-content:flex-end}
+.type-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+.tc-card{border:1px solid var(--border);border-radius:var(--r);padding:11px 7px;cursor:pointer;text-align:center;transition:all .12s}
+.tc-card:hover{border-color:var(--border2)}
+.tc-card.sel{border-color:var(--blue);border-width:1.5px;background:var(--blue-bg)}
+.chip-row{display:flex;gap:5px;flex-wrap:wrap;margin-top:5px}
+.chip{padding:3px 9px;border:1px solid var(--border2);border-radius:20px;font-size:11.5px;cursor:pointer;transition:all .12s;font-family:inherit}
+.chip:hover{border-color:var(--blue);color:var(--blue)}
+.chip.on{background:var(--blue);color:#fff;border-color:var(--blue)}
+
+/* ── TOAST ── */
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--green);color:#fff;padding:8px 18px;border-radius:20px;font-size:12px;font-weight:500;opacity:0;transition:opacity .3s;pointer-events:none;z-index:200;white-space:nowrap;box-shadow:var(--shadow2)}
+
+/* ── Mobile ── */
+@media(max-width:600px){
+  .app{flex-direction:column}
+  #sidebar{width:100%;min-width:0;height:auto;border-right:none;border-bottom:1px solid var(--border);flex-direction:row;overflow-x:auto}
+  .sb-body{display:flex;flex-direction:row;gap:4px;padding:6px;overflow-x:auto}
+  .sb-head{display:none}
+  .sb-foot{flex-direction:row;gap:4px;padding:6px;border-top:none;border-left:1px solid var(--border)}
+  .main{flex:1;min-height:0;overflow-y:auto}
+  #topbar{padding:10px 12px;gap:8px;flex-wrap:wrap}
+  .pad{padding:12px}
+  .proj-grid{grid-template-columns:1fr!important}
+  .doc-row{flex-direction:column;gap:4px}
+}
+</style>
+</head>
+<body>
+
+<!-- SVG ICONS (all inline, no CDN) -->
+<svg style="display:none" id="icons">
+<symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></symbol>
+<symbol id="i-building" viewBox="0 0 24 24"><path d="M3 21h18M5 21V5a2 2 0 012-2h10a2 2 0 012 2v16"/><path d="M9 21v-4a2 2 0 014 0v4"/><line x1="9" y1="8" x2="9" y2="8.01"/><line x1="15" y1="8" x2="15" y2="8.01"/><line x1="9" y1="12" x2="9" y2="12.01"/><line x1="15" y1="12" x2="15" y2="12.01"/></symbol>
+<symbol id="i-file" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/></symbol>
+<symbol id="i-invoice" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="12" y2="17"/><path d="M15 17l1 1 3-3"/></symbol>
+<symbol id="i-receipt" viewBox="0 0 24 24"><path d="M4 2h16v20l-3-2-2 2-2-2-2 2-2-2-3 2V2z"/><line x1="8" y1="9" x2="16" y2="9"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="12" y2="17"/></symbol>
+<symbol id="i-camera" viewBox="0 0 24 24"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></symbol>
+<symbol id="i-folder" viewBox="0 0 24 24"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></symbol>
+<symbol id="i-hat" viewBox="0 0 24 24"><path d="M2 18a1 1 0 001 1h18a1 1 0 001-1v-2a1 1 0 00-1-1H3a1 1 0 00-1 1v2z"/><path d="M10 10L4 17h16l-6-7a2 2 0 00-4 0z"/></symbol>
+<symbol id="i-check-list" viewBox="0 0 24 24"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 01-2 2H6a2 2 0 01-2-2V5a2 2 0 012-2h9"/></symbol>
+<symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 014-4h4a4 4 0 014 4v2"/><path d="M16 3.13a4 4 0 010 7.75"/><path d="M21 21v-2a4 4 0 00-3-3.87"/></symbol>
+<symbol id="i-arch" viewBox="0 0 24 24"><path d="M3 21h18M5 21V10M19 21V10M12 21V3M5 10C5 10 5 7 12 3c7 4 7 7 7 7"/></symbol>
+<symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></symbol>
+<symbol id="i-arrow-left" viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></symbol>
+<symbol id="i-arrow-right" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></symbol>
+<symbol id="i-bell" viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/></symbol>
+<symbol id="i-plus" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></symbol>
+<symbol id="i-upload" viewBox="0 0 24 24"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0018 9h-1.26A8 8 0 103 16.3"/></symbol>
+<symbol id="i-download" viewBox="0 0 24 24"><polyline points="8 17 12 21 16 17"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.88 18.09A5 5 0 0018 9h-1.26A8 8 0 103 16.29"/></symbol>
+<symbol id="i-edit" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></symbol>
+<symbol id="i-x" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></symbol>
+<symbol id="i-save" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></symbol>
+<symbol id="i-archive" viewBox="0 0 24 24"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></symbol>
+<symbol id="i-trash" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a1 1 0 011-1h4a1 1 0 011 1v2"/></symbol>
+<symbol id="i-user-plus" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></symbol>
+<symbol id="i-eye" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></symbol>
+<symbol id="i-photo" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></symbol>
+<symbol id="i-pdf" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="15" x2="15" y2="15"/><line x1="9" y1="11" x2="15" y2="11"/></symbol>
+<symbol id="i-temperature" viewBox="0 0 24 24"><path d="M14 14.76V3.5a2.5 2.5 0 00-5 0v11.26a4.5 4.5 0 105 0z"/></symbol>
+<symbol id="i-mountain" viewBox="0 0 24 24"><path d="M3 20l7-14 4 8 2-4 5 10H3z"/></symbol>
+<symbol id="i-ruler" viewBox="0 0 24 24"><path d="M2 20l10-10L22 20H2z"/><line x1="6" y1="20" x2="6" y2="16"/><line x1="10" y1="20" x2="10" y2="14"/><line x1="14" y1="20" x2="14" y2="16"/><line x1="18" y1="20" x2="18" y2="12"/></symbol>
+<symbol id="i-helmet" viewBox="0 0 24 24"><path d="M21 12a9 9 0 10-18 0v1h18v-1z"/><path d="M3 13h18v2a2 2 0 01-2 2H5a2 2 0 01-2-2v-2z"/></symbol>
+<symbol id="i-sparkles" viewBox="0 0 24 24"><path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z"/><path d="M5 17l.75 2.25L8 20l-2.25.75L5 23l-.75-2.25L2 20l2.25-.75L5 17z"/><path d="M19 3l.75 2.25L22 6l-2.25.75L19 9l-.75-2.25L16 6l2.25-.75L19 3z"/></symbol>
+<symbol id="i-warning" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></symbol>
+<symbol id="i-chevron-down" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></symbol>
+<symbol id="i-chevron-up" viewBox="0 0 24 24"><polyline points="18 15 12 9 6 15"/></symbol>
+<symbol id="i-chevron-right" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></symbol>
+<symbol id="i-chevron-left" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></symbol>
+<symbol id="i-home" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></symbol>
+<symbol id="i-refresh" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></symbol>
+<symbol id="i-briefcase" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/><line x1="12" y1="12" x2="12" y2="12"/><line x1="8" y1="12" x2="16" y2="12"/></symbol>
+<symbol id="i-extend" viewBox="0 0 24 24"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></symbol>
+<symbol id="i-store" viewBox="0 0 24 24"><path d="M3 9l1-6h16l1 6"/><path d="M3 9a2 2 0 004 0 2 2 0 004 0 2 2 0 004 0 2 2 0 004 0"/><path d="M5 21V9M19 9v12M5 21h14"/></symbol>
+<symbol id="i-lock" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></symbol>
+<symbol id="i-file-check" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><polyline points="9 15 11 17 15 13"/></symbol>
+<symbol id="i-pencil-check" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/><polyline points="15 7 18 10"/></symbol>
+<symbol id="i-git-branch" viewBox="0 0 24 24"><line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 01-9 9"/></symbol>
+<symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></symbol>
+</svg>
+
+<div class="app" id="app">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sb-head">
+      <div class="logo">
+        <div class="logo-mark">PS</div>
+        <div style="display:flex;flex-direction:column;line-height:1.15">
+          <span class="logo-name">PlanSync CR</span>
+          <span style="font-size:10.5px;color:var(--text3);font-weight:500">Bell Architecture — Outils internes</span>
+        </div>
+      </div>
+      <button class="proj-pill" onclick="openSettings()">
+        <div class="pdot" id="pp-dot" style="background:var(--blue)"></div>
+        <div class="pp-name" id="pp-name">Vue globale</div>
+        <div class="pp-type" id="pp-type">3 projets</div>
+        <svg class="ico ico-sm" style="color:var(--text3)"><use href="#i-settings"/></svg>
+      </button>
+    </div>
+
+    <div class="sb-body" id="sb-body">
+      <!-- rendered by JS -->
+    </div>
+
+    <div class="sb-foot">
+      <div style="display:flex;align-items:center;gap:8px;padding:4px 6px">
+        <div class="av" style="width:30px;height:30px;background:var(--blue-bg);color:var(--blue);font-size:11px">SM</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12.5px;font-weight:500">Sophie Martin</div>
+          <div style="font-size:10.5px;color:var(--text3)">Admin · Architecte</div>
+        </div>
+        <button class="btn btn-g btn-sm" onclick="openGlobalSettings()" title="Réglages généraux" style="padding:5px;flex-shrink:0">
+          <svg class="ico" style="width:16px;height:16px;color:var(--text3)"><use href="#i-settings"/></svg>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="topbar" id="topbar">
+      <div class="tb-left">
+        <svg class="ico ico-lg" style="color:var(--blue);flex-shrink:0" id="tb-icon"><use href="#i-grid"/></svg>
+        <div style="min-width:0">
+          <div style="font-weight:600;font-size:15px;letter-spacing:-.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" id="tb-title">Mes projets</div>
+          <div style="font-size:11px;color:var(--text3)" id="tb-sub">3 projets actifs</div>
+        </div>
+      </div>
+      <div class="tb-right">
+        <div id="phase-picker" style="display:none;align-items:center;gap:6px">
+          <span style="font-size:11px;color:var(--text3);white-space:nowrap">Phase :</span>
+          <select id="phase-select" onchange="quickPhase(this.value)" style="padding:5px 9px;border:1px solid var(--border2);border-radius:var(--r);font-size:12px;font-weight:500;background:var(--panel);color:var(--text);outline:none;cursor:pointer;font-family:inherit">
+            <option>Études</option><option>Permis</option><option>Chantier</option>
+            <option>Réception</option><option>Livré</option><option>En pause</option>
+          </select>
+        </div>
+        <div class="notif-w">
+          <button class="btn btn-g btn-sm" aria-label="Notifications"><svg class="ico" style="width:15px;height:15px"><use href="#i-bell"/></svg></button>
+          <div class="notif-dot">3</div>
+        </div>
+        <button class="btn btn-p btn-sm" id="main-btn" onclick="mainAction()">
+          <svg class="ico ico-sm" id="main-btn-ico"><use href="#i-plus"/></svg>
+          <span id="main-btn-lbl">Nouveau projet</span>
+        </button>
+      </div>
+    </div>
+    <div class="tabbar" id="tabbar" style="display:none"></div>
+    <div style="display:flex;flex:1;overflow:hidden">
+      <div class="content" id="content" style="flex:1"></div>
+      <!-- DETAIL PANEL -->
+      <div class="detail-panel" id="dp">
+        <div class="dp-head">
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" id="dp-title">—</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:2px" id="dp-sub">—</div>
+          </div>
+          <button class="btn btn-g btn-sm" onclick="closeDP()"><svg class="ico ico-sm"><use href="#i-x"/></svg></button>
+        </div>
+        <div class="dp-body" id="dp-body"></div>
+        <div class="dp-foot">
+          <button class="btn btn-p" style="flex:1" onclick="saveDP()">
+            <svg class="ico ico-sm"><use href="#i-save"/></svg> Enregistrer
+          </button>
+          <button class="btn" onclick="closeDP()">Annuler</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<div id="modal-root"></div>
+
+<script>
+/* ══ helper: build SVG use tag ══ */
+function ico(id,cls=''){return`<svg class="ico ${cls}" aria-hidden="true"><use href="#i-${id}"/></svg>`;}
+function icoC(id,col,cls=''){return`<svg class="ico ${cls}" style="color:${col}" aria-hidden="true"><use href="#i-${id}"/></svg>`;}
+
+/* ══ DATA ══ */
+const PT=[
+  {id:'maison',ico:'home',name:'Maison individuelle',desc:'PC / PCMI'},
+  {id:'collectif',ico:'building',name:'Immeuble collectif',desc:'PC classique'},
+  {id:'erp',ico:'store',name:'ERP',desc:'Recevant du public'},
+  {id:'renovation',ico:'refresh',name:'Rénovation',desc:'PC ou DP'},
+  {id:'extension',ico:'extend',name:'Extension',desc:'Existant'},
+  {id:'tertiaire',ico:'briefcase',name:'Tertiaire',desc:'Bureaux'},
+];
+const INTS=['Architecte','Thermicien','Géologue','BET Structure','BET Fluides','Géomètre','Coordinateur SPS','Contrôleur technique','Acousticien','Paysagiste'];
+const RL={project_admin:'Admin projet',editor:'Éditeur',external_contractor:'Entreprise ext.',client_viewer:'Client',viewer:'Lecteur'};
+const METIERS=[];
+const PI_IC={voir:'eye',dl:'download',import:'upload',publier:'check',contrats:'invoice',admin:'settings'};
+const PI_LB={voir:'Voir',dl:'DL',import:'Import',publier:'Publier',contrats:'Contrats',admin:'Admin'};
+const FLIST=['Plans','Contrats & Devis','Factures','Photos chantier','Admin'];
+const SB_CLS={draft:'bamber',issued:'bgreen',signed:'bblue',superseded:'bgray'};
+const SL={draft:'Brouillon',issued:'Publié',signed:'Signé',superseded:'Remplacé'};
+const TCL={red:'tred',amber:'tamber',blue:'tblue',green:'tgreen',purple:'tpurple',gray:'tgray'};
+const AVC_BG=['var(--blue-bg)','var(--green-bg)','var(--amber-bg)','var(--purple-bg)','var(--red-bg)','#e7f5ff'];
+const AVC_FG=['var(--blue)','var(--green)','var(--amber)','var(--purple)','var(--red)','#1971c2'];
+
+let PROJS=[];
+
+/* ══ PERSISTANCE LOCALE ══ */
+function savePROJS(){
+  try{localStorage.setItem('plansync_projs',JSON.stringify(PROJS));}
+  catch(e){console.warn('PlanSync CR: save error',e);}
+}
+function loadPROJS(){
+  try{
+    const saved=localStorage.getItem('plansync_projs');
+    if(saved&&saved!=='null'){
+      const parsed=JSON.parse(saved);
+      if(parsed&&parsed.length){PROJS=parsed;return;}
+    }
+  }catch(e){}
+  // Projet modèle générique si rien de sauvegardé
+  PROJS=[{
+    id:'p_modele',
+    name:'Projet modèle',
+    address:'12 rue du Chantier, 75001 Paris',
+    client:'Client modèle',
+    type:'maison',
+    ints:['Architecte'],
+    opts:{zone_sismique:false,zone_inondable:false,monument_historique:false},
+    phase:'Permis',
+    color:'#5c3d1e',
+    bg:'#f5ede6',
+    membres:[],
+    docs_data:{plans:[],contrats:[],factures:[],photos:[],admin:[]},
+    plan_folders:{},
+    ent_folders:{},
+    archived:false,
+    avs:[],
+    budget:'—',surface:'—',start:'',livraison:'',progress:0
+  }];
+}
+
+
+// DOCS est géré par projet (proj.docs_data), chargé depuis localStorage
+// Structure: {plans:[], contrats:[], factures:[], photos:[], admin:[]}
+function getDocsForProj(p){return(p&&p.docs_data)?p.docs_data:{plans:[],contrats:[],factures:[],photos:[],admin:[]};}
+
+const FMETA={plans:{ico:'pdf',color:'#2d4ef5',label:'Plans'},contrats:{ico:'invoice',color:'#c47a00',label:'Contrats & Devis'},factures:{ico:'receipt',color:'#c0392b',label:'Factures'},photos:{ico:'photo',color:'#1a7a4a',label:'Photos chantier'},admin:{ico:'folder',color:'#8a877e',label:'Documents admin'},entreprises:{ico:'building',color:'#6b3fa0',label:'Entreprises'}};
+
+/* Folder tree for plans — per project (keyed by projId) */
+const PLAN_FOLDERS_TEMPLATES={
+  standard:[
+    {id:'f01',name:'01 – Pré-Étude',children:[]},
+    {id:'f02',name:'02 – Projet',children:[]},
+    {id:'f03',name:'03 – Permis de Construire',children:[
+      {id:'f03a',name:'PC – Pièces graphiques',children:[]},
+      {id:'f03b',name:'PC – Pièces écrites',children:[]},
+    ]},
+    {id:'f04',name:'04 – Plans d\'Exécution',children:[
+      {id:'f04a',name:'EXE – Architecture',children:[]},
+      {id:'f04b',name:'EXE – Structure',children:[]},
+      {id:'f04c',name:'EXE – Fluides',children:[]},
+      {id:'f04d',name:'EXE – Électricité',children:[]},
+    ]},
+    {id:'f05',name:'05 – Plans Détail',children:[]},
+  ],
+  renovation:[
+    {id:'f01',name:'01 – État des lieux',children:[]},
+    {id:'f02',name:'02 – Avant-Projet',children:[]},
+    {id:'f03',name:'03 – Permis / DP',children:[]},
+    {id:'f04',name:'04 – Plans d\'Exécution',children:[]},
+    {id:'f05',name:'05 – Détails',children:[]},
+  ],
+  erp:[
+    {id:'f01',name:'01 – Programme',children:[]},
+    {id:'f02',name:'02 – APS / APD',children:[]},
+    {id:'f03',name:'03 – Permis de Construire',children:[]},
+    {id:'f04',name:'04 – Plans d\'Exécution',children:[]},
+    {id:'f05',name:'05 – Sécurité incendie',children:[]},
+  ],
+  vide:[],
+};
+
+/* Per-project folder trees */
+const PROJ_PLAN_FOLDERS={};
+const PROJ_ENT_FOLDERS={};
+
+function getPlanFolders(projId){
+  if(!PROJ_PLAN_FOLDERS[projId]){
+    const p=PROJS.find(x=>x.id===projId);
+    const tpl=(p&&PLAN_FOLDERS_TEMPLATES[p.type])||PLAN_FOLDERS_TEMPLATES.standard;
+    PROJ_PLAN_FOLDERS[projId]=JSON.parse(JSON.stringify(tpl));
+  }
+  return PROJ_PLAN_FOLDERS[projId];
+}
+function getEntFolders(projId){
+  if(!PROJ_ENT_FOLDERS[projId]){
+    PROJ_ENT_FOLDERS[projId]=[{id:'ef1',name:'Contrats',children:[]},{id:'ef2',name:'Plans / Détails',children:[]},{id:'ef3',name:'Correspondances',children:[]},{id:'ef4',name:'PV de réception',children:[]}];
+  }
+  return PROJ_ENT_FOLDERS[projId];
+}
+
+/* Active folder state per view */
+let activePlanFolder=null; // {id, name}
+let activeEntMembre=null;  // member id
+let activeEntFolder=null;  // {id, name}
+let activeDocFolder=null;  // for other views
+
+// Membres gérés par projet (proj.membres), chargé depuis localStorage
+function getMembresForProj(p){return(p&&p.membres)?p.membres:[];}
+
+const AUD=[
+  {ic:'eye',label:'Document consulté',sub:'Plan façade Sud · Sophie Martin',time:'Il y a 5 min'},
+  {ic:'upload',label:'Nouvelle version publiée',sub:'Plan masse – Rdc v3 · Sophie Martin',time:'Il y a 2h'},
+  {ic:'download',label:'Document téléchargé',sub:'Devis signé · Marc Leblanc',time:'Il y a 4h'},
+  {ic:'edit',label:'Document modifié',sub:'Devis – Gros œuvre · Sophie Martin',time:'Hier 17:20'},
+  {ic:'user-plus',label:'Utilisateur invité',sub:'marc.leblanc@morelli.fr',time:'Hier 16:30'},
+  {ic:'file-check',label:'Version publiée',sub:'Plan étage v2 · Sophie Martin',time:'Hier 14:10'},
+  {ic:'lock',label:'Permissions modifiées',sub:'Marc Leblanc → Contractor',time:'01/04 11:20'},
+];
+
+const PLU_FIELDS=[['Zone PLU','UA – Zone urbaine dense'],['Emprise au sol','40%'],['Hauteur max','9 m à l\'égout'],['Recul façade','5 m minimum'],['Retrait latéral','3 m'],['Biotope','30% espaces verts'],['Stationnement','2 places/logement'],['Risques','Zone sismique 2']];
+
+/* ══ STATE ══ */
+let VIEW='projets',PROJ=null,curMbr=null,clTab='depot',clTree=null,clArch=false,detDoc=null,detFolder=null,uid=1000;
+let pvFolder=null;   // id du sous-dossier PV ouvert (null = liste des dossiers)
+let pvArch=false;    // true = affiche les archives du dossier PV courant
+
+/* ══ BUILD CHECKLIST TREE ══ */
+function buildCL(p){
+  if(!p)return[];
+  const m=p.type==='maison'||p.type==='extension',e=p.type==='erp',
+        th=p.ints.includes('Thermicien'),ge=p.ints.includes('Géologue'),
+        cs=p.ints.includes('Coordinateur SPS'),ct=p.ints.includes('Contrôleur technique');
+  return[
+    {id:'depot',label:'Dépôt de permis',ico:'check-list',color:'#2d4ef5',open:true,items:[
+      {id:'d1',l:'Formulaire Cerfa '+(m?'n°13406*03 (PCMI)':'n°13406 (PC)'),n:'service-public.fr',tag:'Obligatoire',tc:'red',done:true,arch:false},
+      {id:'d2',l:'Plan de situation (1/25 000)',n:'IGN ou Géoportail',tag:'Obligatoire',tc:'red',done:true,arch:false},
+      {id:'d3',l:'Plan de masse (1/200)',n:'Cotes, limites, accès',tag:'Obligatoire',tc:'red',done:true,arch:false},
+      {id:'d4',l:'Plan de coupe du terrain',tag:'Obligatoire',tc:'red',done:false,arch:false},
+      {id:'d5',l:'Notice descriptive',tag:'Obligatoire',tc:'red',done:false,arch:false},
+      {id:'d6',l:'Plans façades et toitures',tag:'Obligatoire',tc:'red',done:true,arch:false},
+      {id:'d7',l:'Document graphique d\'insertion',tag:'Obligatoire',tc:'red',done:false,arch:false},
+      {id:'d8',l:'Photo environnement proche',tag:'Obligatoire',tc:'red',done:true,arch:false},
+      {id:'d9',l:'Photo environnement lointain',tag:'Obligatoire',tc:'red',done:true,arch:false},
+      ...(m?[
+        {id:'p1',l:'PCMI 1 – Plan de situation',tag:'PCMI',tc:'blue',done:true,arch:false},
+        {id:'p2',l:'PCMI 2 – Plan de masse',tag:'PCMI',tc:'blue',done:true,arch:false},
+        {id:'p3',l:'PCMI 3 – Plan en coupe',tag:'PCMI',tc:'blue',done:false,arch:false},
+        {id:'p4',l:'PCMI 4 – Notice descriptive',tag:'PCMI',tc:'blue',done:false,arch:false},
+        {id:'p5',l:'PCMI 5 – Plans façades et toitures',tag:'PCMI',tc:'blue',done:true,arch:false},
+        {id:'p6',l:'PCMI 6 – Document graphique',tag:'PCMI',tc:'blue',done:false,arch:false},
+        {id:'p7',l:'PCMI 7 – Photo proche',tag:'PCMI',tc:'blue',done:true,arch:false},
+        {id:'p8',l:'PCMI 8 – Photo lointaine',tag:'PCMI',tc:'blue',done:true,arch:false},
+      ]:[]),
+      ...(e?[
+        {id:'e1',l:'Notice de sécurité incendie',n:'Classement ERP',tag:'ERP',tc:'purple',done:false,arch:false},
+        {id:'e2',l:'Notice accessibilité PMR',tag:'ERP',tc:'purple',done:false,arch:false},
+        {id:'e3',l:'Avis commission de sécurité',tag:'ERP',tc:'purple',done:false,arch:false},
+      ]:[]),
+      {id:'d10',l:'Attestation thermique RE2020',n:'Si SHON > 50m²',tag:'Si applicable',tc:'amber',done:false,arch:false},
+      ...(p.opts.zone_sismique?[{id:'d11',l:'Attestation parasismique',tag:'Zone sismique',tc:'amber',done:false,arch:false}]:[]),
+      ...(p.opts.monument_historique?[{id:'d12',l:'Avis ABF',tag:'Monument hist.',tc:'purple',done:false,arch:false}]:[]),
+    ],children:[
+      ...(th?[{id:'therm',label:'Thermicien',ico:'temperature',color:'#c47a00',open:false,items:[
+        {id:'t1',l:'Étude thermique RE2020',tag:'Obligatoire',tc:'red',done:false,arch:false},
+        {id:'t2',l:'Note de calcul thermique',tag:'Obligatoire',tc:'red',done:false,arch:false},
+        {id:'t3',l:'Attestation RE2020 pour dépôt PC',tag:'Obligatoire',tc:'red',done:false,arch:false},
+      ],children:[]}]:[]),
+      ...(ge?[{id:'geo',label:'Géologue / G2',ico:'mountain',color:'#1a7a4a',open:false,items:[
+        {id:'g1',l:'Étude géotechnique G1 ES',n:'Avant permis',tag:'Recommandé',tc:'amber',done:false,arch:false},
+        {id:'g2',l:'Étude géotechnique G2 PRO',n:'Loi ELAN',tag:'Obligatoire',tc:'red',done:false,arch:false},
+        {id:'g3',l:'Rapport synthèse géotechnique',tag:'Obligatoire',tc:'red',done:false,arch:false},
+      ],children:[]}]:[]),
+    ]},
+    {id:'exe',label:'Plans d\'exécution',ico:'ruler',color:'#1a7a4a',open:false,items:[
+      {id:'ex1',l:'Plans architecturaux 1/50',tag:'Archi',tc:'blue',done:true,arch:false},
+      {id:'ex2',l:'Plans de façades définitifs',tag:'Archi',tc:'blue',done:true,arch:false},
+      {id:'ex3',l:'Plans de coupes techniques',tag:'Archi',tc:'blue',done:false,arch:false},
+      {id:'ex4',l:'Plans structure / béton armé',tag:'Structure',tc:'green',done:true,arch:false},
+      {id:'ex5',l:'Plans fondations',tag:'Structure',tc:'green',done:true,arch:false},
+      {id:'ex6',l:'Plans charpente / toiture',tag:'Charpente',tc:'green',done:false,arch:false},
+      {id:'ex7',l:'Plans fluides – plomberie',tag:'Fluides',tc:'amber',done:false,arch:false},
+      {id:'ex8',l:'Plans électricité',tag:'Élec',tc:'amber',done:false,arch:false},
+      {id:'ex9',l:'CCTP par lot',tag:'Marché',tc:'purple',done:false,arch:false},
+      {id:'ex10',l:'DPGF',tag:'Marché',tc:'purple',done:false,arch:false},
+    ],children:[]},
+    {id:'chantier',label:'Phase chantier',ico:'helmet',color:'#c47a00',open:false,items:[
+      {id:'ch1',l:'DOE – Ouverture chantier (Cerfa n°13407)',tag:'Admin',tc:'red',done:true,arch:false},
+      {id:'ch2',l:'Affichage PC sur terrain',tag:'Légal',tc:'red',done:true,arch:false},
+      {id:'ch3',l:'Plan installation de chantier',tag:'Sécurité',tc:'amber',done:true,arch:false},
+      ...(cs?[{id:'ch4',l:'PPSPS',n:'Si > 2 entreprises',tag:'Sécurité',tc:'amber',done:false,arch:false}]:[]),
+      {id:'ch5',l:'Comptes rendus hebdomadaires',tag:'Suivi',tc:'blue',done:true,arch:false},
+      {id:'ch6',l:'Visa des plans EXE',tag:'Contrôle',tc:'blue',done:true,arch:false},
+      {id:'ch7',l:'Réception béton – BL + résistance',tag:'Contrôle',tc:'blue',done:false,arch:false},
+      ...(ct?[{id:'ch8',l:'Rapports contrôle technique',tag:'CT',tc:'purple',done:false,arch:false}]:[]),
+      {id:'ch9',l:'Photos chantier hebdomadaires',tag:'Trace',tc:'green',done:true,arch:false},
+      {id:'ch10',l:'Journal de chantier',tag:'Trace',tc:'green',done:false,arch:false},
+    ],children:[]},
+    {id:'finition',label:'Finitions & réception',ico:'sparkles',color:'#6b3fa0',open:false,items:[
+      {id:'fi1',l:'Pré-réception OPR',tag:'Réception',tc:'purple',done:false,arch:false},
+      {id:'fi2',l:'Levée des réserves',tag:'Réception',tc:'purple',done:false,arch:false},
+      {id:'fi3',l:'PV de réception signé',tag:'Légal',tc:'red',done:false,arch:false},
+      {id:'fi4',l:'DAACT (Cerfa n°13408)',n:'Dans les 90 jours',tag:'Admin',tc:'red',done:false,arch:false},
+      ...(e?[{id:'fi5',l:'Visite réception commission sécurité',tag:'ERP',tc:'purple',done:false,arch:false}]:[]),
+      {id:'fi6',l:'DOE – Dossier Ouvrages Exécutés',tag:'Livraison',tc:'blue',done:false,arch:false},
+      {id:'fi7',l:'DIUO',tag:'Livraison',tc:'blue',done:false,arch:false},
+      {id:'fi8',l:'Garanties et assurances',tag:'Garanties',tc:'green',done:false,arch:false},
+      {id:'fi9',l:'Clés remises au MOA',tag:'Livraison',tc:'green',done:false,arch:false},
+      {id:'fi10',l:'Facture de solde émise',tag:'Facturation',tc:'amber',done:false,arch:false},
+    ],children:[]},
+  ];
+}
+function flatCL(n){return(n.items||[]).concat(...(n.children||[]).map(c=>flatCL(c)));}
+function allCLN(list,acc=[]){if(!list)return acc;list.forEach(n=>{acc.push(n);allCLN(n.children,acc);});return acc;}
+function findCLN(id){return allCLN(clTree).find(n=>n.id===id);}
+
+/* ══ SIDEBAR ══ */
+function renderSB(){
+  const el=document.getElementById('sb-body');
+  let html='';
+
+  if(!PROJ){
+    /* Vue globale: show all projects as list */
+    html+=`<div class="sb-proj-list">
+      <div class="sb-proj-hd">Projets
+        <button class="btn btn-g" style="padding:2px 6px;font-size:10px" onclick="openNewProj()">+ Nouveau</button>
+      </div>`;
+    PROJS.forEach(p=>{
+      html+=`<div class="proj-item ${PROJ?.id===p.id?'active-proj':''}" onclick="openProj('${p.id}')" style="${p.archived?'opacity:.5':''}">
+        <div class="proj-item-dot" style="background:${p.bg}">
+          <svg class="ico" style="color:${p.color};width:16px;height:16px"><use href="#i-building"/></svg>
+        </div>
+        <div class="proj-item-info">
+          <div class="proj-item-name">${p.name}${p.archived?` <span style="font-size:9px;color:var(--amber);background:var(--amber-bg);padding:1px 4px;border-radius:3px">Archivé</span>`:''}</div>
+          <div class="proj-item-sub">
+            <span class="badge" style="font-size:9px;background:${p.bg};color:${p.color}">${p.phase}</span>
+            <div class="proj-prog"><div class="proj-prog-fill" style="width:${p.progress}%;background:${p.color}"></div></div>
+            <span style="font-size:10px">${p.progress}%</span>
+          </div>
+        </div>
+      </div>`;
+    });
+    html+=`</div>`;
+    document.getElementById('pp-name').textContent='Vue globale';
+    document.getElementById('pp-type').textContent='3 projets';
+    document.getElementById('pp-dot').style.background='var(--blue)';
+  } else {
+    const p=PROJ,pt=PT.find(t=>t.id===p.type);
+    const allI=clTree?allCLN(clTree).flatMap(n=>n.items||[]):[];
+    const dCL=allI.filter(i=>i.done).length,tCL=allI.length;
+
+    html+=`<div class="sb-nav">
+      <button class="ni" onclick="backGlobal()" style="color:var(--text3);margin-bottom:6px">
+        <span class="ni-ico">${ico('arrow-left','ico-sm')}</span> Tous les projets
+      </button>
+
+      <div class="nl">Dossiers</div>
+      ${navItem('plans','pdf','Plans')}
+      ${navItem('contrats','invoice','Contrats & Devis')}
+      ${navItem('factures','receipt','Factures')}
+      ${navItem('photos','camera','Photos chantier')}
+      ${navItem('admin','folder','Documents admin')}
+      ${navItem('pv','file-check','PV')}
+      ${navItem('entreprises','building','Entreprises')}
+
+      <div class="nl" style="color:#854d0e;margin-top:4px">Espace architecte</div>
+      ${navItem('checklists','hat','Checklistes','',`<span class="nb ${dCL===tCL&&tCL>0?'ok':''}">${dCL}/${tCL}</span>`)}
+      ${navItem('audit','check-list','Journal d\'audit')}
+      ${navItem('membres','users','Membres & accès')}
+      ${navItem('plu','arch','Pré-étude PLU')}
+      ${navItem('pv_arch','file-check','PV')}
+
+      <div class="nl" style="color:#854d0e;margin-top:4px">Applications</div>
+      <a class="ni" href="archideck.html" target="_blank" style="text-decoration:none">
+        <span class="ni-ico"><svg class="ico ico-sm"><use href="#i-building"/></svg></span>
+        <span>Archideck</span>
+        <svg class="ico" style="width:10px;height:10px;margin-left:auto;color:var(--text3)"><use href="#i-arrow-right"/></svg>
+      </a>
+      <a class="ni" href="cr_chantier.html" target="_blank" style="text-decoration:none">
+        <span class="ni-ico"><svg class="ico ico-sm"><use href="#i-pdf"/></svg></span>
+        <span>PlanSync CR</span>
+        <svg class="ico" style="width:10px;height:10px;margin-left:auto;color:var(--text3)"><use href="#i-arrow-right"/></svg>
+      </a>
+
+      <div class="nl" style="margin-top:4px">Projet</div>
+      ${navItem('info','settings','Informations projet')}
+      <button class="ni" onclick="archiveProj()" style="color:var(--amber)">
+        <span class="ni-ico"><svg class="ico ico-sm" style="color:var(--amber)"><use href="#i-archive"/></svg></span>
+        ${p.archived?'Désarchiver':'Archiver le projet'}
+      </button>
+    </div>`;
+
+    document.getElementById('pp-name').textContent=p.name;
+    document.getElementById('pp-type').textContent=pt?.name||p.type;
+    document.getElementById('pp-dot').style.background=p.color;
+  }
+  el.innerHTML=html;
+}
+
+function navItem(v,icon,label,extra='',badge=''){
+  return`<button class="ni ${VIEW===v?'active':''}" onclick="nav('${v}')">
+    <span class="ni-ico">${ico(icon,'ico-sm')}</span> ${label} ${badge} ${extra}
+  </button>`;
+}
+
+/* ══ NAVIGATION ══ */
+function nav(v){VIEW=v;closeDP();if(v!=='plans')activePlanFolder=null;if(v!=='entreprises'){activeEntMembre=null;activeEntFolder=null;}if(v!=='pv'&&v!=='pv_arch'){pvFolder=null;pvArch=false;}renderSB();renderMain();}
+function backGlobal(){PROJ=null;VIEW='projets';closeDP();renderSB();renderMain();}
+function openProj(id){PROJ=PROJS.find(p=>p.id===id);VIEW='plans';clTree=PROJ&&PROJ.clTree?PROJ.clTree:buildCL(PROJ);clTab='depot';pvFolder=null;pvArch=false;closeDP();renderSB();renderMain();}
+
+/* ══ TOPBAR ══ */
+function setTB(iconId,col,title,sub,btnL,btnIco='plus'){
+  // Restore topbar visibility (hidden on projets view)
+  const tb=document.getElementById('topbar');
+  if(tb)tb.style.display='';
+  document.getElementById('tb-icon').innerHTML=`<use href="#i-${iconId}"/>`;
+  document.getElementById('tb-icon').style=`color:${col||'var(--blue)'};flex-shrink:0`;
+  document.getElementById('tb-title').textContent=title;
+  document.getElementById('tb-sub').textContent=sub;
+  document.getElementById('main-btn-lbl').textContent=btnL;
+  document.getElementById('main-btn-ico').innerHTML=`<use href="#i-${btnIco}"/>`;
+  // Show phase picker only when inside a project
+  const pp=document.getElementById('phase-picker');
+  const ps=document.getElementById('phase-select');
+  if(PROJ&&VIEW!=='projets'){
+    pp.style.display='flex';
+    ps.value=PROJ.phase;
+  } else {
+    pp.style.display='none';
+  }
+}
+
+function quickPhase(val){
+  if(!PROJ)return;
+  PROJ.phase=val;
+  renderSB();
+  toast('Phase mise à jour : '+val);
+}
+function setTabs(tabs,activeId){
+  const tb=document.getElementById('tabbar');
+  if(!tabs||!tabs.length){tb.style.display='none';return;}
+  tb.style.display='flex';
+  tb.innerHTML=tabs.map(t=>`<button class="tab ${t.id===activeId?'active':''}" onclick="switchTab('${t.id}',this)" style="${t.id===activeId&&t.color?'color:'+t.color+';border-bottom-color:'+t.color:''}">
+    <svg class="ico ico-sm" style="vertical-align:-2px;margin-right:4px"><use href="#i-${t.ico}"/></svg>${t.label}
+  </button>`).join('');
+}
+function switchTab(id,btn){
+  document.querySelectorAll('.tabbar .tab').forEach(t=>{t.classList.remove('active');t.style.color='';t.style.borderBottomColor='';});
+  btn.classList.add('active');
+  if(id==='pt-docs'||id==='pt-info'){renderPlansContent(id);return;}
+  clTab=id;
+  const node=findCLN(id);if(node){btn.style.color=node.color;btn.style.borderBottomColor=node.color;}
+  renderCLContent();
+}
+function mainAction(){
+  if(VIEW==='projets'){openNewProj();return;}
+  else if(VIEW==='membres')toast('Invitation envoyée');
+  else if(VIEW==='info'){saveInfo();return;}
+  else if(VIEW==='checklists')openAddCL();
+  else if(VIEW==='pv'||VIEW==='pv_arch'){if(pvFolder){if(!pvArch)newPV();}else newPVFolder();return;}
+  else toast('Importer — disponible dans la vraie app');
+}
+
+/* ══ RENDER MAIN ══ */
+function renderMain(){
+  const v=VIEW;
+  if(v==='projets')renderProjets();
+  else if(v==='plans')renderPlans();
+  else if(v==='entreprises')renderEntreprises();
+  else if(FMETA[v])renderDocs(v);
+  else if(v==='checklists')renderCL();
+  else if(v==='audit')renderAudit();
+  else if(v==='membres')renderMbrs();
+  else if(v==='plu')renderPLU();
+  else if(v==='pv'||v==='pv_arch')renderPV();
+  else if(v==='info')renderInfo();
+}
+
+/* ══ PROJETS ══ */
+function renderProjets(){
+  document.getElementById('topbar').style.display='none';
+  setTabs(null);
+
+  const cards=PROJS.map(function(p){
+    const archBanner=p.archived
+      ?'<div style="background:var(--amber-bg);border:1px solid var(--amber);border-radius:7px;padding:6px 10px;margin-bottom:12px;font-size:11px;color:var(--amber);display:flex;align-items:center;gap:6px"><svg class="ico ico-sm"><use href="#i-archive"/></svg> Projet archivé — <button onclick="event.stopPropagation();unarchiveProj(\''+p.id+'\')" style="background:none;border:none;cursor:pointer;color:var(--blue);font-size:11px;font-family:inherit;padding:0;text-decoration:underline">Désarchiver</button></div>':'';
+    const avs=p.avs.map(function(a,i){return '<div class="av-sm" style="background:'+AVC_BG[i%6]+';color:'+AVC_FG[i%6]+';z-index:'+(10-i)+'">'+a+'</div>';}).join('');
+    return '<div class="pcard '+(PROJ&&PROJ.id===p.id?'activep':'')+'" style="'+(p.archived?'opacity:.55;border-style:dashed':'')+'">'
+      +archBanner
+      +'<div style="display:flex;align-items:flex-start;gap:14px">'
+        +'<div style="width:44px;height:44px;border-radius:11px;background:'+p.bg+';display:flex;align-items:center;justify-content:center;flex-shrink:0">'
+          +'<svg class="ico" style="color:'+p.color+';width:22px;height:22px"><use href="#i-building"/></svg>'
+        +'</div>'
+        +'<div style="flex:1;min-width:0">'
+          +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:3px">'
+            +'<div style="font-weight:600;font-size:15px;letter-spacing:-.2px;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+p.name+'</div>'
+            +'<span class="badge bgreen">'+p.phase+'</span>'
+          +'</div>'
+          +'<div style="font-size:12px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+p.address+'</div>'
+          +'<div style="font-size:12px;color:var(--text3);margin-bottom:10px">Client : '+p.client+'</div>'
+          +'<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3);margin-bottom:4px"><span>Avancement</span><span style="font-weight:600;color:var(--text)">'+p.progress+'%</span></div>'
+          +'<div class="prog-bar"><div class="prog-fill" style="width:'+p.progress+'%;background:'+p.color+'"></div></div>'
+          +'<div style="display:grid;grid-template-columns:repeat(6,auto);gap:0;margin-top:14px;border-top:1px solid var(--border);padding-top:12px">'
+            +[['Documents',p.docs,p.color],['Membres',p.membres,p.color],['Budget',p.budget,p.color],['Surface',p.surface,'var(--text)'],['Début',p.start,'var(--text)'],['Livraison',p.livraison,'var(--text)']].map(function(row,i){
+              return '<div style="padding-right:20px">'
+                +'<div style="font-size:'+(i<3?'17px':'13px')+';font-weight:'+(i<3?'600':'400')+';color:'+row[2]+'">'+row[1]+'</div>'
+                +'<div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-top:1px">'+row[0]+'</div>'
+              +'</div>';
+            }).join('')
+          +'</div>'
+        +'</div>'
+        +'<div style="display:flex;flex-direction:column;align-items:flex-end;justify-content:space-between;gap:10px;align-self:stretch;flex-shrink:0">'
+          +'<div class="av-stack">'+avs+'</div>'
+          +'<button class="btn btn-p btn-sm" onclick="openProj(\''+p.id+'\')">Ouvrir <svg class="ico ico-sm" style="margin-left:2px"><use href="#i-arrow-right"/></svg></button>'
+        +'</div>'
+      +'</div>'
+    +'</div>';
+  }).join('');
+
+  document.getElementById('content').innerHTML=
+    '<div style="padding:16px 20px;height:100%;display:flex;flex-direction:column;box-sizing:border-box">'
+      +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-shrink:0">'
+        +'<svg class="ico ico-lg" style="color:var(--blue)"><use href="#i-grid"/></svg>'
+        +'<div style="flex:1">'
+          +'<div style="font-weight:600;font-size:15px;letter-spacing:-.2px">Mes projets</div>'
+          +'<div style="font-size:11px;color:var(--text3)">'+PROJS.length+' projets</div>'
+        +'</div>'
+        +'<div class="notif-w"><button class="btn btn-g btn-sm"><svg class="ico" style="width:15px;height:15px"><use href="#i-bell"/></svg></button><div class="notif-dot">3</div></div>'
+        +'<button class="btn btn-p btn-sm" onclick="openNewProj()"><svg class="ico ico-sm"><use href="#i-plus"/></svg> Nouveau projet</button>'
+      +'</div>'
+      +'<div style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding-right:2px">'
+        +cards
+      +'</div>'
+    +'</div>';
+}
+
+/* ══ PLANS — folder tree + docs ══ */
+function renderPlans(){
+  if(!PROJ)return;
+  setTB('pdf','var(--blue)','Plans',PROJ.name,'Importer','upload');
+  setTabs([
+    {id:'pt-docs',label:'Documents',ico:'pdf',color:'var(--blue)'},
+    {id:'pt-info',label:'Informations projet',ico:'settings',color:'var(--blue)'},
+  ],'pt-docs');
+  renderPlansContent('pt-docs');
+}
+
+function renderPlansContent(tab){
+  if(tab==='pt-info'){renderProjInfoPanel();return;}
+  const projId=PROJ.id;
+  const folders=getPlanFolders(projId);
+  const docs=getDocsForProj(PROJ).plans||[];
+
+  // Build folder tree HTML
+  function folderTreeHTML(nodes,depth){
+    if(!nodes||!nodes.length)return '';
+    return nodes.map(function(f){
+      var isActive=activePlanFolder&&activePlanFolder.id===f.id;
+      var sub=f.children&&f.children.length?'<div style="padding-left:14px">'+folderTreeHTML(f.children,depth+1)+'</div>':'';
+      return '<div>'
+        +'<div style="display:flex;align-items:center;gap:6px;padding:6px 8px;border-radius:7px;cursor:pointer;font-size:12.5px;'+(isActive?'background:var(--blue-bg);color:var(--blue);font-weight:500':'color:var(--text2)')+'" onclick="selectPlanFolder(\''+f.id+'\',\''+e(f.name)+'\')">'
+          +'<svg class="ico ico-sm" style="flex-shrink:0"><use href="#i-folder"/></svg>'
+          +'<span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+f.name+'</span>'
+          +'<button onclick="event.stopPropagation();renamePlanFolder(\''+f.id+'\',\''+e(f.name)+'\',\''+projId+'\')" style="background:none;border:none;cursor:pointer;opacity:.5;padding:2px" title="Renommer"><svg class="ico" style="width:11px;height:11px"><use href="#i-edit"/></svg></button>'
+          +'<button onclick="event.stopPropagation();addPlanSubfolder(\''+f.id+'\',\''+projId+'\')" style="background:none;border:none;cursor:pointer;opacity:.5;padding:2px" title="Sous-dossier"><svg class="ico" style="width:11px;height:11px"><use href="#i-plus"/></svg></button>'
+        +'</div>'
+        +sub
+      +'</div>';
+    }).join('');
+  }
+
+  // Filter docs by active folder (simplified — all docs shown if no folder selected)
+  var shownDocs=activePlanFolder
+    ?docs.filter(function(d){return d.folder===activePlanFolder.id;})
+    :docs;
+
+  document.getElementById('content').innerHTML=
+    '<div style="display:flex;height:100%;overflow:hidden">'
+
+      // Left: folder tree
+      +'<div style="width:220px;flex-shrink:0;border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden">'
+        +'<div style="padding:10px 10px 6px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0">'
+          +'<span style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em">Structure</span>'
+          +'<div style="display:flex;gap:3px">'
+            +'<button class="btn btn-g btn-sm" onclick="addPlanFolder(\''+projId+'\')" title="Nouveau dossier" style="padding:3px 6px"><svg class="ico ico-xs"><use href="#i-plus"/></svg></button>'
+            +'<button class="btn btn-g btn-sm" onclick="openTemplateModal(\''+projId+'\')" title="Utiliser un modèle" style="padding:3px 6px;font-size:10px">Modèle</button>'
+          +'</div>'
+        +'</div>'
+        +'<div style="flex:1;overflow-y:auto;padding:6px 8px">'
+          +(folders.length
+            ?folderTreeHTML(folders,0)
+            :'<div style="padding:16px 8px;font-size:12px;color:var(--text3);text-align:center">Aucun dossier.<br>Cliquez + ou choisissez un modèle.</div>'
+          )
+        +'</div>'
+      +'</div>'
+
+      // Right: docs
+      +'<div style="flex:1;overflow-y:auto;padding:16px 20px">'
+        +(activePlanFolder
+          ?'<div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-shrink:0">'
+              +'<svg class="ico ico-sm" style="color:var(--blue)"><use href="#i-folder"/></svg>'
+              +'<span style="font-weight:500;font-size:14px">'+activePlanFolder.name+'</span>'
+              +'<label class="btn btn-p btn-sm" style="margin-left:auto;cursor:pointer">'
+                +'<svg class="ico ico-xs"><use href="#i-upload"/></svg> Ajouter'
+                +'<input type="file" multiple style="display:none" onchange="addDocToFolder(event,\''+activePlanFolder.id+'\',\''+projId+'\')">'
+              +'</label>'
+            +'</div>'
+          :'<div style="font-size:12px;color:var(--text3);margin-bottom:14px">Sélectionnez un dossier</div>'
+        )
+        +(shownDocs.length
+          ?shownDocs.map(function(d){
+            return '<div class="doc-row" onclick="openDP(\'plans\',\''+d.id+'\')">'
+              +'<div class="doc-icon" style="background:'+d.color+'18"><svg class="ico" style="color:'+d.color+';width:17px;height:17px"><use href="#i-pdf"/></svg></div>'
+              +'<div style="flex:1;min-width:0">'
+                +'<div style="font-weight:500;font-size:13px">'+d.title+'</div>'
+                +'<div style="font-size:11px;color:var(--text3);margin-top:2px;display:flex;gap:8px"><span class="vpill">v'+d.v+'</span><span>'+d.size+'</span><span>'+d.date+'</span></div>'
+              +'</div>'
+              +'<span class="badge '+(SB_CLS[d.status]||'bgray')+'">'+(SL[d.status]||d.status)+'</span>'
+            +'</div>';
+          }).join('')
+          :(activePlanFolder?'<div style="text-align:center;padding:48px 0;color:var(--text3)"><svg class="ico" style="width:36px;height:36px;margin:0 auto 10px;display:block"><use href="#i-folder"/></svg>Dossier vide</div>':'')
+        )
+      +'</div>'
+    +'</div>';
+}
+
+function selectPlanFolder(id,name){activePlanFolder={id,name};renderPlansContent('pt-docs');}
+
+function addPlanFolder(projId){
+  var name=prompt('Nom du dossier :','Nouveau dossier');
+  if(!name)return;
+  var id='pf'+(uid++);
+  getPlanFolders(projId).push({id,name,children:[]});
+  renderPlansContent('pt-docs');
+}
+
+function addPlanSubfolder(parentId,projId){
+  var name=prompt('Nom du sous-dossier :','Sous-dossier');
+  if(!name)return;
+  function addSub(nodes){
+    for(var i=0;i<nodes.length;i++){
+      if(nodes[i].id===parentId){nodes[i].children.push({id:'pf'+(uid++),name,children:[]});return true;}
+      if(nodes[i].children&&addSub(nodes[i].children))return true;
+    }
+    return false;
+  }
+  addSub(getPlanFolders(projId));
+  renderPlansContent('pt-docs');
+}
+
+function renamePlanFolder(id,current,projId){
+  var name=prompt('Renommer :',current);
+  if(!name)return;
+  function rename(nodes){
+    for(var i=0;i<nodes.length;i++){
+      if(nodes[i].id===id){nodes[i].name=name;return;}
+      if(nodes[i].children)rename(nodes[i].children);
+    }
+  }
+  rename(getPlanFolders(projId));
+  if(activePlanFolder&&activePlanFolder.id===id)activePlanFolder.name=name;
+  renderPlansContent('pt-docs');
+}
+
+function openTemplateModal(projId){
+  showModal(''
+    +'<h3 style="display:flex;align-items:center;gap:8px"><svg class="ico" style="color:var(--blue)"><use href="#i-folder"/></svg> Modèle de structure</h3>'
+    +'<p style="font-size:12px;color:var(--text3);margin-bottom:16px">Choisissez un modèle. <strong>Attention</strong> : cela remplace la structure actuelle.</p>'
+    +'<div style="display:flex;flex-direction:column;gap:8px">'
+      +Object.entries({standard:'Standard (01→05 phases classiques)',renovation:'Rénovation',erp:'ERP / Bâtiment recevant du public',vide:'Structure vide (partir de zéro)'}).map(function(entry){
+        return '<label style="display:flex;align-items:center;gap:10px;padding:11px 14px;border:1px solid var(--border);border-radius:var(--r);cursor:pointer">'
+          +'<input type="radio" name="tpl" value="'+entry[0]+'" style="width:15px;height:15px">'
+          +'<span style="font-size:13px">'+entry[1]+'</span>'
+        +'</label>';
+      }).join('')
+    +'</div>'
+    +'<div class="mo-foot">'
+      +'<button class="btn" onclick="closeModal()">Annuler</button>'
+      +'<button class="btn btn-p" onclick="applyTemplate(\''+projId+'\')"><svg class="ico ico-sm"><use href="#i-check"/></svg> Appliquer</button>'
+    +'</div>'
+  );
+}
+
+function applyTemplate(projId){
+  var sel=document.querySelector('input[name="tpl"]:checked');
+  if(!sel){alert('Choisissez un modèle');return;}
+  PROJ_PLAN_FOLDERS[projId]=JSON.parse(JSON.stringify(PLAN_FOLDERS_TEMPLATES[sel.value]||[]));
+  activePlanFolder=null;
+  closeModal();
+  renderPlansContent('pt-docs');
+  toast('Structure appliquée');
+}
+
+function addDocToFolder(evt,folderId,projId){
+  if(!evt.target.files||!evt.target.files.length)return;
+  const p=PROJS.find(x=>x.id===projId)||PROJ;
+  if(!p)return;
+  if(!p.docs_data)p.docs_data={plans:[],contrats:[],factures:[],photos:[],admin:[]};
+  Array.from(evt.target.files).forEach(function(file){
+    p.docs_data.plans.push({id:'d'+(uid++),title:file.name.replace(/\.[^.]+$/,''),folder:folderId,v:1,size:(file.size/1048576).toFixed(1)+' MB',date:new Date().toLocaleDateString('fr-FR'),status:'draft',color:'#2d4ef5',type:'pdf',rem:'',tags:'',sigD:'',sigB:'',montant:'',variante:''});
+  });
+  savePROJS();
+  toast('Fichier(s) ajouté(s)');
+  renderPlansContent('pt-docs');
+}
+
+/* Info panel shown in plans tab */
+function renderProjInfoPanel(){
+  if(!PROJ)return;
+  var p=PROJ;
+  var mbrsHTML=getMembresForProj(PROJ).map(function(m){
+    return '<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--border)">'
+      +'<div class="av" style="width:32px;height:32px;font-size:11px;background:'+m.color+'18;color:'+m.color+'">'+m.ini+'</div>'
+      +'<div style="flex:1;min-width:0">'
+        +'<div style="font-size:12.5px;font-weight:500">'+m.name+'</div>'
+        +'<div style="font-size:11px;color:var(--text3)">'+(m.metier||RL[m.role])+' · '+m.ent+'</div>'
+      +'</div>'
+      +'<div style="font-size:11px;color:var(--text3)">'+m.tel+'</div>'
+    +'</div>';
+  }).join('');
+
+  document.getElementById('content').innerHTML='<div class="pad">'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">'
+
+      // Identité
+      +'<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:16px">'
+        +'<div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px;display:flex;align-items:center;gap:6px"><svg class="ico ico-sm"><use href="#i-building"/></svg> Projet</div>'
+        +infoRow('Nom',p.name)
+        +infoRow('Adresse',p.address)
+        +infoRow('Client',p.client)
+        +infoRow('Phase',p.phase)
+        +infoRow('Surface',p.surface)
+        +infoRow('Budget',p.budget)
+        +infoRow('Début',p.start)
+        +infoRow('Livraison',p.livraison)
+      +'</div>'
+
+      // Client + contacts
+      +'<div style="display:flex;flex-direction:column;gap:14px">'
+        +'<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:16px">'
+          +'<div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px;display:flex;align-items:center;gap:6px"><svg class="ico ico-sm"><use href="#i-users"/></svg> Client / MOA</div>'
+          +infoRow('Nom',p.client)
+          +infoRow('Email',p.clientEmail||'—')
+          +infoRow('Téléphone',p.clientTel||'—')
+          +infoRow('Référence',p.ref||'—')
+        +'</div>'
+
+        +'<div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:16px">'
+          +'<div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between">'
+            +'<span style="display:flex;align-items:center;gap:6px"><svg class="ico ico-sm"><use href="#i-lock"/></svg> Accès & codes</span>'
+            +'<button class="btn btn-sm btn-g" onclick="editAccessInfo()" style="font-size:10px">Modifier</button>'
+          +'</div>'
+          +(p.access
+            ? infoRow('Code portail',p.access.portail||'—')
+              +infoRow('Digicode',p.access.digicode||'—')
+              +infoRow('Clés',p.access.cles||'—')
+              +infoRow('Remarques',p.access.remarques||'—')
+            : '<div style="font-size:12px;color:var(--text3);padding:8px 0">Aucun accès renseigné. <button onclick="editAccessInfo()" class="btn btn-sm" style="font-size:11px;margin-left:4px">Ajouter</button></div>'
+          )
+        +'</div>'
+      +'</div>'
+
+      // Intervenants
+      +'<div style="grid-column:1/-1;background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);overflow:hidden">'
+        +'<div style="padding:12px 16px;border-bottom:1px solid var(--border);font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;display:flex;align-items:center;justify-content:space-between">'
+          +'<span style="display:flex;align-items:center;gap:6px"><svg class="ico ico-sm"><use href="#i-users"/></svg> Intervenants ('+getMembresForProj(PROJ).length+')</span>'
+          +'<button class="btn btn-sm btn-g" onclick="nav(\'membres\')" style="font-size:10px">Gérer</button>'
+        +'</div>'
+        +mbrsHTML
+      +'</div>'
+
+    +'</div>'
+  +'</div>';
+}
+
+function infoRow(label,val){
+  return '<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:12.5px">'
+    +'<span style="color:var(--text3)">'+label+'</span>'
+    +'<span style="font-weight:500;text-align:right;max-width:60%">'+e(String(val||'—'))+'</span>'
+  +'</div>';
+}
+
+function editAccessInfo(){
+  if(!PROJ)return;
+  var a=PROJ.access||{};
+  showModal(''
+    +'<h3 style="display:flex;align-items:center;gap:8px"><svg class="ico" style="color:var(--blue)"><use href="#i-lock"/></svg> Accès & codes du chantier</h3>'
+    +'<div class="fi"><label>Code portail / interphone</label><input id="acc-portail" value="'+e(a.portail||'')+'" placeholder="Ex: A1234"></div>'
+    +'<div class="fi"><label>Digicode bâtiment</label><input id="acc-digicode" value="'+e(a.digicode||'')+'" placeholder="Ex: #5678"></div>'
+    +'<div class="fi"><label>Clés / badges</label><input id="acc-cles" value="'+e(a.cles||'')+'" placeholder="Ex: Clé n°3 chez le gardien"></div>'
+    +'<div class="fi"><label>Adresse maître d\'ouvrage</label><input id="acc-adrmoa" value="'+e(a.adrmoa||'')+'" placeholder="Adresse du client"></div>'
+    +'<div class="fi"><label>Remarques accès</label><textarea id="acc-rem" placeholder="Horaires chantier, contraintes…">'+e(a.remarques||'')+'</textarea></div>'
+    +'<div class="mo-foot"><button class="btn" onclick="closeModal()">Annuler</button><button class="btn btn-p" onclick="saveAccessInfo()"><svg class="ico ico-sm"><use href="#i-save"/></svg> Enregistrer</button></div>'
+  );
+}
+
+function saveAccessInfo(){
+  if(!PROJ)return;
+  PROJ.access={
+    portail:document.getElementById('acc-portail')?.value||'',
+    digicode:document.getElementById('acc-digicode')?.value||'',
+    cles:document.getElementById('acc-cles')?.value||'',
+    adrmoa:document.getElementById('acc-adrmoa')?.value||'',
+    remarques:document.getElementById('acc-rem')?.value||'',
+  };
+  closeModal();
+  renderProjInfoPanel();
+  toast('Accès enregistrés ✓');
+}
+
+/* ══ ENTREPRISES ══ */
+function renderEntreprises(){
+  if(!PROJ)return;
+  setTB('building','#6b3fa0','Entreprises',getMembresForProj(PROJ).filter(function(m){return m.role==='external_contractor'||m.role==='editor';}).length+' intervenants','Inviter','user-plus');
+  setTabs(null);
+  activeEntMembre=activeEntMembre||null;
+
+  // Left: list of companies from MBRS
+  var companies=getMembresForProj(PROJ).filter(function(m){return m.role!=='client_viewer'&&m.role!=='project_admin';});
+  var allMbrs=MBRS;
+
+  var leftHTML=allMbrs.map(function(m){
+    var isActive=activeEntMembre===m.id;
+    return '<div style="display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;cursor:pointer;border:1px solid '+(isActive?'var(--blue-lt)':'transparent')+';background:'+(isActive?'var(--blue-bg)':'transparent')+'" onclick="selectEntMembre(\''+m.id+'\')">'
+      +'<div class="av" style="width:32px;height:32px;font-size:11px;background:'+m.color+'18;color:'+m.color+'">'+m.ini+'</div>'
+      +'<div style="flex:1;min-width:0">'
+        +'<div style="font-size:12.5px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+m.name+'</div>'
+        +'<div style="font-size:10.5px;color:var(--text3)">'+( m.metier||RL[m.role])+'</div>'
+      +'</div>'
+    +'</div>';
+  }).join('');
+
+  var rightHTML='';
+  if(activeEntMembre){
+    var m=getMembresForProj(PROJ).find(function(x){return x.id===activeEntMembre;});
+    if(m){
+      var folders=getEntFolders(PROJ.id+'_'+m.id);
+      rightHTML='<div style="display:flex;flex-direction:column;height:100%">'
+        // Fiche
+        +'<div style="padding:14px 18px;border-bottom:1px solid var(--border);flex-shrink:0">'
+          +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">'
+            +'<div class="av" style="width:42px;height:42px;font-size:14px;background:'+m.color+'18;color:'+m.color+'">'+m.ini+'</div>'
+            +'<div>'
+              +'<div style="font-weight:600;font-size:14px">'+m.name+'</div>'
+              +'<div style="font-size:12px;color:var(--text3)">'+m.ent+'</div>'
+            +'</div>'
+            +'<button class="btn btn-sm btn-g" style="margin-left:auto" onclick="nav(\'membres\')"><svg class="ico ico-xs"><use href="#i-edit"/></svg> Fiche</button>'
+          +'</div>'
+          +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;font-size:12px">'
+            +infoRow('Métier',m.metier||'—')
+            +infoRow('Téléphone',m.tel||'—')
+            +infoRow('Email',m.email||'—')
+          +'</div>'
+          +(m.note?'<div style="margin-top:8px;font-size:12px;background:var(--bg2);border-radius:7px;padding:7px 10px;color:var(--text2)">'+e(m.note)+'</div>':'')
+        +'</div>'
+        // Folder tree
+        +'<div style="display:flex;flex:1;overflow:hidden">'
+          +'<div style="width:180px;border-right:1px solid var(--border);flex-shrink:0;overflow-y:auto;padding:8px">'
+            +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;padding:0 4px">'
+              +'<span style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em">Dossiers</span>'
+              +'<button class="btn btn-g btn-sm" onclick="addEntFolder(\''+PROJ.id+'_'+m.id+'\')" style="padding:3px 6px"><svg class="ico ico-xs"><use href="#i-plus"/></svg></button>'
+            +'</div>'
+            +folders.map(function(f){
+              var isAct=activeEntFolder&&activeEntFolder.id===f.id;
+              return '<div style="display:flex;align-items:center;gap:6px;padding:6px 8px;border-radius:7px;cursor:pointer;font-size:12px;'+(isAct?'background:var(--blue-bg);color:var(--blue);font-weight:500':'color:var(--text2)')+'" onclick="activeEntFolder={id:\''+f.id+'\',name:\''+e(f.name)+'\'};renderEntreprises()">'
+                +'<svg class="ico ico-xs"><use href="#i-folder"/></svg><span>'+f.name+'</span>'
+              +'</div>';
+            }).join('')
+          +'</div>'
+          // Docs in folder
+          +'<div style="flex:1;overflow-y:auto;padding:14px 16px">'
+            +(activeEntFolder
+              ?'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px"><span style="font-size:13px;font-weight:500">'+activeEntFolder.name+'</span><label class="btn btn-p btn-sm" style="cursor:pointer"><svg class="ico ico-xs"><use href="#i-upload"/></svg> Ajouter<input type="file" style="display:none"></label></div>'
+              :'<div style="font-size:12px;color:var(--text3)">Sélectionnez un dossier</div>'
+            )
+            +'<div style="text-align:center;padding:40px 0;color:var(--text3)"><svg class="ico" style="width:32px;height:32px;display:block;margin:0 auto 8px"><use href="#i-folder"/></svg>Dossier vide</div>'
+          +'</div>'
+        +'</div>'
+      +'</div>';
+    }
+  } else {
+    rightHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text3);font-size:13px">Sélectionnez un intervenant</div>';
+  }
+
+  document.getElementById('content').innerHTML=
+    '<div style="display:flex;height:100%;overflow:hidden">'
+      +'<div style="width:210px;flex-shrink:0;border-right:1px solid var(--border);overflow-y:auto;padding:8px">'
+        +'<div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;padding:4px 6px 8px">Membres du projet</div>'
+        +leftHTML
+      +'</div>'
+      +'<div style="flex:1;overflow:hidden">'+rightHTML+'</div>'
+    +'</div>';
+}
+
+function selectEntMembre(id){activeEntMembre=id;activeEntFolder=null;renderEntreprises();}
+
+function addEntFolder(key){
+  var name=prompt('Nom du dossier :','Nouveau dossier');
+  if(!name)return;
+  if(!PROJ_ENT_FOLDERS[key])PROJ_ENT_FOLDERS[key]=[];
+  PROJ_ENT_FOLDERS[key].push({id:'ef'+(uid++),name,children:[]});
+  renderEntreprises();
+}
+
+/* ══ DOC LIST ══ */
+function renderDocs(v){
+  const f=FMETA[v],docs=getDocsForProj(PROJ)[v]||[];
+  setTB(f.ico,f.color,f.label,docs.length+' documents','Importer','upload');
+  setTabs(null);
+  document.getElementById('content').innerHTML='<div class="pad">'+docs.map(d=>`
+    <div class="doc-row" onclick="openDP('${v}','${d.id}')">
+      <div class="doc-icon" style="background:${d.color}18">
+        <svg class="ico" style="color:${d.color};width:17px;height:17px"><use href="#i-${d.type==='img'?'photo':'pdf'}"/></svg>
+      </div>
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:500;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${d.title}</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <span class="vpill">v${d.v}</span><span>${d.size}</span><span>${d.date}</span>
+          ${d.ent?`<span style="color:var(--text2)">${d.ent}</span>`:''}
+          ${d.montant?`<span style="font-weight:600;color:var(--text)">${d.montant}</span>`:''}
+        </div>
+        ${d.variante?`<div style="font-size:11px;color:var(--purple);margin-top:2px"><svg class="ico ico-xs" style="vertical-align:-1px"><use href="#i-git-branch"/></svg> ${d.variante}</div>`:''}
+        ${d.rem?`<div style="font-size:11px;color:var(--text3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${d.rem}</div>`:''}
+      </div>
+      <div style="display:flex;gap:5px;align-items:center;flex-shrink:0">
+        <span class="badge ${SB_CLS[d.status]||'bgray'}">${SL[d.status]||d.status}</span>
+        ${d.sigD?`<span style="font-size:10px;color:var(--text3)"><svg class="ico ico-xs" style="vertical-align:-1px"><use href="#i-pencil-check"/></svg> ${d.sigD}</span>`:''}
+        <button class="btn btn-sm btn-g" onclick="event.stopPropagation();openDP('${v}','${d.id}')">
+          <svg class="ico ico-xs"><use href="#i-edit"/></svg> Modifier
+        </button>
+        <button class="btn btn-sm btn-g" onclick="event.stopPropagation()">
+          <svg class="ico ico-xs"><use href="#i-download"/></svg>
+        </button>
+      </div>
+    </div>`).join('')+'</div>';
+}
+
+/* ══ DETAIL PANEL ══ */
+function openDP(folder,id){
+  const d=(getDocsForProj(PROJ)[folder]||[]).find(x=>x.id===id);if(!d)return;
+  detDoc=id;detFolder=folder;
+  document.getElementById('dp-title').textContent=d.title;
+  document.getElementById('dp-sub').textContent=SL[d.status]||d.status;
+  const isFin=folder==='contrats'||folder==='factures';
+  const isDoc=folder==='plans'||folder==='photos';
+  let h=`<div class="sec-hd">Informations générales</div>`;
+  h+=fi('Titre','text','dp-t',d.title);
+  h+=fi('Entreprise / intervenant','text','dp-e',d.ent||'','Ex: Entreprise Dupré & Fils');
+  h+=fiS('Statut','dp-s',['draft','issued','signed','superseded'],d.status,SL);
+  h+=fiS('Catégorie','dp-c',['plan','devis','contrat','avenant','facture','photo','admin','autre'],d.cat);
+  if(isDoc)h+=fiS('Discipline','dp-d',['','Architectural','Structural','MEP','Landscape','Admin'],d.disc);
+  h+=fi('Date du document','date','dp-dt',toISO(d.date));
+  if(isFin){
+    h+=`<div class="sec-hd">Données financières</div>`;
+    h+=`<div class="fi-2">${fi('Montant HT','text','dp-m',d.montant||'','148 500 €')}${fi('Variante / option','text','dp-v',d.variante||'','Variante A…')}</div>`;
+    h+=`<div class="sec-hd">Signature</div>`;
+    h+=`<div class="fi-2">${fi('Date de signature','date','dp-sd',toISO(d.sigD||''))}${fi('Signataire(s)','text','dp-sb',d.sigB||'','Nom du signataire')}</div>`;
+  }
+  h+=`<div class="sec-hd">Remarques & tags</div>`;
+  h+=fiTA('Remarques','dp-r',d.rem||'','Observations, conditions…');
+  h+=fi('Tags (virgule)','text','dp-tg',d.tags||'','structure, fondation');
+  h+=`<div class="sec-hd">Versions</div>`;
+  Array.from({length:d.v},(_,i)=>d.v-i).forEach(v=>{
+    h+=`<div class="v-row ${v===d.v?'cur':''}">
+      <span class="vpill">v${v}</span>
+      <span style="flex:1;font-size:12px">${v===d.v?'Version actuelle':'Archivée'}</span>
+      <span class="badge ${v===d.v?'bgreen':'bgray'}" style="font-size:9px">${v===d.v?'Courante':'Archivée'}</span>
+      <button class="btn btn-sm btn-g" style="padding:2px 7px" onclick="toast('Télécharger v${v}')"><svg class="ico ico-xs"><use href="#i-download"/></svg></button>
+    </div>`;
+  });
+  h+=`<div style="margin-top:10px"><button class="btn btn-g" style="width:100%;justify-content:center" onclick="toast('Importer une nouvelle version')"><svg class="ico ico-sm"><use href="#i-upload"/></svg> Nouvelle version</button></div>`;
+  document.getElementById('dp-body').innerHTML=h;
+  document.getElementById('dp').classList.add('open');
+}
+function saveDP(){
+  if(!detDoc||!detFolder)return;
+  const docs=getDocsForProj(PROJ);const d=(docs[detFolder]||[]).find(x=>x.id===detDoc);if(!d)return;
+  const g=id=>{const el=document.getElementById(id);return el?el.value:'';};
+  d.title=g('dp-t')||d.title;d.ent=g('dp-e');d.status=g('dp-s')||d.status;d.cat=g('dp-c')||d.cat;
+  if(document.getElementById('dp-d'))d.disc=g('dp-d');
+  const dv=g('dp-dt');if(dv)d.date=fromISO(dv);
+  if(document.getElementById('dp-m'))d.montant=g('dp-m');
+  if(document.getElementById('dp-v'))d.variante=g('dp-v');
+  if(document.getElementById('dp-sd')){const sv=g('dp-sd');d.sigD=sv?fromISO(sv):'';}
+  if(document.getElementById('dp-sb'))d.sigB=g('dp-sb');
+  d.rem=g('dp-r');d.tags=g('dp-tg');
+  document.getElementById('dp-title').textContent=d.title;
+  document.getElementById('dp-sub').textContent=SL[d.status]||d.status;
+  savePROJS();renderDocs(detFolder);toast('Modifications enregistrées ✓');
+}
+function closeDP(){document.getElementById('dp').classList.remove('open');detDoc=null;detFolder=null;}
+function fi(label,type,id,val,ph=''){return`<div class="fi"><label>${label}</label><input type="${type}" id="${id}" value="${e(val)}" placeholder="${ph}"></div>`;}
+function fiS(label,id,opts,val,labels={}){return`<div class="fi"><label>${label}</label><select id="${id}">${opts.map(o=>`<option value="${o}" ${o===val?'selected':''}>${labels[o]||o||'—'}</option>`).join('')}</select></div>`;}
+function fiTA(label,id,val,ph=''){return`<div class="fi"><label>${label}</label><textarea id="${id}" placeholder="${ph}">${e(val)}</textarea></div>`;}
+function toISO(fr){if(!fr||fr.includes('-'))return fr;const p=fr.split('/');return p.length===3?`${p[2]}-${p[1]}-${p[0]}`:fr;}
+function fromISO(iso){if(!iso||iso.includes('/'))return iso;const p=iso.split('-');return p.length===3?`${p[2]}/${p[1]}/${p[0]}`:iso;}
+function e(s){return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');}
+
+/* ══ CHECKLISTS ══ */
+function renderCL(){
+  if(!clTree)return;
+  setTB('hat','#854d0e','Espace architecte — Checklistes',PROJ?.name||'','Ajouter','plus');
+  const tabs=clTree.map(n=>({id:n.id,label:n.label.replace(/[\'&].*/,'').trim().slice(0,14),ico:n.ico,color:n.color}));
+  setTabs(tabs,clTab);
+  setTimeout(()=>{
+    document.querySelectorAll('.tabbar .tab').forEach(t=>{
+      const n=clTree.find(n=>t.textContent.trim().startsWith(n.label.replace(/[\'&].*/,'').trim().slice(0,6)));
+      if(n&&t.classList.contains('active')){t.style.color=n.color;t.style.borderBottomColor=n.color;}
+    });
+  },0);
+  renderCLContent();
+}
+function renderCLContent(){
+  const node=findCLN(clTab)||clTree[0];if(!node)return;
+  const vis=flatCL(node).filter(i=>clArch||!i.arch);
+  const done=vis.filter(i=>i.done&&!i.arch).length,total=vis.filter(i=>!i.arch).length,pct=total?Math.round(done/total*100):0;
+  const appBar=`<div style="display:flex;gap:8px;margin-bottom:14px;padding:10px 12px;background:var(--panel2);border:1px solid var(--border);border-radius:var(--r);align-items:center">
+    <span style="font-size:11px;color:var(--text3);margin-right:2px">Accès rapide :</span>
+    <a href="archideck.html" target="_blank" style="display:inline-flex;align-items:center;gap:5px;padding:5px 11px;background:var(--blue);color:#fff;border-radius:7px;font-size:11.5px;font-weight:600;text-decoration:none">${ico('building','ico-xs')} Archideck</a>
+    <a href="cr_chantier.html" target="_blank" style="display:inline-flex;align-items:center;gap:5px;padding:5px 11px;background:var(--blue);color:#fff;border-radius:7px;font-size:11.5px;font-weight:600;text-decoration:none">${ico('pdf','ico-xs')} PlanSync CR</a>
+  </div>`;
+  let html=`<div class="pad">${appBar}
+    <div class="sum-bar">
+      <div style="text-align:center"><div style="font-size:20px;font-weight:600;color:${node.color}">${done}</div><div style="font-size:10px;color:var(--text3)">Complétés</div></div>
+      <div style="text-align:center"><div style="font-size:20px;font-weight:600;color:var(--text3)">${total-done}</div><div style="font-size:10px;color:var(--text3)">Restants</div></div>
+      <div style="flex:1"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span style="font-weight:500">${node.label}</span><span>${pct}%</span></div>
+      <div class="prog-bar"><div class="prog-fill" style="width:${pct}%;background:${node.color}"></div></div></div>
+      <button class="btn btn-g btn-sm" onclick="clArch=!clArch;renderCLContent()" title="${clArch?'Masquer archivés':'Voir archivés'}"><svg class="ico ico-sm"><use href="#i-archive"/></svg></button>
+    </div>
+    ${clGH(node,true)}`;
+  if(node.children&&node.children.length){
+    node.children.forEach(child=>{
+      const cd=child.items.filter(i=>i.done&&!i.arch).length,ct=child.items.filter(i=>!i.arch).length;
+      html+=`<div style="margin-top:14px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+          <svg class="ico ico-sm" style="color:${child.color}"><use href="#i-${child.ico}"/></svg>
+          <span style="font-weight:500;font-size:13px">${child.label}</span>
+          <span class="badge ${cd===ct&&ct>0?'bgreen':'bgray'}" style="font-size:9px">${cd}/${ct}</span>
+        </div>${clGH(child,false)}</div>`;
+    });
+  }
+  html+=`</div>`;
+  document.getElementById('content').innerHTML=html;
+}
+function clGH(node,addRow){
+  const vis=(node.items||[]).filter(i=>clArch||!i.arch);
+  let h=`<div class="cl-group">`;
+  vis.forEach(it=>{
+    h+=`<div class="cl-item" style="${it.arch?'opacity:.4':''}">
+      <div class="cl-chk ${it.done&&!it.arch?'done':it.arch?'arch':''}" onclick="toggleCL('${it.id}')">
+        ${it.done&&!it.arch?`<svg class="ico" style="width:10px;height:10px;color:#fff"><use href="#i-check"/></svg>`:''}
+      </div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;color:${it.done&&!it.arch?'var(--text3)':'var(--text)'};text-decoration:${it.done&&!it.arch?'line-through':'none'}">
+          ${it.l}${it.tag?`<span class="tag ${TCL[it.tc]||'tgray'}">${it.tag}</span>`:''}
+        </div>
+        ${it.n?`<div style="font-size:11px;color:var(--text3);margin-top:2px">${it.n}</div>`:''}
+      </div>
+      <div class="cl-act">
+        <button class="btn btn-g btn-sm" onclick="archCL('${it.id}')" title="${it.arch?'Restaurer':'Archiver'}"><svg class="ico ico-xs"><use href="#i-${it.arch?'check-list':'archive'}"/></svg></button>
+      </div>
+    </div>`;
+  });
+  if(addRow)h+=`<div class="add-row"><input type="text" placeholder="Ajouter un élément…" id="qa-${node.id}" onkeydown="if(event.key==='Enter')quickCL('${node.id}')"><button class="btn btn-p btn-sm" onclick="quickCL('${node.id}')">Ajouter</button></div>`;
+  h+=`</div>`;return h;
+}
+function toggleCL(iid){allCLN(clTree).forEach(n=>{const it=(n.items||[]).find(i=>i.id===iid);if(it&&!it.arch)it.done=!it.done;});if(PROJ)PROJ.clTree=clTree;savePROJS();renderCLContent();renderSB();}
+function archCL(iid){allCLN(clTree).forEach(n=>{const it=(n.items||[]).find(i=>i.id===iid);if(it){it.arch=!it.arch;if(it.arch)it.done=false;}});if(PROJ)PROJ.clTree=clTree;savePROJS();renderCLContent();renderSB();}
+function quickCL(nid){const inp=document.getElementById('qa-'+nid);if(!inp||!inp.value.trim())return;const n=findCLN(nid);if(!n)return;n.items.push({id:'u'+(uid++),l:inp.value.trim(),n:'',tag:'',tc:'gray',done:false,arch:false});inp.value='';if(PROJ)PROJ.clTree=clTree;savePROJS();renderCLContent();renderSB();toast('Élément ajouté');}
+function openAddCL(){showModal(`<h3>Ajouter un élément</h3><div class="fi"><label>Libellé</label><input id="ac-l" placeholder="Description…"></div><div class="fi"><label>Note</label><input id="ac-n" placeholder="Optionnel"></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div class="fi"><label>Tag</label><input id="ac-tag" placeholder="Obligatoire"></div><div class="fi"><label>Couleur</label><select id="ac-tc">${['red','amber','blue','green','purple','gray'].map(c=>`<option>${c}</option>`).join('')}</select></div></div><div class="fi"><label>Dossier</label><select id="ac-p">${allCLN(clTree).map(n=>`<option value="${n.id}" ${n.id===clTab?'selected':''}>${n.label}</option>`).join('')}</select></div><div class="mo-foot"><button class="btn" onclick="closeModal()">Annuler</button><button class="btn btn-p" onclick="saveCL()">Ajouter</button></div>`);}
+function saveCL(){const l=document.getElementById('ac-l')?.value?.trim();if(!l)return;const pid=document.getElementById('ac-p')?.value||clTab;const n=findCLN(pid);if(!n)return;n.items.push({id:'u'+(uid++),l,n:document.getElementById('ac-n')?.value||'',tag:document.getElementById('ac-tag')?.value||'',tc:document.getElementById('ac-tc')?.value||'gray',done:false,arch:false});if(PROJ)PROJ.clTree=clTree;savePROJS();closeModal();renderCLContent();renderSB();toast('Élément ajouté');}
+
+/* ══ AUDIT ══ */
+function renderAudit(){
+  setTB('check-list','var(--text2)','Journal d\'audit',AUD.length+' événements','Exporter','download');
+  setTabs(null);
+  document.getElementById('content').innerHTML='<div class="pad">'+AUD.map(a=>`
+    <div class="aud-row">
+      <div class="aud-ic"><svg class="ico ico-sm" style="color:var(--text3)"><use href="#i-${a.ic}"/></svg></div>
+      <div class="aud-card"><div style="font-size:13px;font-weight:500">${a.label}</div><div style="font-size:11px;color:var(--text3);margin-top:2px">${a.sub} · ${a.time}</div></div>
+    </div>`).join('')+'</div>';
+}
+
+/* ══ PV (procès-verbaux) — sous-dossiers + archives par dossier ══ */
+// Accès rétro-compatible : crée "Général" à la volée, rattache les PV sans dossier.
+function pvEnsure(p){
+  if(!p)return null;
+  if(!Array.isArray(p.pv))p.pv=[];
+  if(!Array.isArray(p.folders)||!p.folders.length){
+    p.folders=[{id:'fgen',name:'Général'}];
+  }
+  // Rattacher tout PV sans folderId au premier dossier (Général), sans rien déplacer d'autre.
+  const def=p.folders[0].id;
+  p.pv.forEach(function(v){if(!v.folderId)v.folderId=def;});
+  return p;
+}
+function pvFolderById(p,id){return(p&&Array.isArray(p.folders))?p.folders.find(function(f){return f.id===id;}):null;}
+
+function renderPV(){
+  pvEnsure(PROJ);
+  if(pvFolder&&!pvFolderById(PROJ,pvFolder))pvFolder=null; // dossier disparu -> retour liste
+  if(pvFolder)renderPVFolder();else renderPVFolderList();
+}
+
+// Vue 1 : liste des sous-dossiers du projet
+function renderPVFolderList(){
+  const folders=PROJ.folders;
+  setTB('file-check','var(--blue)','PV',folders.length+(folders.length>1?' sous-dossiers':' sous-dossier'),'Nouveau sous-dossier','folder');
+  setTabs(null);
+  let body='<div class="pad" style="display:flex;flex-direction:column;gap:8px">';
+  body+=folders.map(function(f){
+    const items=PROJ.pv.filter(function(v){return v.folderId===f.id;});
+    const act=items.filter(function(v){return !v.archived;}).length;
+    const arc=items.filter(function(v){return v.archived;}).length;
+    return '<div class="aud-card" onclick="openPVFolder(\''+f.id+'\')" style="display:flex;align-items:center;gap:10px;padding:11px 14px;border:1px solid var(--border);border-radius:var(--r);cursor:pointer">'
+      +'<svg class="ico ico-sm" style="color:var(--blue);flex-shrink:0"><use href="#i-folder"/></svg>'
+      +'<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:500">'+e(f.name)+'</div>'
+      +'<div style="font-size:11px;color:var(--text3);margin-top:2px">'+act+' actif(s)'+(arc?' · '+arc+' archivé(s)':'')+'</div></div>'
+      +'<svg class="ico" style="width:11px;height:11px;color:var(--text3)"><use href="#i-arrow-right"/></svg>'
+    +'</div>';
+  }).join('');
+  body+='</div>';
+  document.getElementById('content').innerHTML=body;
+}
+
+// Vue 2 : contenu d'un sous-dossier (actifs + archives)
+function renderPVFolder(){
+  const f=pvFolderById(PROJ,pvFolder);if(!f){pvFolder=null;return renderPV();}
+  const all=PROJ.pv.filter(function(v){return v.folderId===f.id;});
+  const active=all.filter(function(v){return !v.archived;});
+  const arch=all.filter(function(v){return v.archived;});
+  setTB('folder','var(--blue)','PV — '+f.name,(pvArch?arch.length+' archivé(s)':active.length+' actif(s)'),'Nouveau PV');
+  setTabs(null);
+
+  let head='<div class="pad" style="padding-bottom:0">'
+    +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px">'
+      +'<button class="btn btn-g btn-sm" onclick="backPVFolders()"><svg class="ico ico-xs" style="margin-right:3px"><use href="#i-arrow-left"/></svg>Dossiers</button>'
+      +'<button class="btn btn-g btn-sm" onclick="renamePVFolder()"><svg class="ico ico-xs" style="margin-right:3px"><use href="#i-edit"/></svg>Renommer</button>'
+      +'<button class="btn btn-g btn-sm" onclick="archivePVFolder()" style="color:var(--amber)"><svg class="ico ico-xs" style="margin-right:3px"><use href="#i-archive"/></svg>Archiver le dossier</button>'
+    +'</div>'
+    +'<div class="tabbar" style="display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:12px">'
+      +'<button class="tab '+(!pvArch?'active':'')+'" onclick="pvShowActive()" style="'+(!pvArch?'color:var(--blue);border-bottom-color:var(--blue)':'')+'">Actifs ('+active.length+')</button>'
+      +'<button class="tab '+(pvArch?'active':'')+'" onclick="pvShowArch()" style="'+(pvArch?'color:var(--blue);border-bottom-color:var(--blue)':'')+'"><svg class="ico ico-xs" style="vertical-align:-2px;margin-right:4px"><use href="#i-archive"/></svg>Archives ('+arch.length+')</button>'
+    +'</div>';
+
+  const shown=pvArch?arch:active;
+  let listHtml;
+  if(!shown.length){
+    const msg=pvArch?'Aucun élément archivé dans ce dossier.':'Aucun PV pour le moment.';
+    const sub=pvArch?'':'Les procès-verbaux seront listés ici.';
+    listHtml='<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:36px 16px;color:var(--text3)">'
+      +'<svg class="ico" style="width:32px;height:32px;color:var(--border2);margin-bottom:10px"><use href="#i-'+(pvArch?'archive':'file-check')+'"/></svg>'
+      +'<div style="font-size:14px;font-weight:500;color:var(--text2);margin-bottom:4px">'+msg+'</div>'
+      +(sub?'<div style="font-size:12px;margin-bottom:16px">'+sub+'</div>':'')
+      +(!pvArch?'<button class="btn btn-p btn-sm" onclick="newPV()"><svg class="ico ico-sm" style="margin-right:4px"><use href="#i-plus"/></svg>Nouveau PV</button>':'')
+      +'</div>';
+  }else{
+    listHtml='<div style="display:flex;flex-direction:column;gap:8px">'+shown.map(function(v){
+      const actBtn=pvArch
+        ?'<button class="btn btn-sm btn-g" onclick="event.stopPropagation();restorePV(\''+v.id+'\')"><svg class="ico ico-xs" style="margin-right:3px"><use href="#i-refresh"/></svg>Restaurer</button>'
+        :'<button class="btn btn-sm btn-g" onclick="event.stopPropagation();archivePV(\''+v.id+'\')" style="color:var(--amber)"><svg class="ico ico-xs" style="margin-right:3px"><use href="#i-archive"/></svg>Archiver</button>';
+      return '<div class="aud-card" style="display:flex;align-items:center;gap:10px;padding:11px 14px;border:1px solid var(--border);border-radius:var(--r)">'
+        +'<svg class="ico ico-sm" style="color:var(--blue);flex-shrink:0"><use href="#i-file-check"/></svg>'
+        +'<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:500">'+e(v.titre)+'</div>'
+        +'<div style="font-size:11px;color:var(--text3);margin-top:2px">'+e(v.date||'')+(v.archived&&v.archivedAt?' · archivé le '+e(v.archivedAt):'')+'</div></div>'
+        +actBtn
+      +'</div>';
+    }).join('')+'</div>';
+  }
+  document.getElementById('content').innerHTML=head+listHtml+'</div>';
+}
+
+/* ── actions dossiers ── */
+function openPVFolder(id){pvFolder=id;pvArch=false;renderMain();}
+function backPVFolders(){pvFolder=null;pvArch=false;renderMain();}
+function pvShowActive(){pvArch=false;renderMain();}
+function pvShowArch(){pvArch=true;renderMain();}
+function newPVFolder(){
+  pvEnsure(PROJ);
+  showModal('<h3>Nouveau sous-dossier</h3>'
+    +'<div class="fi"><label>Nom du sous-dossier</label><input id="nf-name" placeholder="Ex: Réception, Lot gros oeuvre…"></div>'
+    +'<div class="mo-foot"><button class="btn" onclick="closeModal()">Annuler</button><button class="btn btn-p" onclick="saveNewPVFolder()">Créer</button></div>');
+}
+function saveNewPVFolder(){
+  const name=(document.getElementById('nf-name')?.value||'').trim();if(!name)return;
+  PROJ.folders.push({id:'fld'+Date.now(),name:name});
+  savePROJS();closeModal();renderMain();toast('Sous-dossier créé');
+}
+function renamePVFolder(){
+  const f=pvFolderById(PROJ,pvFolder);if(!f)return;
+  showModal('<h3>Renommer le sous-dossier</h3>'
+    +'<div class="fi"><label>Nom</label><input id="rf-name" value="'+e(f.name)+'"></div>'
+    +'<div class="mo-foot"><button class="btn" onclick="closeModal()">Annuler</button><button class="btn btn-p" onclick="saveRenamePVFolder()">Enregistrer</button></div>');
+}
+function saveRenamePVFolder(){
+  const f=pvFolderById(PROJ,pvFolder);if(!f)return;
+  const name=(document.getElementById('rf-name')?.value||'').trim();if(!name)return;
+  f.name=name;savePROJS();closeModal();renderMain();toast('Sous-dossier renommé');
+}
+function archivePVFolder(){
+  const f=pvFolderById(PROJ,pvFolder);if(!f)return;
+  if(PROJ.folders.length<=1){toast('Impossible d\'archiver le dernier dossier');return;}
+  // Archive le dossier = archive ses PV et le retire de la liste (données conservées).
+  PROJ.pv.forEach(function(v){if(v.folderId===f.id&&!v.archived){v.archived=true;v.archivedAt=new Date().toLocaleDateString('fr-FR');}});
+  PROJ.folders=PROJ.folders.filter(function(x){return x.id!==f.id;});
+  pvFolder=null;pvArch=false;savePROJS();renderMain();toast('Sous-dossier archivé');
+}
+
+/* ── actions PV ── */
+function newPV(){
+  if(!PROJ)return;pvEnsure(PROJ);
+  const fid=pvFolder||PROJ.folders[0].id;
+  const n=PROJ.pv.filter(function(v){return v.folderId===fid;}).length+1;
+  PROJ.pv.push({id:'pv'+Date.now(),titre:'Nouveau PV n°'+n,date:new Date().toLocaleDateString('fr-FR'),folderId:fid,archived:false});
+  savePROJS();renderSB();renderMain();toast('PV ajouté');
+}
+function archivePV(id){
+  const v=PROJ.pv.find(function(x){return x.id===id;});if(!v)return;
+  v.archived=true;v.archivedAt=new Date().toLocaleDateString('fr-FR');
+  savePROJS();renderMain();toast('PV archivé');
+}
+function restorePV(id){
+  const v=PROJ.pv.find(function(x){return x.id===id;});if(!v)return;
+  v.archived=false;v.archivedAt='';
+  savePROJS();renderMain();toast('PV restauré');
+}
+
+/* ══ MEMBRES ══ */
+function renderMbrs(){
+  setTB('users','var(--blue)','Membres & accès',getMembresForProj(PROJ).length+' participants','Inviter','user-plus');
+  setTabs(null);
+  let html='<div class="pad">';
+
+  // Invite bar
+  html+='<div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;margin-bottom:16px">'
+    +'<div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;display:flex;align-items:center;gap:6px">'
+      +'<svg class="ico ico-sm"><use href="#i-user-plus"/></svg> Inviter un intervenant'
+    +'</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;align-items:end">'
+      +'<div class="fi" style="margin:0"><label>Email *</label><input type="email" placeholder="email@entreprise.fr" id="inv-e"></div>'
+      +'<div class="fi" style="margin:0"><label>Nom</label><input placeholder="Prénom Nom" id="inv-name"></div>'
+      +'<div class="fi" style="margin:0"><label>Métier / Fonction</label>'
+        +'<input id="inv-metier" placeholder="Ex: Électricien, Plombier…">'
+      +'</div>'
+      +'<button class="btn btn-p btn-sm" onclick="inviteMbr()" style="height:34px">'
+        +'<svg class="ico ico-xs"><use href="#i-user-plus"/></svg> Inviter'
+      +'</button>'
+    +'</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">'
+      +'<div class="fi" style="margin:0"><label>Entreprise</label><input placeholder="Nom de l\'entreprise" id="inv-ent"></div>'
+      +'<div class="fi" style="margin:0"><label>Rôle</label>'
+        +'<select id="inv-r" style="width:100%;padding:7px 9px;border:1px solid var(--border2);border-radius:7px;font-size:12px;background:var(--panel);color:var(--text);outline:none;font-family:inherit">'
+          +Object.entries(RL).map(function(e){return '<option value="'+e[0]+'">'+e[1]+'</option>';}).join('')
+        +'</select>'
+      +'</div>'
+    +'</div>'
+  +'</div>';
+
+  // Member list
+  getMembresForProj(PROJ).forEach(function(m){
+    var isOpen=curMbr===m.id;
+    var metierLabel=m.metier||RL[m.role]||'—';
+
+    html+='<div class="mem-row" style="flex-direction:column;align-items:stretch;gap:0;cursor:pointer" onclick="toggleMbr(\''+m.id+'\')">'
+      +'<div style="display:flex;align-items:center;gap:11px">'
+        +'<div class="av" style="width:38px;height:38px;font-size:12px;background:'+m.color+'18;color:'+m.color+'">'+m.ini+'</div>'
+        +'<div style="flex:1;min-width:0">'
+          +'<div style="font-weight:500;font-size:13px">'+m.name+'</div>'
+          +'<div style="font-size:11px;color:var(--text3)">'+m.ent+'</div>'
+          +'<div style="font-size:11px;color:var(--text3)">'+m.email+'</div>'
+        +'</div>'
+        +'<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0">'
+          // Métier badge (prominent) + role badge (small)
+          +'<span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;background:'+m.color+'18;color:'+m.color+'">'+metierLabel+'</span>'
+          +'<span style="font-size:10px;color:var(--text3)">'+RL[m.role]+'</span>'
+        +'</div>'
+        +'<svg class="ico ico-sm" style="color:var(--text3);margin-left:4px"><use href="#i-'+(isOpen?'chevron-up':'chevron-down')+'"/></svg>'
+      +'</div>';
+
+    if(isOpen){
+      html+='<div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)" onclick="event.stopPropagation()">'
+
+        // ── Fiche ──
+        +'<div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Fiche intervenant</div>'
+        +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:14px">'
+          +'<div class="fi" style="margin:0"><label>Nom complet</label><input id="mf-name-'+m.id+'" value="'+e(m.name)+'"></div>'
+          +'<div class="fi" style="margin:0"><label>Métier / Fonction</label>'
+            +'<input id="mf-metier-'+m.id+'" value="'+e(m.metier||'')+'" placeholder="Ex: Électricien, Plombier…">'
+          +'</div>'
+          +'<div class="fi" style="margin:0"><label>Entreprise</label><input id="mf-ent-'+m.id+'" value="'+e(m.ent||'')+'"></div>'
+          +'<div class="fi" style="margin:0"><label>Téléphone</label><input id="mf-tel-'+m.id+'" value="'+e(m.tel||'')+'" placeholder="+33 6 xx xx xx xx"></div>'
+          +'<div class="fi" style="grid-column:1/-1;margin:0"><label>Note / Mission</label>'
+            +'<textarea id="mf-note-'+m.id+'" placeholder="Description de la mission, lot concerné…" style="min-height:52px">'+e(m.note||'')+'</textarea>'
+          +'</div>'
+          +'<div class="fi" style="margin:0"><label>Rôle</label>'
+            +'<select id="mf-role-'+m.id+'" style="width:100%;padding:7px 9px;border:1px solid var(--border2);border-radius:7px;font-size:12.5px;background:var(--bg);color:var(--text);outline:none;font-family:inherit">'
+              +Object.entries(RL).map(function(rl){return '<option value="'+rl[0]+'" '+(rl[0]===m.role?'selected':'')+'>'+rl[1]+'</option>';}).join('')
+            +'</select>'
+          +'</div>'
+          +'<div class="fi" style="margin:0"><label>Email</label><input type="email" id="mf-email-'+m.id+'" value="'+e(m.email||'')+'"></div>'
+        +'</div>'
+
+        // ── Permissions ──
+        +'<div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Permissions</div>'
+        +'<div class="perm-grid" style="margin-bottom:12px">'
+          +Object.entries(PI_IC).map(function(entry){
+            var k=entry[0],ic=entry[1];
+            return '<div style="text-align:center">'
+              +'<div class="pi '+(m.perms[k]?'on':'off')+'" style="margin:0 auto 3px" onclick="togglePerm(\''+m.id+'\',\''+k+'\')">'
+                +'<svg class="ico ico-sm"><use href="#i-'+ic+'"/></svg>'
+              +'</div>'
+              +'<div style="font-size:9px;color:var(--text3)">'+PI_LB[k]+'</div>'
+            +'</div>';
+          }).join('')
+        +'</div>'
+
+        // ── Accès dossiers ──
+        +'<div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Accès par dossier</div>'
+        +FLIST.map(function(f){
+          return '<div class="fold-row">'
+            +'<svg class="ico ico-sm" style="color:var(--text3)"><use href="#i-folder"/></svg>'
+            +'<span style="flex:1">'+f+'</span>'
+            +'<div class="tog '+(m.dossiers[f]?'on':'')+'" onclick="toggleDoss(\''+m.id+'\',\''+f+'\')">'
+              +(m.dossiers[f]?'<svg class="ico" style="width:10px;height:10px"><use href="#i-check"/></svg>':'')
+            +'</div>'
+            +'<span style="font-size:11px;color:var(--text3);min-width:44px;text-align:right">'+(m.dossiers[f]?'Accès':'Bloqué')+'</span>'
+          +'</div>';
+        }).join('')
+
+        +'<div style="display:flex;gap:6px;margin-top:12px">'
+          +'<button class="btn btn-p btn-sm" onclick="saveMbr(\''+m.id+'\')">'
+            +'<svg class="ico ico-xs"><use href="#i-save"/></svg> Enregistrer'
+          +'</button>'
+          +'<button class="btn btn-sm" style="color:var(--red)" onclick="removeMbr(\''+m.id+'\')">'
+            +'<svg class="ico ico-xs"><use href="#i-trash"/></svg> Retirer'
+          +'</button>'
+        +'</div>'
+      +'</div>';
+    }
+
+    html+='</div>';
+  });
+
+  html+='</div>';
+  document.getElementById('content').innerHTML=html;
+}
+
+function toggleMbr(id){curMbr=curMbr===id?null:id;renderMbrs();}
+function togglePerm(mid,k){var m=getMembresForProj(PROJ).find(function(x){return x.id===mid;});if(m)m.perms[k]=!m.perms[k];renderMbrs();}
+function toggleDoss(mid,f){var m=getMembresForProj(PROJ).find(function(x){return x.id===mid;});if(m)m.dossiers[f]=!m.dossiers[f];renderMbrs();}
+
+function saveMbr(mid){
+  var m=getMembresForProj(PROJ).find(function(x){return x.id===mid;});
+  if(!m)return;
+  var g=function(id){var el=document.getElementById(id);return el?el.value:'';};
+  m.name=g('mf-name-'+mid)||m.name;
+  m.metier=g('mf-metier-'+mid)||m.metier;
+  m.ent=g('mf-ent-'+mid);
+  m.tel=g('mf-tel-'+mid);
+  m.note=g('mf-note-'+mid);
+  m.role=g('mf-role-'+mid)||m.role;
+  m.email=g('mf-email-'+mid)||m.email;
+  // Update initials from name
+  var parts=m.name.trim().split(' ');
+  m.ini=(parts[0]?parts[0][0]:'')+(parts[1]?parts[1][0]:'');
+  m.ini=m.ini.toUpperCase();
+  curMbr=null;
+  renderMbrs();
+  toast('Fiche mise à jour ✓');
+}
+
+function removeMbr(mid){
+  if(!confirm('Retirer ce membre du projet ?'))return;
+  getMembresForProj(PROJ).splice(getMembresForProj(PROJ).findIndex(function(x){return x.id===mid;}),1);
+  curMbr=null;renderMbrs();toast('Membre retiré');
+}
+
+function inviteMbr(){
+  var email=document.getElementById('inv-e')?.value?.trim();
+  if(!email){alert('Email requis');return;}
+  var name=document.getElementById('inv-name')?.value?.trim()||email;
+  var metier=document.getElementById('inv-metier')?.value||'Autre';
+  var ent=document.getElementById('inv-ent')?.value?.trim()||'—';
+  var role=document.getElementById('inv-r')?.value||'viewer';
+  var parts=name.split(' ');
+  var ini=((parts[0]?parts[0][0]:'')+(parts[1]?parts[1][0]:'')).toUpperCase()||email.slice(0,2).toUpperCase();
+  var COLORS=['#2d4ef5','#1a7a4a','#c47a00','#6b3fa0','#c0392b','#0891b2'];
+  var col=COLORS[getMembresForProj(PROJ).length%COLORS.length];
+  getMembresForProj(PROJ).push({
+    id:'m'+(uid++),ini,name,email,ent,role,metier,tel:'',note:'',color:col,
+    perms:{voir:true,dl:role!=='client_viewer',import:false,publier:false,contrats:role==='client_viewer',admin:false},
+    dossiers:{Plans:true,'Contrats & Devis':false,Factures:false,'Photos chantier':false,'Admin':false}
+  });
+  // Clear invite form
+  ['inv-e','inv-name','inv-ent'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
+  toast('Invitation envoyée à '+name);
+  renderMbrs();
+}
+
+/* ══ PLU ══ */
+function renderPLU(){
+  setTB('arch','var(--blue)','Pré-étude PLU',(PROJ?.name||'')+' · Confiance 82%','Nouvelle analyse','search');
+  setTabs(null);
+  document.getElementById('content').innerHTML=`<div class="pad">
+    <div style="background:var(--amber-bg);border:1px solid var(--amber);border-radius:var(--r);padding:9px 13px;margin-bottom:13px;font-size:12px;color:var(--amber);display:flex;align-items:center;gap:7px">
+      <svg class="ico ico-sm"><use href="#i-warning"/></svg> Aide à la décision — non opposable juridiquement
+    </div>
+    <div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r);padding:11px 14px;margin-bottom:13px;display:flex;align-items:center;gap:11px">
+      <div style="flex:1"><div style="font-size:12.5px;font-weight:500"></div>
+      <div class="prog-bar"><div class="prog-fill" style="width:82%;background:var(--green)"></div></div></div>
+      <span class="badge bgreen">Confiance 82%</span>
+    </div>
+    <div class="plu-grid">${PLU_FIELDS.map(([k,v])=>`<div class="plu-f">
+      <div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px">${k}</div>
+      <div style="font-size:13px">${v}</div>
+    </div>`).join('')}</div>
+  </div>`;
+}
+
+/* ══ SETTINGS ══ */
+function openSettings(){
+  if(!PROJ){toast('Sélectionnez un projet d\'abord');return;}
+  const p=PROJ;
+  showModal(`<h3>Paramètres — ${e(p.name)}</h3>
+    <div class="fi"><label>Nom du projet</label><input id="s-name" value="${e(p.name)}"></div>
+    <div class="fi"><label>Type de projet</label><div class="type-grid">${PT.map(t=>`<div class="tc-card ${p.type===t.id?'sel':''}" onclick="selType('${t.id}')"><svg class="ico" style="color:var(--blue);display:block;margin:0 auto 5px"><use href="#i-${t.ico}"/></svg><div style="font-size:11px;font-weight:500">${t.name}</div><div style="font-size:10px;color:var(--text3);margin-top:2px">${t.desc}</div></div>`).join('')}</div></div>
+    <div class="fi"><label>Intervenants</label><div class="chip-row">${INTS.map(i=>`<div class="chip ${p.ints.includes(i)?'on':''}" onclick="toggleChip(this,'${i}')">${i}</div>`).join('')}</div></div>
+    <div class="fi"><label>Options</label><div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">${[['zone_sismique','Zone sismique'],['zone_inondable','Zone inondable'],['monument_historique','Monument historique']].map(([k,l])=>`<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer"><input type="checkbox" id="opt-${k}" ${p.opts[k]?'checked':''} style="width:14px;height:14px"> ${l}</label>`).join('')}</div></div>
+    <div class="mo-foot"><button class="btn" onclick="closeModal()">Annuler</button><button class="btn btn-p" onclick="saveSettings()"><svg class="ico ico-sm"><use href="#i-refresh"/></svg> Appliquer</button></div>`);
+}
+function selType(id){if(PROJ)PROJ.type=id;document.querySelectorAll('.tc-card').forEach(c=>{c.classList.toggle('sel',c.querySelector('div')?.textContent===PT.find(t=>t.id===id)?.name);});}
+function toggleChip(el,val){el.classList.toggle('on');if(!PROJ)return;if(el.classList.contains('on')){if(!PROJ.ints.includes(val))PROJ.ints.push(val);}else PROJ.ints=PROJ.ints.filter(x=>x!==val);}
+function saveSettings(){
+  if(!PROJ)return;
+  PROJ.name=document.getElementById('s-name')?.value||PROJ.name;
+  ['zone_sismique','zone_inondable','monument_historique'].forEach(k=>{const el=document.getElementById('opt-'+k);if(el)PROJ.opts[k]=el.checked;});
+  clTree=buildCL(PROJ);clTab='depot';
+  closeModal();renderSB();renderMain();toast('Paramètres appliqués — checklistes reconstruites');
+}
+
+/* ══ MODAL / TOAST ══ */
+function showModal(html){document.getElementById('modal-root').innerHTML=`<div class="mo-ov" onclick="if(event.target===this)closeModal()"><div class="mo-box" onclick="event.stopPropagation()">${html}</div></div>`;}
+function closeModal(){document.getElementById('modal-root').innerHTML='';}
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.style.opacity='1';setTimeout(()=>t.style.opacity='0',2200);}
+
+/* ══ INFO PROJET ══ */
+function renderInfo(){
+  if(!PROJ)return;
+  const p=PROJ;
+  const pt=PT.find(t=>t.id===p.type);
+  setTB('settings',p.color,'Informations projet',p.name,'Enregistrer','save');
+  setTabs(null);
+
+  document.getElementById('content').innerHTML=`<div class="pad">
+
+    ${p.archived?`<div style="background:var(--amber-bg);border:1px solid var(--amber);border-radius:var(--r);padding:10px 14px;margin-bottom:16px;display:flex;align-items:center;gap:8px;font-size:13px;color:var(--amber)"><svg class="ico ico-sm"><use href="#i-archive"/></svg><span style="flex:1">Ce projet est archivé.</span><button class="btn btn-sm" onclick="unarchiveProj('${p.id}')" style="color:var(--blue)">Désarchiver</button></div>`:''}
+
+    <!-- Identité -->
+    <div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:18px;margin-bottom:14px">
+      <div style="font-size:12px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:14px;display:flex;align-items:center;gap:7px">
+        <svg class="ico ico-sm"><use href="#i-building"/></svg> Identité du projet
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="fi" style="grid-column:1/-1"><label>Nom du projet</label><input id="inf-name" value="${e(p.name)}"></div>
+        <div class="fi"><label>Adresse</label><input id="inf-addr" value="${e(p.address?.split(',')[0]||'')}"></div>
+        <div class="fi"><label>Ville / Code postal</label><input id="inf-city" value="${e(p.address?.split(',').slice(1).join(',').trim()||'')}"></div>
+        <div class="fi"><label>Phase actuelle</label>
+          <select id="inf-phase">
+            ${['Études','Permis','Chantier','Réception','Livré','En pause'].map(ph=>`<option ${p.phase===ph?'selected':''}>${ph}</option>`).join('')}
+          </select>
+        </div>
+        <div class="fi"><label>Avancement (%)</label><input type="number" id="inf-prog" min="0" max="100" value="${p.progress}"></div>
+        <div class="fi"><label>Surface (m²)</label><input id="inf-surf" value="${e(p.surface?.replace(' m²','')||'')}"></div>
+        <div class="fi"><label>Budget estimé</label><input id="inf-budget" value="${e(p.budget||'')}"></div>
+        <div class="fi"><label>Date de début</label><input type="date" id="inf-start" value="${toISO(p.start||'')}"></div>
+        <div class="fi"><label>Date de livraison</label><input type="date" id="inf-livr" value="${toISO(p.livraison||'')}"></div>
+      </div>
+    </div>
+
+    <!-- Client -->
+    <div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:18px;margin-bottom:14px">
+      <div style="font-size:12px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:14px;display:flex;align-items:center;gap:7px">
+        <svg class="ico ico-sm"><use href="#i-users"/></svg> Client / Maître d'ouvrage
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="fi"><label>Nom du client</label><input id="inf-client" value="${e(p.client||'')}"></div>
+        <div class="fi"><label>Email</label><input type="email" id="inf-cemail" value="${e(p.clientEmail||'')}" placeholder="client@email.fr"></div>
+        <div class="fi"><label>Téléphone</label><input id="inf-ctel" value="${e(p.clientTel||'')}" placeholder="+33 6 xx xx xx xx"></div>
+        <div class="fi"><label>Référence interne</label><input id="inf-ref" value="${e(p.ref||'')}" placeholder="2025-042"></div>
+      </div>
+    </div>
+
+    <!-- Type & Intervenants -->
+    <div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:18px;margin-bottom:14px">
+      <div style="font-size:12px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:14px;display:flex;align-items:center;gap:7px">
+        <svg class="ico ico-sm"><use href="#i-settings"/></svg> Type & intervenants
+      </div>
+      <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Type de projet</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:14px" id="inf-type-grid">
+        ${PT.map(t=>`<div class="tc-card ${p.type===t.id?'sel':''}" style="padding:9px 6px" onclick="selInfoType('${t.id}',this)">
+          <svg class="ico" style="color:var(--blue);display:block;margin:0 auto 4px;width:17px;height:17px"><use href="#i-${t.ico}"/></svg>
+          <div style="font-size:10.5px;font-weight:500;text-align:center">${t.name}</div>
+          <div style="font-size:9.5px;color:var(--text3);text-align:center;margin-top:1px">${t.desc}</div>
+        </div>`).join('')}
+      </div>
+      <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Intervenants</div>
+      <div style="display:flex;gap:5px;flex-wrap:wrap" id="inf-ints">
+        ${INTS.map(i=>`<div class="chip ${p.ints.includes(i)?'on':''}" onclick="this.classList.toggle('on')" data-int="${i}">${i}</div>`).join('')}
+      </div>
+      <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin:14px 0 8px">Options spécifiques</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px">
+        ${[['zone_sismique','Zone sismique'],['zone_inondable','Zone inondable'],['monument_historique','Monument historique']].map(([k,l])=>`
+          <label style="display:flex;align-items:center;gap:7px;font-size:12.5px;cursor:pointer;padding:7px 10px;border:1px solid var(--border);border-radius:8px">
+            <input type="checkbox" id="inf-${k}" ${p.opts[k]?'checked':''} style="width:14px;height:14px"> ${l}
+          </label>`).join('')}
+      </div>
+    </div>
+
+    <!-- Actions dangereuses -->
+    <div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r2);padding:18px;margin-bottom:14px">
+      <div style="font-size:12px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:14px;display:flex;align-items:center;gap:7px">
+        <svg class="ico ico-sm"><use href="#i-archive"/></svg> Gestion du projet
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <div style="flex:1;min-width:220px;border:1px solid var(--border);border-radius:var(--r);padding:14px">
+          <div style="font-weight:500;font-size:13px;margin-bottom:4px">${p.archived?'Désarchiver le projet':'Archiver le projet'}</div>
+          <div style="font-size:12px;color:var(--text3);margin-bottom:10px">${p.archived?'Remettre le projet en activité. Il réapparaîtra dans les projets actifs.':'Passer le projet en archive. Il restera accessible mais sera grisé.'}</div>
+          <button class="btn btn-sm ${p.archived?'btn-p':''}" style="${!p.archived?'color:var(--amber);border-color:var(--amber)':''}" onclick="${p.archived?`unarchiveProj('${p.id}')`:`archiveProj()`}">
+            <svg class="ico ico-xs"><use href="#i-archive"/></svg>
+            ${p.archived?'Désarchiver':'Archiver'}
+          </button>
+        </div>
+        <div style="flex:1;min-width:220px;border:1px solid #fca5a5;border-radius:var(--r);padding:14px;background:#fff5f5">
+          <div style="font-weight:500;font-size:13px;margin-bottom:4px;color:var(--red)">Supprimer le projet</div>
+          <div style="font-size:12px;color:var(--text3);margin-bottom:10px">Action irréversible. Tous les documents et données seront supprimés.</div>
+          <button class="btn btn-sm" style="color:var(--red);border-color:#fca5a5" onclick="deleteProj('${p.id}')">
+            <svg class="ico ico-xs"><use href="#i-trash"/></svg> Supprimer
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:8px;justify-content:flex-end;padding-bottom:8px">
+      <button class="btn" onclick="nav('plans')">Annuler</button>
+      <button class="btn btn-p" onclick="saveInfo()"><svg class="ico ico-sm"><use href="#i-save"/></svg> Enregistrer les modifications</button>
+    </div>
+  </div>`;
+}
+
+let infoType=null;
+function selInfoType(id,el){
+  infoType=id;
+  document.querySelectorAll('#inf-type-grid .tc-card').forEach(c=>c.classList.remove('sel'));
+  el.classList.add('sel');
+}
+
+function saveInfo(){
+  if(!PROJ)return;
+  const p=PROJ;
+  const name=document.getElementById('inf-name')?.value?.trim();
+  if(!name){toast('Le nom est requis');return;}
+  const addr=(document.getElementById('inf-addr')?.value?.trim()||'');
+  const city=(document.getElementById('inf-city')?.value?.trim()||'');
+  p.name=name;
+  p.address=[addr,city].filter(Boolean).join(', ');
+  p.client=document.getElementById('inf-client')?.value?.trim()||p.client;
+  p.clientEmail=document.getElementById('inf-cemail')?.value?.trim()||'';
+  p.clientTel=document.getElementById('inf-ctel')?.value?.trim()||'';
+  p.ref=document.getElementById('inf-ref')?.value?.trim()||'';
+  p.phase=document.getElementById('inf-phase')?.value||p.phase;
+  const prog=parseInt(document.getElementById('inf-prog')?.value||'0');
+  p.progress=Math.min(100,Math.max(0,isNaN(prog)?p.progress:prog));
+  const surf=document.getElementById('inf-surf')?.value?.trim();
+  p.surface=surf?surf+' m²':p.surface;
+  p.budget=document.getElementById('inf-budget')?.value?.trim()||p.budget;
+  const sv=document.getElementById('inf-start')?.value;if(sv)p.start=fromISO(sv);
+  const lv=document.getElementById('inf-livr')?.value;if(lv)p.livraison=fromISO(lv);
+  if(infoType)p.type=infoType;
+  const ints=[];
+  document.querySelectorAll('#inf-ints .chip.on').forEach(c=>{if(c.dataset.int)ints.push(c.dataset.int);});
+  if(ints.length)p.ints=ints;
+  ['zone_sismique','zone_inondable','monument_historique'].forEach(k=>{const el=document.getElementById('inf-'+k);if(el)p.opts[k]=el.checked;});
+  // Rebuild CL tree if type/intervenants changed
+  clTree=buildCL(p);
+  infoType=null;
+  renderSB();renderInfo();
+  toast('Modifications enregistrées ✓');
+}
+
+function archiveProj(){
+  if(!PROJ)return;
+  if(!confirm(`Archiver "${PROJ.name}" ? Le projet sera grisé mais restera accessible.`))return;
+  PROJ.archived=true;
+  savePROJS();
+  renderSB();renderInfo();
+  toast('Projet archivé');
+}
+function unarchiveProj(id){
+  const p=PROJS.find(x=>x.id===id);if(!p)return;
+  p.archived=false;
+  savePROJS();
+  if(PROJ?.id===id){renderSB();renderInfo();}
+  else{renderSB();renderMain();}
+  toast('Projet désarchivé ✓');
+}
+function deleteProj(id){
+  if(!confirm('Supprimer définitivement ce projet ? Cette action est irréversible.'))return;
+  const idx=PROJS.findIndex(x=>x.id===id);
+  if(idx===-1)return;
+  PROJS.splice(idx,1);
+  savePROJS();
+  PROJ=null;VIEW='projets';
+  renderSB();renderMain();
+  toast('Projet supprimé');
+}
+
+/* ══ NEW PROJECT ══ */
+function openNewProj(){
+  npType=null;
+  const typeCards=PT.map(function(t){
+    return '<div class="tc-card" style="padding:9px 6px" onclick="selNPType(\''+t.id+'\',this)">'
+      +'<svg class="ico" style="color:var(--blue);display:block;margin:0 auto 4px;width:17px;height:17px"><use href="#i-'+t.ico+'"/></svg>'
+      +'<div style="font-size:10.5px;font-weight:500;text-align:center">'+t.name+'</div>'
+      +'<div style="font-size:9.5px;color:var(--text3);text-align:center;margin-top:1px">'+t.desc+'</div>'
+      +'</div>';
+  }).join('');
+
+  const intChips=INTS.map(function(i){
+    return '<div class="chip '+(i==='Architecte'?'on':'')+'" onclick="this.classList.toggle(\'on\')" data-int="'+i+'">'+i+'</div>';
+  }).join('');
+
+  const html=''
+    +'<h3 style="display:flex;align-items:center;gap:8px"><svg class="ico" style="color:var(--blue)"><use href="#i-building"/></svg> Nouveau projet</h3>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'
+    +'<div class="fi" style="grid-column:1/-1"><label>Nom du projet *</label><input id="np-name" placeholder="Ex: Résidence Les Pins – Extension"></div>'
+    +'<div class="fi"><label>Adresse</label><input id="np-addr" placeholder="12 rue du Chantier, 75001 Paris"></div>'
+    +'<div class="fi"><label>Ville</label><input id="np-city" placeholder="Paris"></div>'
+    +'</div>'
+    +'<div style="background:var(--bg2);border-radius:var(--r);padding:12px 14px;border:1px solid var(--border);margin-bottom:12px">'
+    +'<div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Client / Maître d\'ouvrage</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'
+    +'<div class="fi" style="margin-bottom:0"><label>Nom du client</label><input id="np-client" placeholder="Ex: M. &amp; Mme Martin"></div>'
+    +'<div class="fi" style="margin-bottom:0"><label>Email</label><input type="email" id="np-cemail" placeholder="client@email.fr"></div>'
+    +'<div class="fi" style="margin-bottom:0"><label>Téléphone</label><input id="np-ctel" placeholder="+33 6 xx xx xx xx"></div>'
+    +'<div class="fi" style="margin-bottom:0"><label>Référence interne</label><input id="np-ref" placeholder="2025-042"></div>'
+    +'</div></div>'
+    +'<div class="fi"><label>Type de projet *</label>'
+    +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:4px" id="np-type-grid">'+typeCards+'</div>'
+    +'</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">'
+    +'<div class="fi"><label>Surface (m²)</label><input id="np-surf" placeholder="180"></div>'
+    +'<div class="fi"><label>Budget estimé</label><input id="np-budget" placeholder="285 000 €"></div>'
+    +'<div class="fi"><label>Date de livraison</label><input type="date" id="np-livr"></div>'
+    +'</div>'
+    +'<div style="margin-bottom:12px">'
+    +'<div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Intervenants</div>'
+    +'<div style="display:flex;gap:5px;flex-wrap:wrap" id="np-ints">'+intChips+'</div>'
+    +'</div>'
+    +'<div class="mo-foot">'
+    +'<button class="btn" onclick="closeModal()">Annuler</button>'
+    +'<button class="btn btn-p" onclick="createProj()"><svg class="ico ico-sm"><use href="#i-plus"/></svg> Créer le projet</button>'
+    +'</div>';
+
+  showModal(html);
+  // Focus name field after modal renders
+  setTimeout(function(){const el=document.getElementById('np-name');if(el)el.focus();},50);
+}
+
+let npType=null;
+function selNPType(id,el){
+  npType=id;
+  document.querySelectorAll('#np-type-grid .tc-card').forEach(function(c){c.classList.remove('sel');});
+  el.classList.add('sel');
+}
+
+function createProj(){
+  const name=document.getElementById('np-name')?.value?.trim();
+  if(!name){alert('Le nom du projet est requis');return;}
+  const type=npType||'maison'; // default to maison if none selected
+
+  const addr=document.getElementById('np-addr')?.value?.trim()||'';
+  const city=document.getElementById('np-city')?.value?.trim()||'';
+  const address=[addr,city].filter(Boolean).join(', ');
+  const client=document.getElementById('np-client')?.value?.trim()||'—';
+  const surf=document.getElementById('np-surf')?.value?.trim()||'—';
+  const budget=document.getElementById('np-budget')?.value?.trim()||'—';
+  const livrRaw=document.getElementById('np-livr')?.value||'';
+  const livraison=livrRaw?fromISO(livrRaw):'—';
+
+  // Collect intervenants
+  const ints=['Architecte'];
+  document.querySelectorAll('#np-ints .chip.on').forEach(c=>{
+    const v=c.dataset.int;if(v&&!ints.includes(v))ints.push(v);
+  });
+
+  const COLORS=['#5c3d1e','#1a7a4a','#c47a00','#6b3fa0','#c0392b','#0891b2'];
+  const BGS=['#f5ede6','#e8f5ee','#fef3d8','#f0ebfa','#fdecea','#e0f2fe'];
+  const ci=PROJS.length%COLORS.length;
+
+  const today=new Date();
+  const startDate=`${String(today.getDate()).padStart(2,'0')}/${String(today.getMonth()+1).padStart(2,'0')}/${today.getFullYear()}`;
+
+  const newP={
+    id:'proj'+(uid++),
+    name,address,client,
+    type:type,ints,
+    opts:{zone_sismique:false,zone_inondable:false,monument_historique:false},
+    phase:'Études',
+    color:COLORS[ci],bg:BGS[ci],
+    docs:0,membres:1,progress:0,
+    budget,surface:surf?surf+' m²':'—',
+    start:startDate,livraison,
+    avs:['SM'],
+  };
+  newP.docs_data={plans:[],contrats:[],factures:[],photos:[],admin:[]};
+  newP.membres=[];
+  newP.plan_folders={};
+  newP.ent_folders={};
+  PROJS.push(newP);
+  savePROJS();
+  npType=null;
+  closeModal();
+  renderSB();
+  openProj(newP.id);
+  toast('Projet "'+name+'" créé ✓');
+}
+
+/* ══ RÉGLAGES GÉNÉRAUX ══ */
+function openGlobalSettings(){
+  const html=''
+    +'<h3 style="display:flex;align-items:center;gap:8px"><svg class="ico" style="color:var(--blue)"><use href="#i-settings"/></svg> Réglages généraux</h3>'
+
+    // Tabs inside modal
+    +'<div style="display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:16px">'
+      +['Profil','Entreprise','Connexion','Notifications','Abonnement'].map(function(t,i){
+        return '<button onclick="gsTab(this,'+i+')" class="gs-tab" style="padding:8px 14px;border:none;background:none;font-size:12px;font-weight:500;cursor:pointer;font-family:inherit;color:'+(i===0?'var(--blue)':'var(--text3)')+';border-bottom:2px solid '+(i===0?'var(--blue)':'transparent')+';margin-bottom:-1px">'+t+'</button>';
+      }).join('')
+    +'</div>'
+
+    +'<div id="gs-content">'
+
+    // Tab 0 — Profil
+    +'<div class="gs-panel" id="gsp-0">'
+      +'<div style="display:flex;align-items:center;gap:14px;margin-bottom:18px">'
+        +'<div style="width:52px;height:52px;border-radius:50%;background:var(--blue-bg);color:var(--blue);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:600;flex-shrink:0">SM</div>'
+        +'<div>'
+          +'<div style="font-weight:600;font-size:14px">Sophie Martin</div>'
+          +'<div style="font-size:12px;color:var(--text3)">Admin · Architecte</div>'
+        +'</div>'
+        +'<button class="btn btn-sm" style="margin-left:auto">Changer la photo</button>'
+      +'</div>'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+        +'<div class="fi"><label>Prénom</label><input value="Sophie"></div>'
+        +'<div class="fi"><label>Nom</label><input value="Martin"></div>'
+        +'<div class="fi" style="grid-column:1/-1"><label>Email</label><input type="email" value="sophie@cabinet-martin.fr"></div>'
+        +'<div class="fi"><label>Téléphone</label><input value="+33 6 12 34 56 78"></div>'
+        +'<div class="fi"><label>Fonction</label><input value="Architecte DPLG"></div>'
+      +'</div>'
+    +'</div>'
+
+    // Tab 1 — Entreprise
+    +'<div class="gs-panel" id="gsp-1" style="display:none">'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+        +'<div class="fi" style="grid-column:1/-1"><label>Nom du cabinet / entreprise</label><input id="gs-firm" placeholder="Nom du cabinet"></div>'
+        +'<div class="fi" style="grid-column:1/-1"><label>Adresse</label><input value="24 rue de la République, 06000 Nice"></div>'
+        +'<div class="fi"><label>Téléphone</label><input value="+33 4 93 12 34 56"></div>'
+        +'<div class="fi"><label>Email contact</label><input type="email" value="contact@cabinet-martin.fr"></div>'
+        +'<div class="fi"><label>Site web</label><input value="www.cabinet-martin.fr"></div>'
+        +'<div class="fi"><label>SIRET</label><input value="123 456 789 00012"></div>'
+        +'<div class="fi"><label>N° d\'ordre des architectes</label><input value="PACA-1234" placeholder="Numéro CROA"></div>'
+        +'<div class="fi"><label>Assurance RC Pro</label><input value="MAAF Archi – Police n° 987654" placeholder="Assureur + n° police"></div>'
+      +'</div>'
+    +'</div>'
+
+    // Tab 2 — Connexion
+    +'<div class="gs-panel" id="gsp-2" style="display:none">'
+      +'<div style="background:var(--bg2);border-radius:var(--r);padding:12px 14px;margin-bottom:14px;font-size:12px;color:var(--text3);display:flex;align-items:center;gap:7px">'
+        +'<svg class="ico ico-sm"><use href="#i-lock"/></svg> Votre session est sécurisée. Dernière connexion : aujourd\'hui à 09:14.'
+      +'</div>'
+      +'<div style="display:grid;grid-template-columns:1fr;gap:10px">'
+        +'<div class="fi"><label>Adresse email de connexion</label><input type="email" value="sophie@cabinet-martin.fr"></div>'
+        +'<div class="fi"><label>Mot de passe actuel</label><input type="password" placeholder="••••••••"></div>'
+        +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+          +'<div class="fi"><label>Nouveau mot de passe</label><input type="password" placeholder="Min. 8 caractères"></div>'
+          +'<div class="fi"><label>Confirmer</label><input type="password" placeholder="Répéter le mot de passe"></div>'
+        +'</div>'
+      +'</div>'
+      +'<div style="border-top:1px solid var(--border);padding-top:14px;margin-top:4px">'
+        +'<div style="font-size:12px;font-weight:500;margin-bottom:8px">Double authentification (2FA)</div>'
+        +'<div style="display:flex;align-items:center;gap:10px">'
+          +'<div style="flex:1;font-size:12px;color:var(--text3)">Sécurisez votre compte avec une application d\'authentification (Google Authenticator, Authy…)</div>'
+          +'<button class="btn btn-sm" style="flex-shrink:0">Activer</button>'
+        +'</div>'
+      +'</div>'
+    +'</div>'
+
+    // Tab 3 — Notifications
+    +'<div class="gs-panel" id="gsp-3" style="display:none">'
+      +'<div style="display:flex;flex-direction:column;gap:0;border:1px solid var(--border);border-radius:var(--r);overflow:hidden">'
+        +[
+          ['Nouvelle version publiée','Email + In-app'],
+          ['Document contractuel signé','Email + In-app'],
+          ['Invitation à un projet','Email + In-app'],
+          ['Analyse PLU terminée','In-app uniquement'],
+          ['Rappel de livraison (7j avant)','Email uniquement'],
+          ['Activité des membres','Désactivé'],
+        ].map(function(row,i){
+          return '<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;'+(i>0?'border-top:1px solid var(--border)':'')+'">'
+            +'<div style="flex:1;font-size:13px">'+row[0]+'</div>'
+            +'<select style="padding:5px 8px;border:1px solid var(--border2);border-radius:7px;font-size:11px;background:var(--bg);color:var(--text);outline:none;font-family:inherit">'
+              +'<option '+(row[1]==='Email + In-app'?'selected':'')+'>Email + In-app</option>'
+              +'<option '+(row[1]==='In-app uniquement'?'selected':'')+'>In-app uniquement</option>'
+              +'<option '+(row[1]==='Email uniquement'?'selected':'')+'>Email uniquement</option>'
+              +'<option '+(row[1]==='Désactivé'?'selected':'')+'>Désactivé</option>'
+            +'</select>'
+          +'</div>';
+        }).join('')
+      +'</div>'
+    +'</div>'
+
+    // Tab 4 — Abonnement
+    +'<div class="gs-panel" id="gsp-4" style="display:none">'
+      +'<div style="background:var(--blue-bg);border:1px solid var(--blue-lt);border-radius:var(--r2);padding:18px;margin-bottom:14px;display:flex;align-items:center;gap:14px">'
+        +'<div style="flex:1">'
+          +'<div style="font-weight:600;font-size:14px;color:var(--blue)">Plan Pro</div>'
+          +'<div style="font-size:12px;color:var(--text3);margin-top:2px">Renouvelé le 01/06/2025 · 49 € / mois HT</div>'
+        +'</div>'
+        +'<span class="badge bblue">Actif</span>'
+      +'</div>'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px">'
+        +[['Projets actifs','3 / illimité'],['Stockage','2.4 Go / 50 Go'],['Membres','10 / illimité']].map(function(row){
+          return '<div style="border:1px solid var(--border);border-radius:var(--r);padding:12px">'
+            +'<div style="font-size:13px;font-weight:600">'+row[1]+'</div>'
+            +'<div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-top:2px">'+row[0]+'</div>'
+          +'</div>';
+        }).join('')
+      +'</div>'
+      +'<div style="display:flex;gap:8px">'
+        +'<button class="btn btn-sm">Gérer la facturation</button>'
+        +'<button class="btn btn-sm">Télécharger les factures</button>'
+        +'<button class="btn btn-sm" style="color:var(--red)">Résilier</button>'
+      +'</div>'
+    +'</div>'
+
+    +'</div>'// gs-content
+
+    +'<div class="mo-foot">'
+      +'<button class="btn" onclick="closeModal()">Fermer</button>'
+      +'<button class="btn btn-p" onclick="saveGS()"><svg class="ico ico-sm"><use href="#i-save"/></svg> Enregistrer</button>'
+    +'</div>';
+
+  showModal(html);
+}
+
+function gsTab(btn,idx){
+  document.querySelectorAll('.gs-tab').forEach(function(t,i){
+    t.style.color=i===idx?'var(--blue)':'var(--text3)';
+    t.style.borderBottomColor=i===idx?'var(--blue)':'transparent';
+  });
+  document.querySelectorAll('.gs-panel').forEach(function(p,i){
+    p.style.display=i===idx?'block':'none';
+  });
+}
+
+function saveGS(){
+  closeModal();
+  toast('Réglages enregistrés ✓');
+}
+
+/* ══ INIT ══ */
+loadPROJS();
+renderSB();renderMain();
+</script>
+</body>
+</html>// DOCS géré par projet en localStorage via proj.docs_data
+function getDocsForProj(p){return(p&&p.docs_data)?p.docs_data:{plans:[],contrats:[],factures:[],photos:[],admin:[]};}
+
