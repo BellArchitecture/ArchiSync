@@ -95,7 +95,7 @@ body{background:var(--bg);overflow:hidden;height:100vh;font-family:inherit}
 
 /* ── TABBAR ── */
 .tabbar{display:flex;background:var(--panel);border-bottom:1px solid var(--border);flex-shrink:0;overflow-x:auto}
-.tab{padding:10px 15px;font-size:12px;font-weight:500;border:none;background:none;cursor:pointer;color:var(--text3);border-bottom:2px solid transparent;white-space:nowrap;font-family:inherit;transition:color .12s}
+.tab{padding:10px 15px;font-size:12px;font-weight:500;border:none;background:none;cursor:pointer;color:var(--text3);border-bottom:2px solid transparent;white-space:nowrap;font-family:inherit;transition:color .12s;flex-shrink:0}
 .tab:hover{color:var(--text)}
 .tab.active{color:var(--blue);border-bottom-color:var(--blue)}
 
@@ -193,6 +193,23 @@ body{background:var(--bg);overflow:hidden;height:100vh;font-family:inherit}
 .mo-box{background:var(--panel);border-radius:var(--r2);padding:24px;width:460px;border:1px solid var(--border);box-shadow:var(--shadow2);max-height:90vh;overflow-y:auto}
 .mo-box h3{font-size:15px;font-weight:600;margin-bottom:16px}
 .mo-foot{display:flex;gap:7px;margin-top:16px;justify-content:flex-end}
+/* ── Visionneuse de documents ── */
+.vw-ov{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:200;backdrop-filter:blur(2px)}
+.vw-box{background:var(--panel);border-radius:var(--r2);width:min(960px,94vw);height:min(88vh,900px);display:flex;flex-direction:column;border:1px solid var(--border);box-shadow:var(--shadow2);overflow:hidden}
+.vw-head{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--border);flex-shrink:0}
+.vw-body{flex:1;min-height:0;background:var(--bg2);display:flex;align-items:center;justify-content:center;overflow:auto}
+.vw-body iframe{width:100%;height:100%;border:none;background:#fff}
+.vw-body img{max-width:100%;max-height:100%;object-fit:contain;display:block}
+@media(max-width:560px){.vw-box{width:100vw;height:100vh;border-radius:0;max-height:none}}
+/* ── Vue en colonnes (Plans) ── */
+.col-wrap{display:flex;overflow-x:auto;overflow-y:hidden;height:100%}
+.col{width:240px;min-width:220px;flex-shrink:0;border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.col-list{flex:1;overflow-y:auto;padding:6px}
+.col-row{display:flex;align-items:center;gap:8px;padding:7px 9px;border-radius:7px;cursor:pointer;font-size:12.5px;color:var(--text2);margin-bottom:2px}
+.col-row:hover{background:var(--bg2)}
+.col-row.sel{background:var(--blue-bg);color:var(--blue);font-weight:500}
+.col-hd{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;padding:8px 9px 4px}
+@media(max-width:760px){.col-wrap{overflow-x:hidden;height:auto;min-height:60vh}.col{width:100%;min-width:0;border-right:none}.col:not(:last-child){display:none}.col-list{min-height:50vh}}
 .type-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
 .tc-card{border:1px solid var(--border);border-radius:var(--r);padding:11px 7px;cursor:pointer;text-align:center;transition:all .12s}
 .tc-card:hover{border-color:var(--border2)}
@@ -208,15 +225,35 @@ body{background:var(--bg);overflow:hidden;height:100vh;font-family:inherit}
 /* ── Mobile ── */
 @media(max-width:600px){
   .app{flex-direction:column}
-  #sidebar{width:100%;min-width:0;height:auto;border-right:none;border-bottom:1px solid var(--border);flex-direction:row;overflow-x:auto}
-  .sb-body{display:flex;flex-direction:row;gap:4px;padding:6px;overflow-x:auto}
+  .sidebar{width:100%;min-width:0;height:auto;max-height:42vh;border-right:none;border-bottom:1px solid var(--border);flex-direction:column;flex-shrink:0}
   .sb-head{display:none}
-  .sb-foot{flex-direction:row;gap:4px;padding:6px;border-top:none;border-left:1px solid var(--border)}
+  /* Le corps de la sidebar et la nav projet deviennent des bandes horizontales défilables */
+  .sb-body{flex:0 0 auto;overflow-y:hidden}
+  .sb-nav{display:flex;flex-direction:row;flex-wrap:nowrap;gap:5px;padding:7px 8px;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch}
+  .sb-proj-list{padding:7px 8px}
+  /* Libellés de groupe : séparateurs discrets dans la bande horizontale */
+  .sb-nav .nl{display:flex;align-items:center;padding:0 2px 0 6px;margin:0;font-size:8.5px;flex-shrink:0;border-left:1px solid var(--border);align-self:stretch;max-width:56px;line-height:1.05}
+  .sb-nav > .nl:first-child{border-left:none}
+  /* Boutons de nav : pastilles compactes en colonne (icône + libellé court) */
+  .sb-nav .ni{flex-direction:column;gap:3px;width:auto;min-width:62px;max-width:88px;padding:7px 8px;text-align:center;font-size:10.5px;flex-shrink:0;white-space:normal;line-height:1.1;border:1px solid var(--border);background:var(--panel);margin-bottom:0}
+  .sb-nav .ni.active{background:var(--blue-bg)}
+  .sb-nav .ni-ico{width:auto}
+  .sb-nav .ni .nb{display:none}
+  .sb-foot{flex-direction:row;gap:6px;padding:7px 8px;border-top:1px solid var(--border);overflow-x:auto;align-items:center;flex-shrink:0}
   .main{flex:1;min-height:0;overflow-y:auto}
   #topbar{padding:10px 12px;gap:8px;flex-wrap:wrap}
+  #topbar #main-btn{flex-shrink:0}
   .pad{padding:12px}
   .proj-grid{grid-template-columns:1fr!important}
-  .doc-row{flex-direction:column;gap:4px}
+  /* En-tête "Mes projets" : le titre prend toute la largeur, les boutons passent dessous */
+  .proj-hd > div[style*="flex:1"]{flex:1 1 100%!important;order:-1}
+  .proj-hd .btn{flex:1 1 auto}
+  /* Carte projet : les 6 métriques s'empilent en 3 colonnes au lieu de déborder */
+  .pcard-metrics{grid-template-columns:repeat(3,1fr)!important;gap:10px 4px!important}
+  .pcard-metrics > div{padding-right:0!important}
+  .pcard-head{flex-direction:column!important}
+  .pcard-actions{flex-direction:row!important;align-items:center!important;width:100%;justify-content:space-between!important}
+  .doc-row{flex-direction:column;gap:4px;align-items:flex-start}
 }
 </style>
 </head>
@@ -288,7 +325,7 @@ body{background:var(--bg);overflow:hidden;height:100vh;font-family:inherit}
       <button class="proj-pill" onclick="openSettings()">
         <div class="pdot" id="pp-dot" style="background:var(--blue)"></div>
         <div class="pp-name" id="pp-name">Vue globale</div>
-        <div class="pp-type" id="pp-type">3 projets</div>
+        <div class="pp-type" id="pp-type">—</div>
         <svg class="ico ico-sm" style="color:var(--text3)"><use href="#i-settings"/></svg>
       </button>
     </div>
@@ -318,7 +355,7 @@ body{background:var(--bg);overflow:hidden;height:100vh;font-family:inherit}
         <svg class="ico ico-lg" style="color:var(--blue);flex-shrink:0" id="tb-icon"><use href="#i-grid"/></svg>
         <div style="min-width:0">
           <div style="font-weight:600;font-size:15px;letter-spacing:-.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" id="tb-title">Mes projets</div>
-          <div style="font-size:11px;color:var(--text3)" id="tb-sub">3 projets actifs</div>
+          <div style="font-size:11px;color:var(--text3)" id="tb-sub">—</div>
         </div>
       </div>
       <div class="tb-right">
@@ -330,8 +367,7 @@ body{background:var(--bg);overflow:hidden;height:100vh;font-family:inherit}
           </select>
         </div>
         <div class="notif-w">
-          <button class="btn btn-g btn-sm" aria-label="Notifications"><svg class="ico" style="width:15px;height:15px"><use href="#i-bell"/></svg></button>
-          <div class="notif-dot">3</div>
+          <button class="btn btn-g btn-sm" aria-label="Notifications" onclick="showNotifs()"><svg class="ico" style="width:15px;height:15px"><use href="#i-bell"/></svg></button>
         </div>
         <button class="btn btn-p btn-sm" id="main-btn" onclick="mainAction()">
           <svg class="ico ico-sm" id="main-btn-ico"><use href="#i-plus"/></svg>
@@ -365,6 +401,7 @@ body{background:var(--bg);overflow:hidden;height:100vh;font-family:inherit}
 
 <div class="toast" id="toast"></div>
 <div id="modal-root"></div>
+<div id="viewer-root"></div>
 
 <script>
 /* ══ helper: build SVG use tag ══ */
@@ -382,6 +419,28 @@ const PT=[
 ];
 const INTS=['Architecte','Thermicien','Géologue','BET Structure','BET Fluides','Géomètre','Coordinateur SPS','Contrôleur technique','Acousticien','Paysagiste'];
 const RL={project_admin:'Admin projet',editor:'Éditeur',external_contractor:'Entreprise ext.',client_viewer:'Client',viewer:'Lecteur'};
+// Rôles d'accès applicatifs (gestion des dossiers/documents). Séparés de RL pour ne pas casser l'existant.
+const ACCESS_RL={admin:'Admin projet',architecte:'Architecte',collaborateur:'Collaborateur',lecture:'Lecture seule'};
+// Permissions par rôle d'accès.
+const ACCESS_PERMS={
+  admin:       {folders:true, items:true, archive:true, manageAccess:true},
+  architecte:  {folders:true, items:true, archive:true, manageAccess:true},
+  collaborateur:{folders:false,items:true, archive:false,manageAccess:false},
+  lecture:     {folders:false,items:false,archive:false,manageAccess:false}
+};
+// Rôle de l'utilisateur courant pour le projet ouvert (par défaut Admin projet).
+let currentAccessRole='admin';
+function setCurrentAccessRole(r){if(ACCESS_RL[r])currentAccessRole=r;}
+function can(action){const p=ACCESS_PERMS[currentAccessRole]||ACCESS_PERMS.lecture;return !!p[action];}
+function denyMsg(){toast('Vous n\'avez pas les droits pour cette action.');}
+// Bouton désactivé avec infobulle si droit manquant.
+function permBtn(action,html,onclick,extraCls,extraStyle){
+  const ok=can(action);
+  const cls='btn '+(extraCls||'')+(ok?'':' is-disabled');
+  const handler=ok?onclick:'denyMsg()';
+  const title=ok?'':'Vous n\'avez pas les droits pour cette action.';
+  return '<button class="'+cls+'" onclick="'+handler+'" title="'+title+'" style="'+(extraStyle||'')+(ok?'':'opacity:.5;cursor:not-allowed')+'">'+html+'</button>';
+}
 const METIERS=[];
 const PI_IC={voir:'eye',dl:'download',import:'upload',publier:'check',contrats:'invoice',admin:'settings'};
 const PI_LB={voir:'Voir',dl:'DL',import:'Import',publier:'Publier',contrats:'Contrats',admin:'Admin'};
@@ -399,6 +458,10 @@ function savePROJS(){
   try{localStorage.setItem('plansync_projs',JSON.stringify(PROJS));}
   catch(e){console.warn('PlanSync CR: save error',e);}
 }
+// Compte des projets avec pluriel français correct.
+function projCount(){return PROJS.filter(function(p){return !p.archived;}).length;}
+function projCountLabel(){const n=projCount();return n+(n>1?' projets':' projet');}
+function projActifsLabel(){const n=projCount();return n===0?'Aucun projet pour l\'instant — créez votre premier projet':(n+(n>1?' projets actifs':' projet actif'));}
 function loadPROJS(){
   try{
     const saved=localStorage.getItem('plansync_projs');
@@ -407,26 +470,11 @@ function loadPROJS(){
       if(parsed&&parsed.length){PROJS=parsed;return;}
     }
   }catch(e){}
-  // Projet modèle générique si rien de sauvegardé
-  PROJS=[{
-    id:'p_modele',
-    name:'Projet modèle',
-    address:'12 rue du Chantier, 75001 Paris',
-    client:'Client modèle',
-    type:'maison',
-    ints:['Architecte'],
-    opts:{zone_sismique:false,zone_inondable:false,monument_historique:false},
-    phase:'Permis',
-    color:'#5c3d1e',
-    bg:'#f5ede6',
-    membres:[],
-    docs_data:{plans:[],contrats:[],factures:[],photos:[],admin:[]},
-    plan_folders:{},
-    ent_folders:{},
-    archived:false,
-    avs:[],
-    budget:'—',surface:'—',start:'',livraison:'',progress:0
-  }];
+  // Aucun projet sauvegardé : on charge un projet de démonstration complet
+  // (données neutres) pour pouvoir tester tous les outils immédiatement.
+  const demo=buildDemoProject('demo');
+  PROJ_PLAN_FOLDERS[demo.id]=demo.planFolders;
+  PROJS=[demo];
 }
 
 
@@ -475,13 +523,23 @@ const PROJ_PLAN_FOLDERS={};
 const PROJ_ENT_FOLDERS={};
 
 function getPlanFolders(projId){
+  const p=PROJS.find(x=>x.id===projId);
+  if(p){
+    // Persistance dans le projet (rétro-compat : initialise depuis le modèle si absent).
+    if(!Array.isArray(p.planFolders)){
+      if(PROJ_PLAN_FOLDERS[projId]){p.planFolders=PROJ_PLAN_FOLDERS[projId];}
+      else{const tpl=(PLAN_FOLDERS_TEMPLATES[p.type])||PLAN_FOLDERS_TEMPLATES.standard;p.planFolders=JSON.parse(JSON.stringify(tpl));}
+    }
+    PROJ_PLAN_FOLDERS[projId]=p.planFolders; // garde le miroir en mémoire
+    return p.planFolders;
+  }
   if(!PROJ_PLAN_FOLDERS[projId]){
-    const p=PROJS.find(x=>x.id===projId);
-    const tpl=(p&&PLAN_FOLDERS_TEMPLATES[p.type])||PLAN_FOLDERS_TEMPLATES.standard;
+    const tpl=PLAN_FOLDERS_TEMPLATES.standard;
     PROJ_PLAN_FOLDERS[projId]=JSON.parse(JSON.stringify(tpl));
   }
   return PROJ_PLAN_FOLDERS[projId];
 }
+function savePlanFolders(projId){const p=PROJS.find(x=>x.id===projId);if(p)p.planFolders=PROJ_PLAN_FOLDERS[projId];savePROJS();}
 function getEntFolders(projId){
   if(!PROJ_ENT_FOLDERS[projId]){
     PROJ_ENT_FOLDERS[projId]=[{id:'ef1',name:'Contrats',children:[]},{id:'ef2',name:'Plans / Détails',children:[]},{id:'ef3',name:'Correspondances',children:[]},{id:'ef4',name:'PV de réception',children:[]}];
@@ -491,6 +549,10 @@ function getEntFolders(projId){
 
 /* Active folder state per view */
 let activePlanFolder=null; // {id, name}
+let planView=(function(){try{return localStorage.getItem('plansync_plan_view')||'liste';}catch(e){return 'liste';}}()); // 'liste' | 'colonnes'
+let planColPath=[]; // chemin de dossiers (ids) pour la vue en colonnes
+let planColDoc=null; // id du document sélectionné en vue colonnes
+let planArch=false; // affichage des archives Plans
 let activeEntMembre=null;  // member id
 let activeEntFolder=null;  // {id, name}
 let activeDocFolder=null;  // for other views
@@ -512,8 +574,11 @@ const PLU_FIELDS=[['Zone PLU','UA – Zone urbaine dense'],['Emprise au sol','40
 
 /* ══ STATE ══ */
 let VIEW='projets',PROJ=null,curMbr=null,clTab='depot',clTree=null,clArch=false,detDoc=null,detFolder=null,uid=1000;
-let pvFolder=null;   // id du sous-dossier PV ouvert (null = liste des dossiers)
-let pvArch=false;    // true = affiche les archives du dossier PV courant
+let pvFolder=null;   // (conservé) id du sous-dossier ouvert
+let pvArch=false;    // (conservé) affichage archives
+let areaFolderId=null;  // (conservé) compat
+let areaArch=false;     // true = vue archives de l'aire courante
+let areaPath=[];        // pile d'ids de dossiers (navigation imbriquée). [] = racine.
 
 /* ══ BUILD CHECKLIST TREE ══ */
 function buildCL(p){
@@ -632,7 +697,7 @@ function renderSB(){
     });
     html+=`</div>`;
     document.getElementById('pp-name').textContent='Vue globale';
-    document.getElementById('pp-type').textContent='3 projets';
+    document.getElementById('pp-type').textContent=projCountLabel();
     document.getElementById('pp-dot').style.background='var(--blue)';
   } else {
     const p=PROJ,pt=PT.find(t=>t.id===p.type);
@@ -644,33 +709,21 @@ function renderSB(){
         <span class="ni-ico">${ico('arrow-left','ico-sm')}</span> Tous les projets
       </button>
 
-      <div class="nl">Dossiers</div>
+      <div class="nl">Documents du projet</div>
       ${navItem('plans','pdf','Plans')}
-      ${navItem('contrats','invoice','Contrats & Devis')}
-      ${navItem('factures','receipt','Factures')}
+      ${navItem('contrats','invoice','Devis / Facture')}
       ${navItem('photos','camera','Photos chantier')}
       ${navItem('admin','folder','Documents admin')}
       ${navItem('pv','file-check','PV')}
       ${navItem('entreprises','building','Entreprises')}
 
-      <div class="nl" style="color:#854d0e;margin-top:4px">Espace architecte</div>
+      <div class="nl" style="color:#854d0e;margin-top:4px">Pilotage &amp; conformité</div>
       ${navItem('checklists','hat','Checklistes','',`<span class="nb ${dCL===tCL&&tCL>0?'ok':''}">${dCL}/${tCL}</span>`)}
       ${navItem('audit','check-list','Journal d\'audit')}
       ${navItem('membres','users','Membres & accès')}
+      ${navItem('acces','lock','Gestion des accès')}
       ${navItem('plu','arch','Pré-étude PLU')}
-      ${navItem('pv_arch','file-check','PV')}
 
-      <div class="nl" style="color:#854d0e;margin-top:4px">Applications</div>
-      <a class="ni" href="archideck.html" target="_blank" style="text-decoration:none">
-        <span class="ni-ico"><svg class="ico ico-sm"><use href="#i-building"/></svg></span>
-        <span>Archideck</span>
-        <svg class="ico" style="width:10px;height:10px;margin-left:auto;color:var(--text3)"><use href="#i-arrow-right"/></svg>
-      </a>
-      <a class="ni" href="cr_chantier.html" target="_blank" style="text-decoration:none">
-        <span class="ni-ico"><svg class="ico ico-sm"><use href="#i-pdf"/></svg></span>
-        <span>PlanSync CR</span>
-        <svg class="ico" style="width:10px;height:10px;margin-left:auto;color:var(--text3)"><use href="#i-arrow-right"/></svg>
-      </a>
 
       <div class="nl" style="margin-top:4px">Projet</div>
       ${navItem('info','settings','Informations projet')}
@@ -694,9 +747,9 @@ function navItem(v,icon,label,extra='',badge=''){
 }
 
 /* ══ NAVIGATION ══ */
-function nav(v){VIEW=v;closeDP();if(v!=='plans')activePlanFolder=null;if(v!=='entreprises'){activeEntMembre=null;activeEntFolder=null;}if(v!=='pv'&&v!=='pv_arch'){pvFolder=null;pvArch=false;}renderSB();renderMain();}
+function nav(v){VIEW=v;closeDP();if(v!=='plans')activePlanFolder=null;if(v!=='entreprises'){activeEntMembre=null;activeEntFolder=null;}if(v!=='pv'&&v!=='pv_arch'){pvFolder=null;pvArch=false;}areaFolderId=null;areaArch=false;areaPath=[];renderSB();renderMain();}
 function backGlobal(){PROJ=null;VIEW='projets';closeDP();renderSB();renderMain();}
-function openProj(id){PROJ=PROJS.find(p=>p.id===id);VIEW='plans';clTree=PROJ&&PROJ.clTree?PROJ.clTree:buildCL(PROJ);clTab='depot';pvFolder=null;pvArch=false;closeDP();renderSB();renderMain();}
+function openProj(id){PROJ=PROJS.find(p=>p.id===id);VIEW='plans';clTree=PROJ&&PROJ.clTree?PROJ.clTree:buildCL(PROJ);clTab='depot';pvFolder=null;pvArch=false;areaFolderId=null;areaArch=false;areaPath=[];currentAccessRole=(PROJ&&PROJ.myAccessRole)||'admin';closeDP();renderSB();renderMain();}
 
 /* ══ TOPBAR ══ */
 function setTB(iconId,col,title,sub,btnL,btnIco='plus'){
@@ -709,6 +762,7 @@ function setTB(iconId,col,title,sub,btnL,btnIco='plus'){
   document.getElementById('tb-sub').textContent=sub;
   document.getElementById('main-btn-lbl').textContent=btnL;
   document.getElementById('main-btn-ico').innerHTML=`<use href="#i-${btnIco}"/>`;
+  const mb=document.getElementById('main-btn');if(mb)mb.style.display=btnL?'':'none';
   // Show phase picker only when inside a project
   const pp=document.getElementById('phase-picker');
   const ps=document.getElementById('phase-select');
@@ -730,7 +784,7 @@ function setTabs(tabs,activeId){
   const tb=document.getElementById('tabbar');
   if(!tabs||!tabs.length){tb.style.display='none';return;}
   tb.style.display='flex';
-  tb.innerHTML=tabs.map(t=>`<button class="tab ${t.id===activeId?'active':''}" onclick="switchTab('${t.id}',this)" style="${t.id===activeId&&t.color?'color:'+t.color+';border-bottom-color:'+t.color:''}">
+  tb.innerHTML=tabs.map(t=>`<button class="tab ${t.id===activeId?'active':''}" title="${e(t.label)}" onclick="switchTab('${t.id}',this)" style="${t.id===activeId&&t.color?'color:'+t.color+';border-bottom-color:'+t.color:''}">
     <svg class="ico ico-sm" style="vertical-align:-2px;margin-right:4px"><use href="#i-${t.ico}"/></svg>${t.label}
   </button>`).join('');
 }
@@ -747,8 +801,12 @@ function mainAction(){
   else if(VIEW==='membres')toast('Invitation envoyée');
   else if(VIEW==='info'){saveInfo();return;}
   else if(VIEW==='checklists')openAddCL();
-  else if(VIEW==='pv'||VIEW==='pv_arch'){if(pvFolder){if(!pvArch)newPV();}else newPVFolder();return;}
-  else toast('Importer — disponible dans la vraie app');
+  else if(VIEW==='pv'||VIEW==='pv_arch'||VIEW==='contrats'||VIEW==='factures'||VIEW==='photos'){
+    const area=(VIEW==='pv_arch'||VIEW==='factures')?(VIEW==='factures'?'contrats':'pv'):VIEW;
+    newAreaFolder(area); // crée un dossier au niveau courant ; les items se créent via le bouton dédié
+    return;
+  }
+  else toast('L\'import de documents arrive bientôt.');
 }
 
 /* ══ RENDER MAIN ══ */
@@ -757,10 +815,13 @@ function renderMain(){
   if(v==='projets')renderProjets();
   else if(v==='plans')renderPlans();
   else if(v==='entreprises')renderEntreprises();
+  else if(v==='factures'){VIEW='contrats';return renderArea('contrats');}
+  else if(v==='contrats'||v==='photos')renderArea(v);
   else if(FMETA[v])renderDocs(v);
   else if(v==='checklists')renderCL();
   else if(v==='audit')renderAudit();
   else if(v==='membres')renderMbrs();
+  else if(v==='acces')renderAcces();
   else if(v==='plu')renderPLU();
   else if(v==='pv'||v==='pv_arch')renderPV();
   else if(v==='info')renderInfo();
@@ -774,10 +835,10 @@ function renderProjets(){
   const cards=PROJS.map(function(p){
     const archBanner=p.archived
       ?'<div style="background:var(--amber-bg);border:1px solid var(--amber);border-radius:7px;padding:6px 10px;margin-bottom:12px;font-size:11px;color:var(--amber);display:flex;align-items:center;gap:6px"><svg class="ico ico-sm"><use href="#i-archive"/></svg> Projet archivé — <button onclick="event.stopPropagation();unarchiveProj(\''+p.id+'\')" style="background:none;border:none;cursor:pointer;color:var(--blue);font-size:11px;font-family:inherit;padding:0;text-decoration:underline">Désarchiver</button></div>':'';
-    const avs=p.avs.map(function(a,i){return '<div class="av-sm" style="background:'+AVC_BG[i%6]+';color:'+AVC_FG[i%6]+';z-index:'+(10-i)+'">'+a+'</div>';}).join('');
+    const avs=p.avs.map(function(a,i){return '<div class="av-sm" title="'+e(a)+'" style="background:'+AVC_BG[i%6]+';color:'+AVC_FG[i%6]+';z-index:'+(10-i)+'">'+a+'</div>';}).join('');
     return '<div class="pcard '+(PROJ&&PROJ.id===p.id?'activep':'')+'" style="'+(p.archived?'opacity:.55;border-style:dashed':'')+'">'
       +archBanner
-      +'<div style="display:flex;align-items:flex-start;gap:14px">'
+      +'<div class="pcard-head" style="display:flex;align-items:flex-start;gap:14px">'
         +'<div style="width:44px;height:44px;border-radius:11px;background:'+p.bg+';display:flex;align-items:center;justify-content:center;flex-shrink:0">'
           +'<svg class="ico" style="color:'+p.color+';width:22px;height:22px"><use href="#i-building"/></svg>'
         +'</div>'
@@ -790,8 +851,8 @@ function renderProjets(){
           +'<div style="font-size:12px;color:var(--text3);margin-bottom:10px">Client : '+p.client+'</div>'
           +'<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3);margin-bottom:4px"><span>Avancement</span><span style="font-weight:600;color:var(--text)">'+p.progress+'%</span></div>'
           +'<div class="prog-bar"><div class="prog-fill" style="width:'+p.progress+'%;background:'+p.color+'"></div></div>'
-          +'<div style="display:grid;grid-template-columns:repeat(6,auto);gap:0;margin-top:14px;border-top:1px solid var(--border);padding-top:12px">'
-            +[['Documents',p.docs,p.color],['Membres',p.membres,p.color],['Budget',p.budget,p.color],['Surface',p.surface,'var(--text)'],['Début',p.start,'var(--text)'],['Livraison',p.livraison,'var(--text)']].map(function(row,i){
+          +'<div class="pcard-metrics" style="display:grid;grid-template-columns:repeat(6,auto);gap:0;margin-top:14px;border-top:1px solid var(--border);padding-top:12px">'
+            +[['Documents',(typeof p.docs==='number'?p.docs:(p.docs_data?((p.docs_data.plans||[]).length+(p.docs_data.contrats||[]).length+(p.docs_data.factures||[]).length+(p.docs_data.photos||[]).length+(p.docs_data.admin||[]).length+((p.pv||[]).length)):0)),p.color],['Membres',(Array.isArray(p.membres)?p.membres.length:(p.membres||0)),p.color],['Budget',p.budget,p.color],['Surface',p.surface,'var(--text)'],['Début',p.start,'var(--text)'],['Livraison',p.livraison,'var(--text)']].map(function(row,i){
               return '<div style="padding-right:20px">'
                 +'<div style="font-size:'+(i<3?'17px':'13px')+';font-weight:'+(i<3?'600':'400')+';color:'+row[2]+'">'+row[1]+'</div>'
                 +'<div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-top:1px">'+row[0]+'</div>'
@@ -799,7 +860,7 @@ function renderProjets(){
             }).join('')
           +'</div>'
         +'</div>'
-        +'<div style="display:flex;flex-direction:column;align-items:flex-end;justify-content:space-between;gap:10px;align-self:stretch;flex-shrink:0">'
+        +'<div class="pcard-actions" style="display:flex;flex-direction:column;align-items:flex-end;justify-content:space-between;gap:10px;align-self:stretch;flex-shrink:0">'
           +'<div class="av-stack">'+avs+'</div>'
           +'<button class="btn btn-p btn-sm" onclick="openProj(\''+p.id+'\')">Ouvrir <svg class="ico ico-sm" style="margin-left:2px"><use href="#i-arrow-right"/></svg></button>'
         +'</div>'
@@ -809,13 +870,14 @@ function renderProjets(){
 
   document.getElementById('content').innerHTML=
     '<div style="padding:16px 20px;height:100%;display:flex;flex-direction:column;box-sizing:border-box">'
-      +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-shrink:0">'
+      +'<div class="proj-hd" style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-shrink:0;flex-wrap:wrap">'
         +'<svg class="ico ico-lg" style="color:var(--blue)"><use href="#i-grid"/></svg>'
         +'<div style="flex:1">'
           +'<div style="font-weight:600;font-size:15px;letter-spacing:-.2px">Mes projets</div>'
-          +'<div style="font-size:11px;color:var(--text3)">'+PROJS.length+' projets</div>'
+          +'<div style="font-size:11px;color:var(--text3)">'+projCountLabel()+'</div>'
         +'</div>'
-        +'<div class="notif-w"><button class="btn btn-g btn-sm"><svg class="ico" style="width:15px;height:15px"><use href="#i-bell"/></svg></button><div class="notif-dot">3</div></div>'
+        +'<div class="notif-w"><button class="btn btn-g btn-sm" onclick="showNotifs()"><svg class="ico" style="width:15px;height:15px"><use href="#i-bell"/></svg></button></div>'
+        +'<button class="btn btn-g btn-sm" onclick="loadDemoProject()"><svg class="ico ico-sm"><use href="#i-sparkles"/></svg> Projet de démonstration</button>'
         +'<button class="btn btn-p btn-sm" onclick="openNewProj()"><svg class="ico ico-sm"><use href="#i-plus"/></svg> Nouveau projet</button>'
       +'</div>'
       +'<div style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding-right:2px">'
@@ -837,14 +899,16 @@ function renderPlans(){
 
 function renderPlansContent(tab){
   if(tab==='pt-info'){renderProjInfoPanel();return;}
+  if(planArch){renderPlansArchives();return;}
+  if(planView==='colonnes'){renderPlansColumns();return;}
   const projId=PROJ.id;
   const folders=getPlanFolders(projId);
-  const docs=getDocsForProj(PROJ).plans||[];
+  const docs=(getDocsForProj(PROJ).plans||[]).filter(function(d){return !d.archived;});
 
   // Build folder tree HTML
   function folderTreeHTML(nodes,depth){
     if(!nodes||!nodes.length)return '';
-    return nodes.map(function(f){
+    return nodes.filter(function(f){return !f.archived;}).map(function(f){
       var isActive=activePlanFolder&&activePlanFolder.id===f.id;
       var sub=f.children&&f.children.length?'<div style="padding-left:14px">'+folderTreeHTML(f.children,depth+1)+'</div>':'';
       return '<div>'
@@ -853,19 +917,25 @@ function renderPlansContent(tab){
           +'<span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+f.name+'</span>'
           +'<button onclick="event.stopPropagation();renamePlanFolder(\''+f.id+'\',\''+e(f.name)+'\',\''+projId+'\')" style="background:none;border:none;cursor:pointer;opacity:.5;padding:2px" title="Renommer"><svg class="ico" style="width:11px;height:11px"><use href="#i-edit"/></svg></button>'
           +'<button onclick="event.stopPropagation();addPlanSubfolder(\''+f.id+'\',\''+projId+'\')" style="background:none;border:none;cursor:pointer;opacity:.5;padding:2px" title="Sous-dossier"><svg class="ico" style="width:11px;height:11px"><use href="#i-plus"/></svg></button>'
+          +'<button onclick="event.stopPropagation();archivePlanFolder(\''+projId+'\',\''+f.id+'\')" style="background:none;border:none;cursor:pointer;opacity:.5;padding:2px;color:var(--amber)" title="Archiver"><svg class="ico" style="width:11px;height:11px"><use href="#i-archive"/></svg></button>'
         +'</div>'
         +sub
       +'</div>';
     }).join('');
   }
 
-  // Filter docs by active folder (simplified — all docs shown if no folder selected)
+  // Docs du dossier actif ; sinon "Général" = docs sans dossier (ou dossier inexistant)
+  const allFolderIds=flatPlanFolders(folders).map(function(x){return x.node.id;});
   var shownDocs=activePlanFolder
     ?docs.filter(function(d){return d.folder===activePlanFolder.id;})
-    :docs;
+    :docs.filter(function(d){return !d.folder||allFolderIds.indexOf(d.folder)<0;});
+  const headerLabel=activePlanFolder?activePlanFolder.name:'Général';
+  const headerFolderId=activePlanFolder?activePlanFolder.id:'';
 
   document.getElementById('content').innerHTML=
-    '<div style="display:flex;height:100%;overflow:hidden">'
+    '<div style="display:flex;flex-direction:column;height:100%;min-height:60vh">'
+    +planViewToggle()
+    +'<div style="display:flex;flex:1;min-height:0;overflow:hidden">'
 
       // Left: folder tree
       +'<div style="width:220px;flex-shrink:0;border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden">'
@@ -886,45 +956,238 @@ function renderPlansContent(tab){
 
       // Right: docs
       +'<div style="flex:1;overflow-y:auto;padding:16px 20px">'
-        +(activePlanFolder
-          ?'<div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-shrink:0">'
-              +'<svg class="ico ico-sm" style="color:var(--blue)"><use href="#i-folder"/></svg>'
-              +'<span style="font-weight:500;font-size:14px">'+activePlanFolder.name+'</span>'
-              +'<label class="btn btn-p btn-sm" style="margin-left:auto;cursor:pointer">'
-                +'<svg class="ico ico-xs"><use href="#i-upload"/></svg> Ajouter'
-                +'<input type="file" multiple style="display:none" onchange="addDocToFolder(event,\''+activePlanFolder.id+'\',\''+projId+'\')">'
-              +'</label>'
-            +'</div>'
-          :'<div style="font-size:12px;color:var(--text3);margin-bottom:14px">Sélectionnez un dossier</div>'
-        )
+        +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-shrink:0">'
+            +'<svg class="ico ico-sm" style="color:var(--blue)"><use href="#i-folder"/></svg>'
+            +'<span style="font-weight:500;font-size:14px">'+e(headerLabel)+'</span>'
+            +'<label class="btn btn-p btn-sm" style="margin-left:auto;cursor:pointer">'
+              +'<svg class="ico ico-xs"><use href="#i-upload"/></svg> Importer un PDF'
+              +'<input type="file" accept=".pdf,application/pdf" multiple style="display:none" onchange="addDocToFolder(event,\''+headerFolderId+'\',\''+projId+'\')">'
+            +'</label>'
+          +'</div>'
         +(shownDocs.length
           ?shownDocs.map(function(d){
-            return '<div class="doc-row" onclick="openDP(\'plans\',\''+d.id+'\')">'
+            return '<div class="doc-row" onclick="viewPlanDoc(\''+d.id+'\')">'
               +'<div class="doc-icon" style="background:'+d.color+'18"><svg class="ico" style="color:'+d.color+';width:17px;height:17px"><use href="#i-pdf"/></svg></div>'
               +'<div style="flex:1;min-width:0">'
                 +'<div style="font-weight:500;font-size:13px">'+d.title+'</div>'
                 +'<div style="font-size:11px;color:var(--text3);margin-top:2px;display:flex;gap:8px"><span class="vpill">v'+d.v+'</span><span>'+d.size+'</span><span>'+d.date+'</span></div>'
               +'</div>'
               +'<span class="badge '+(SB_CLS[d.status]||'bgray')+'">'+(SL[d.status]||d.status)+'</span>'
+              +permBtn('archive','<svg class="ico ico-xs"><use href="#i-archive"/></svg>','event.stopPropagation();archivePlanDoc(\''+d.id+'\')','btn-sm btn-g','margin-left:6px;color:var(--amber);')
             +'</div>';
           }).join('')
-          :(activePlanFolder?'<div style="text-align:center;padding:48px 0;color:var(--text3)"><svg class="ico" style="width:36px;height:36px;margin:0 auto 10px;display:block"><use href="#i-folder"/></svg>Dossier vide</div>':'')
+          :('<div style="text-align:center;padding:48px 0;color:var(--text3)"><svg class="ico" style="width:36px;height:36px;margin:0 auto 10px;display:block"><use href="#i-folder"/></svg>Aucun plan ici. Importez un PDF ou créez un sous-dossier pour commencer.</div>')
         )
       +'</div>'
+    +'</div>'
+    +'</div>';
+}
+
+/* ── Bascule de vue Plans (Liste / Colonnes) ── */
+function planViewToggle(){
+  function btn(v,label){const on=!planArch&&planView===v;return '<button class="btn btn-sm '+(on?'btn-p':'btn-g')+'" onclick="setPlanView(\''+v+'\')" style="font-size:11.5px">'+label+'</button>';}
+  const archBtn='<button class="btn btn-sm '+(planArch?'btn-p':'btn-g')+'" onclick="planShowArch()" style="font-size:11.5px;margin-left:6px"><svg class="ico ico-xs" style="vertical-align:-2px;margin-right:3px"><use href="#i-archive"/></svg>Archives</button>';
+  return '<div style="display:flex;align-items:center;gap:6px;padding:8px 14px;border-bottom:1px solid var(--border);height:44px;flex-shrink:0">'
+    +'<span style="font-size:10.5px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-right:2px">Affichage</span>'
+    +btn('liste','Liste')+btn('colonnes','Colonnes')+archBtn
+    +'</div>';
+}
+function setPlanView(v){
+  planArch=false;
+  planView=v;try{localStorage.setItem('plansync_plan_view',v);}catch(e){}
+  if(v==='colonnes'){planColPath=[];planColDoc=null;}
+  renderPlansContent('pt-docs');
+}
+
+/* ── Vue en colonnes (type Finder) ── */
+function findPlanNode(nodes,id){
+  for(var i=0;i<nodes.length;i++){if(nodes[i].id===id)return nodes[i];if(nodes[i].children){var r=findPlanNode(nodes[i].children,id);if(r)return r;}}
+  return null;
+}
+function planColSelect(level,id){
+  // tronque le chemin au niveau cliqué puis ajoute le dossier choisi
+  planColPath=planColPath.slice(0,level);planColPath.push(id);planColDoc=null;
+  renderPlansContent('pt-docs');
+}
+function planColOpenDoc(id){planColDoc=id;renderPlansContent('pt-docs');viewPlanDoc(id);}
+function renderPlansColumns(){
+  const projId=PROJ.id;
+  const roots=getPlanFolders(projId);
+  const docs=getDocsForProj(PROJ).plans||[];
+  // Construit les colonnes successives selon planColPath.
+  const cols=[];
+  let levelNodes=roots;
+  cols.push({nodes:levelNodes,selId:planColPath[0]||null,level:0});
+  for(let i=0;i<planColPath.length;i++){
+    const node=findPlanNode(roots,planColPath[i]);
+    if(!node)break;
+    cols.push({nodes:node.children||[],selId:planColPath[i+1]||null,level:i+1,parent:node});
+  }
+  // dossier sélectionné = dernier du chemin (pour import / actions)
+  const curId=planColPath.length?planColPath[planColPath.length-1]:null;
+  const curNode=curId?findPlanNode(roots,curId):null;
+
+  function colHTML(col){
+    const folders=(col.nodes||[]).filter(function(f){return !f.archived;});
+    const colDocs=col.parent?docs.filter(function(d){return d.folder===col.parent.id&&!d.archived;}):[];
+    let h='<div class="col"><div class="col-list">';
+    h+='<div class="col-hd">Dossiers</div>';
+    if(folders.length){
+      h+=folders.map(function(f){
+        const sel=col.selId===f.id;
+        const hasKids=(f.children||[]).some(function(c){return !c.archived;});
+        return '<div class="col-row '+(sel?'sel':'')+'" onclick="planColSelect('+col.level+',\''+f.id+'\')">'
+          +'<svg class="ico ico-sm" style="flex-shrink:0"><use href="#i-folder"/></svg>'
+          +'<span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+e(f.name)+'</span>'
+          +permBtn('folders','<svg class="ico ico-xs"><use href="#i-archive"/></svg>','event.stopPropagation();archivePlanFolder(\''+projId+'\',\''+f.id+'\')','btn-sm btn-g','padding:2px 5px;color:var(--amber);margin-right:4px;')
+          +(hasKids?'<svg class="ico" style="width:11px;height:11px;color:var(--text3)"><use href="#i-chevron-right"/></svg>':'')
+        +'</div>';
+      }).join('');
+    }else{h+='<div style="font-size:11px;color:var(--text3);padding:4px 9px">Aucun dossier</div>';}
+    if(col.parent){
+      h+='<div class="col-hd" style="margin-top:6px">Fichiers</div>';
+      if(colDocs.length){
+        h+=colDocs.map(function(d){
+          const sel=planColDoc===d.id;
+          return '<div class="col-row '+(sel?'sel':'')+'" onclick="planColOpenDoc(\''+d.id+'\')">'
+            +'<svg class="ico ico-sm" style="color:var(--blue);flex-shrink:0"><use href="#i-pdf"/></svg>'
+            +'<span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+e(d.title)+'</span>'
+            +permBtn('archive','<svg class="ico ico-xs"><use href="#i-archive"/></svg>','event.stopPropagation();archivePlanDoc(\''+d.id+'\')','btn-sm btn-g','padding:2px 5px;color:var(--amber);margin-right:4px;')
+            +'<span class="vpill" style="flex-shrink:0">PDF</span>'
+          +'</div>';
+        }).join('');
+      }else{h+='<div style="font-size:11px;color:var(--text3);padding:4px 9px">Aucun fichier</div>';}
+    }
+    h+='</div></div>';
+    return h;
+  }
+
+  // Barre d'actions (chemin + actions sur le dossier courant)
+  const pathLabel=planColPath.map(function(id){const n=findPlanNode(roots,id);return n?n.name:'';}).filter(Boolean).join(' / ')||'Racine';
+  let actions='<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:8px 14px;border-bottom:1px solid var(--border);flex-shrink:0">'
+    +'<span style="font-size:11.5px;color:var(--text3);margin-right:auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+e(pathLabel)+'</span>'
+    +permBtn('folders','<svg class="ico ico-xs" style="margin-right:3px"><use href="#i-plus"/></svg>Nouveau dossier',(curNode?'addPlanSubfolder(\''+curId+'\',\''+projId+'\')':'addPlanFolder(\''+projId+'\')'),'btn-g btn-sm');
+  if(curNode){
+    actions+=permBtn('folders','<svg class="ico ico-xs" style="margin-right:3px"><use href="#i-edit"/></svg>Renommer','renamePlanFolder(\''+curId+'\',\''+e(curNode.name)+'\',\''+projId+'\')','btn-g btn-sm');
+    actions+=(can('items')
+      ?'<label class="btn btn-g btn-sm" style="cursor:pointer"><svg class="ico ico-xs" style="margin-right:3px"><use href="#i-upload"/></svg>Importer un PDF<input type="file" accept=".pdf,application/pdf" multiple style="display:none" onchange="addDocToFolder(event,\''+curId+'\',\''+projId+'\')"></label>'
+      :permBtn('items','<svg class="ico ico-xs" style="margin-right:3px"><use href="#i-upload"/></svg>Importer un PDF','','btn-g btn-sm'));
+  }
+  actions+='</div>';
+
+  document.getElementById('content').innerHTML=
+    '<div style="display:flex;flex-direction:column;height:100%;min-height:60vh">'
+    +planViewToggle()
+    +actions
+    +'<div class="col-wrap" style="flex:1;min-height:0">'+cols.map(colHTML).join('')+'</div>'
     +'</div>';
 }
 
 function selectPlanFolder(id,name){activePlanFolder={id,name};renderPlansContent('pt-docs');}
 
+/* ── Archives Plans (dossiers + fichiers) ── */
+function planFolderDescIds(roots,id){
+  // collecte l'id du dossier et tous ses sous-dossiers (récursif)
+  const out=[];const node=findPlanNode(roots,id);if(!node)return out;
+  (function walk(n){out.push(n.id);(n.children||[]).forEach(walk);})(node);
+  return out;
+}
+function archivePlanFolder(projId,id){
+  if(!can('folders'))return denyMsg();
+  const roots=getPlanFolders(projId);const node=findPlanNode(roots,id);if(!node)return;
+  const ids=planFolderDescIds(roots,id);const now=new Date().toLocaleDateString('fr-FR');
+  node.archived=true;node.archivedAt=now;
+  // archive aussi les fichiers contenus dans ce dossier et ses sous-dossiers
+  (getDocsForProj(PROJ).plans||[]).forEach(function(d){if(ids.indexOf(d.folder)>=0&&!d.archived){d.archived=true;d.archivedAt=now;}});
+  if(activePlanFolder&&ids.indexOf(activePlanFolder.id)>=0)activePlanFolder=null;
+  if(planColPath.some(function(p){return ids.indexOf(p)>=0;}))planColPath=[];
+  savePlanFolders(projId);renderPlansContent('pt-docs');toast('Dossier archivé');
+}
+function restorePlanFolder(projId,id){
+  if(!can('folders'))return denyMsg();
+  const roots=getPlanFolders(projId);const node=findPlanNode(roots,id);if(!node)return;
+  node.archived=false;node.archivedAt='';
+  savePlanFolders(projId);renderPlansContent('pt-docs');toast('Dossier restauré');
+}
+function archivePlanDoc(id){
+  if(!can('archive'))return denyMsg();
+  const d=(getDocsForProj(PROJ).plans||[]).find(function(x){return x.id===id;});if(!d)return;
+  d.archived=true;d.archivedAt=new Date().toLocaleDateString('fr-FR');
+  savePROJS();renderPlansContent('pt-docs');toast('Fichier archivé');
+}
+function restorePlanDoc(id){
+  if(!can('archive'))return denyMsg();
+  const d=(getDocsForProj(PROJ).plans||[]).find(function(x){return x.id===id;});if(!d)return;
+  d.archived=false;d.archivedAt='';
+  savePROJS();renderPlansContent('pt-docs');toast('Fichier restauré');
+}
+function planShowActive(){planArch=false;renderPlansContent('pt-docs');}
+function planShowArch(){planArch=true;renderPlansContent('pt-docs');}
+// liste à plat de tous les dossiers archivés (avec chemin lisible)
+function flatPlanFolders(nodes,prefix,acc){
+  acc=acc||[];prefix=prefix||'';
+  (nodes||[]).forEach(function(f){
+    const path=prefix?prefix+' / '+f.name:f.name;
+    acc.push({node:f,path:path});
+    flatPlanFolders(f.children,path,acc);
+  });
+  return acc;
+}
+function renderPlansArchives(){
+  const projId=PROJ.id;
+  const roots=getPlanFolders(projId);
+  const docs=getDocsForProj(PROJ).plans||[];
+  const archFolders=flatPlanFolders(roots).filter(function(x){return x.node.archived;});
+  const archDocs=docs.filter(function(d){return d.archived;});
+  let body='<div class="pad" style="display:flex;flex-direction:column;gap:8px">';
+  if(!archFolders.length&&!archDocs.length){
+    body+='<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:36px 16px;color:var(--text3)">'
+      +'<svg class="ico" style="width:32px;height:32px;color:var(--border2);margin-bottom:10px"><use href="#i-archive"/></svg>'
+      +'<div style="font-size:14px;font-weight:500;color:var(--text2)">Aucun élément archivé.</div>'
+      +'</div>';
+  }else{
+    if(archFolders.length)body+='<div style="font-size:10.5px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin:2px 0 6px">Dossiers</div>';
+    body+=archFolders.map(function(x){
+      return '<div class="aud-card" style="display:flex;align-items:center;gap:10px;padding:11px 14px;border:1px solid var(--border);border-radius:var(--r)">'
+        +'<svg class="ico ico-sm" style="color:var(--blue);flex-shrink:0"><use href="#i-folder"/></svg>'
+        +'<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:500">'+e(x.path)+'</div>'
+        +(x.node.archivedAt?'<div style="font-size:11px;color:var(--text3);margin-top:2px">archivé le '+e(x.node.archivedAt)+'</div>':'')
+        +'</div>'
+        +permBtn('folders','<svg class="ico ico-xs" style="margin-right:3px"><use href="#i-refresh"/></svg>Restaurer','restorePlanFolder(\''+projId+'\',\''+x.node.id+'\')','btn-sm btn-g')
+      +'</div>';
+    }).join('');
+    if(archDocs.length)body+='<div style="font-size:10.5px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin:12px 0 6px">Fichiers</div>';
+    body+=archDocs.map(function(d){
+      return '<div class="aud-card" style="display:flex;align-items:center;gap:10px;padding:11px 14px;border:1px solid var(--border);border-radius:var(--r)">'
+        +'<svg class="ico ico-sm" style="color:var(--blue);flex-shrink:0"><use href="#i-pdf"/></svg>'
+        +'<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:500">'+e(d.title)+'</div>'
+        +'<div style="font-size:11px;color:var(--text3);margin-top:2px">'+e(d.size||'')+(d.archivedAt?' · archivé le '+e(d.archivedAt):'')+'</div></div>'
+        +'<button class="btn btn-sm btn-g" onclick="viewPlanDoc(\''+d.id+'\')" title="Aperçu"><svg class="ico ico-xs" style="margin-right:3px"><use href="#i-eye"/></svg>Voir</button>'
+        +permBtn('archive','<svg class="ico ico-xs" style="margin-right:3px"><use href="#i-refresh"/></svg>Restaurer','restorePlanDoc(\''+d.id+'\')','btn-sm btn-g')
+      +'</div>';
+    }).join('');
+  }
+  body+='</div>';
+  document.getElementById('content').innerHTML=
+    '<div style="display:flex;flex-direction:column;height:100%;min-height:60vh">'
+    +planViewToggle()
+    +body
+    +'</div>';
+}
+
+
 function addPlanFolder(projId){
+  if(!can('folders'))return denyMsg();
   var name=prompt('Nom du dossier :','Nouveau dossier');
   if(!name)return;
   var id='pf'+(uid++);
   getPlanFolders(projId).push({id,name,children:[]});
+  savePlanFolders(projId);
   renderPlansContent('pt-docs');
 }
 
 function addPlanSubfolder(parentId,projId){
+  if(!can('folders'))return denyMsg();
   var name=prompt('Nom du sous-dossier :','Sous-dossier');
   if(!name)return;
   function addSub(nodes){
@@ -935,10 +1198,12 @@ function addPlanSubfolder(parentId,projId){
     return false;
   }
   addSub(getPlanFolders(projId));
+  savePlanFolders(projId);
   renderPlansContent('pt-docs');
 }
 
 function renamePlanFolder(id,current,projId){
+  if(!can('folders'))return denyMsg();
   var name=prompt('Renommer :',current);
   if(!name)return;
   function rename(nodes){
@@ -949,6 +1214,7 @@ function renamePlanFolder(id,current,projId){
   }
   rename(getPlanFolders(projId));
   if(activePlanFolder&&activePlanFolder.id===id)activePlanFolder.name=name;
+  savePlanFolders(projId);
   renderPlansContent('pt-docs');
 }
 
@@ -972,26 +1238,47 @@ function openTemplateModal(projId){
 }
 
 function applyTemplate(projId){
+  if(!can('folders'))return denyMsg();
   var sel=document.querySelector('input[name="tpl"]:checked');
   if(!sel){alert('Choisissez un modèle');return;}
   PROJ_PLAN_FOLDERS[projId]=JSON.parse(JSON.stringify(PLAN_FOLDERS_TEMPLATES[sel.value]||[]));
+  const p=PROJS.find(x=>x.id===projId);if(p)p.planFolders=PROJ_PLAN_FOLDERS[projId];
   activePlanFolder=null;
   closeModal();
+  savePROJS();
   renderPlansContent('pt-docs');
   toast('Structure appliquée');
 }
 
 function addDocToFolder(evt,folderId,projId){
-  if(!evt.target.files||!evt.target.files.length)return;
+  if(!can('items')){evt.target.value='';return denyMsg();}
+  const files=evt.target.files;
+  if(!files||!files.length)return;
   const p=PROJS.find(x=>x.id===projId)||PROJ;
-  if(!p)return;
+  if(!p){evt.target.value='';return;}
   if(!p.docs_data)p.docs_data={plans:[],contrats:[],factures:[],photos:[],admin:[]};
-  Array.from(evt.target.files).forEach(function(file){
-    p.docs_data.plans.push({id:'d'+(uid++),title:file.name.replace(/\.[^.]+$/,''),folder:folderId,v:1,size:(file.size/1048576).toFixed(1)+' MB',date:new Date().toLocaleDateString('fr-FR'),status:'draft',color:'#2d4ef5',type:'pdf',rem:'',tags:'',sigD:'',sigB:'',montant:'',variante:''});
+  // Validation : uniquement des PDF.
+  const arr=Array.from(files);
+  const nonPdf=arr.some(function(f){return !(f.type==='application/pdf'||/\.pdf$/i.test(f.name));});
+  if(nonPdf){evt.target.value='';toast('Veuillez sélectionner un fichier PDF.');return;}
+  let pending=arr.length;
+  arr.forEach(function(file){
+    const reader=new FileReader();
+    reader.onload=function(){
+      p.docs_data.plans.push({
+        id:'d'+(uid++),title:file.name.replace(/\.[^.]+$/,''),folder:folderId,v:1,
+        size:(file.size/1048576).toFixed(2)+' Mo',date:new Date().toLocaleDateString('fr-FR'),
+        status:'draft',color:'#2d4ef5',type:'pdf',rem:'',tags:'',sigD:'',sigB:'',montant:'',variante:'',
+        fileName:file.name,mimeType:file.type||'application/pdf',fileUrl:reader.result,createdAt:new Date().toISOString(),
+        projectId:projId,area:'plans',folderId:folderId,archived:false
+      });
+      pending--;
+      if(pending<=0){savePROJS();toast('PDF importé');if(VIEW==='plans')renderPlansContent('pt-docs');}
+    };
+    reader.onerror=function(){pending--;toast('Erreur de lecture du fichier');};
+    reader.readAsDataURL(file);
   });
-  savePROJS();
-  toast('Fichier(s) ajouté(s)');
-  renderPlansContent('pt-docs');
+  evt.target.value='';
 }
 
 /* Info panel shown in plans tab */
@@ -1107,7 +1394,7 @@ function renderEntreprises(){
 
   // Left: list of companies from MBRS
   var companies=getMembresForProj(PROJ).filter(function(m){return m.role!=='client_viewer'&&m.role!=='project_admin';});
-  var allMbrs=MBRS;
+  var allMbrs=getMembresForProj(PROJ);
 
   var leftHTML=allMbrs.map(function(m){
     var isActive=activeEntMembre===m.id;
@@ -1290,26 +1577,15 @@ function e(s){return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').
 function renderCL(){
   if(!clTree)return;
   setTB('hat','#854d0e','Espace architecte — Checklistes',PROJ?.name||'','Ajouter','plus');
-  const tabs=clTree.map(n=>({id:n.id,label:n.label.replace(/[\'&].*/,'').trim().slice(0,14),ico:n.ico,color:n.color}));
+  const tabs=clTree.map(n=>({id:n.id,label:n.label,ico:n.ico,color:n.color}));
   setTabs(tabs,clTab);
-  setTimeout(()=>{
-    document.querySelectorAll('.tabbar .tab').forEach(t=>{
-      const n=clTree.find(n=>t.textContent.trim().startsWith(n.label.replace(/[\'&].*/,'').trim().slice(0,6)));
-      if(n&&t.classList.contains('active')){t.style.color=n.color;t.style.borderBottomColor=n.color;}
-    });
-  },0);
   renderCLContent();
 }
 function renderCLContent(){
   const node=findCLN(clTab)||clTree[0];if(!node)return;
   const vis=flatCL(node).filter(i=>clArch||!i.arch);
   const done=vis.filter(i=>i.done&&!i.arch).length,total=vis.filter(i=>!i.arch).length,pct=total?Math.round(done/total*100):0;
-  const appBar=`<div style="display:flex;gap:8px;margin-bottom:14px;padding:10px 12px;background:var(--panel2);border:1px solid var(--border);border-radius:var(--r);align-items:center">
-    <span style="font-size:11px;color:var(--text3);margin-right:2px">Accès rapide :</span>
-    <a href="archideck.html" target="_blank" style="display:inline-flex;align-items:center;gap:5px;padding:5px 11px;background:var(--blue);color:#fff;border-radius:7px;font-size:11.5px;font-weight:600;text-decoration:none">${ico('building','ico-xs')} Archideck</a>
-    <a href="cr_chantier.html" target="_blank" style="display:inline-flex;align-items:center;gap:5px;padding:5px 11px;background:var(--blue);color:#fff;border-radius:7px;font-size:11.5px;font-weight:600;text-decoration:none">${ico('pdf','ico-xs')} PlanSync CR</a>
-  </div>`;
-  let html=`<div class="pad">${appBar}
+  let html=`<div class="pad">
     <div class="sum-bar">
       <div style="text-align:center"><div style="font-size:20px;font-weight:600;color:${node.color}">${done}</div><div style="font-size:10px;color:var(--text3)">Complétés</div></div>
       <div style="text-align:center"><div style="font-size:20px;font-weight:600;color:var(--text3)">${total-done}</div><div style="font-size:10px;color:var(--text3)">Restants</div></div>
@@ -1371,148 +1647,453 @@ function renderAudit(){
     </div>`).join('')+'</div>';
 }
 
-/* ══ PV (procès-verbaux) — sous-dossiers + archives par dossier ══ */
-// Accès rétro-compatible : crée "Général" à la volée, rattache les PV sans dossier.
-function pvEnsure(p){
-  if(!p)return null;
-  if(!Array.isArray(p.pv))p.pv=[];
-  if(!Array.isArray(p.folders)||!p.folders.length){
-    p.folders=[{id:'fgen',name:'Général'}];
+/* ══ SYSTÈME GÉNÉRIQUE DE SOUS-DOSSIERS + ARCHIVES PAR AIRE ══
+   Aires supportées : pv, contrats, factures, photos.
+   Modèle : PROJ.areaFolders[area] = [{id,name,archived,archivedAt,createdAt}]
+   Items : chaque item porte folderId / archived / archivedAt (optionnels, rétro-compatibles).
+   "Général" est créé à la volée ; les items sans folderId y sont rattachés. */
+
+// Config par aire : libellé, icône, couleur, accès aux items, libellé item, créateur d'item, ligne d'affichage.
+// Fichiers d'exemple neutres (data URLs) pour permettre l'aperçu in-app sans données privées.
+// PDF minimal valide.
+const SAMPLE_PDF='data:application/pdf;base64,JVBERi0xLjQKMSAwIG9iago8PC9UeXBlL0NhdGFsb2cvUGFnZXMgMiAwIFI+PgplbmRvYmoKMiAwIG9iago8PC9UeXBlL1BhZ2VzL0tpZHNbMyAwIFJdL0NvdW50IDE+PgplbmRvYmoKMyAwIG9iago8PC9UeXBlL1BhZ2UvUGFyZW50IDIgMCBSL01lZGlhQm94WzAgMCAzMDAgMTQ0XS9SZXNvdXJjZXM8PC9Gb250PDwvRjEgNCAwIFI+Pj4+L0NvbnRlbnRzIDUgMCBSPj4KZW5kb2JqCjQgMCBvYmoKPDwvVHlwZS9Gb250L1N1YnR5cGUvVHlwZTEvQmFzZUZvbnQvSGVsdmV0aWNhPj4KZW5kb2JqCjUgMCBvYmoKPDwvTGVuZ3RoIDQ0Pj4Kc3RyZWFtCkJUCi9GMSAxOCBUZgozMCA2MCBUZAooQXBlcmN1IFBERikgVGoKRVQKZW5kc3RyZWFtCmVuZG9iagp4cmVmCjAgNgowMDAwMDAwMDAwIDY1NTM1IGYgCjAwMDAwMDAwMDkgMDAwMDAgbiAKMDAwMDAwMDA1OCAwMDAwMCBuIAowMDAwMDAwMTE1IDAwMDAwIG4gCjAwMDAwMDAyNDEgMDAwMDAgbiAKMDAwMDAwMDMxNyAwMDAwMCBuIAp0cmFpbGVyCjw8L1NpemUgNi9Sb290IDEgMCBSPj4Kc3RhcnR4cmVmCjQxMQolJUVPRgo=';
+// Image PNG minimale (1x1 transparente) — sert d'aperçu image générique.
+const SAMPLE_IMG='data:image/svg+xml;utf8,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="640" height="420"><rect width="640" height="420" fill="#e2ddd6"/><rect x="20" y="20" width="600" height="380" fill="none" stroke="#c47a00" stroke-width="3"/><text x="320" y="220" font-family="sans-serif" font-size="26" fill="#5c3d1e" text-anchor="middle">Aperçu image (exemple)</text></svg>');
+const AREA_CFG={
+  pv:{label:'PV',ico:'file-check',color:'var(--blue)',itemLabel:'PV',
+      items:function(p){return Array.isArray(p.pv)?p.pv:[];},
+      ensureItems:function(p){if(!Array.isArray(p.pv))p.pv=[];},
+      title:function(it){return it.titre;},
+      sub:function(it){return it.date||'';},
+      createItem:function(p,fid){const n=p.pv.filter(function(v){return v.folderId===fid;}).length+1;const nm='Nouveau PV n°'+n;p.pv.push({id:'pv'+Date.now(),titre:nm,date:new Date().toLocaleDateString('fr-FR'),folderId:fid,archived:false,fileName:nm+'.pdf',mimeType:'application/pdf',fileUrl:SAMPLE_PDF,createdAt:new Date().toISOString()});}},
+  contrats:{label:'Devis / Facture',ico:'invoice',color:'#c47a00',itemLabel:'document',
+      // Aire fusionnée : contrats + devis + factures (anciennes données factures conservées et visibles ici).
+      items:function(p){const d=getDocsForProj(p);return (d.contrats||[]).concat(d.factures||[]);},
+      ensureItems:function(p){if(!p.docs_data)p.docs_data={plans:[],contrats:[],factures:[],photos:[],admin:[]};if(!p.docs_data.contrats)p.docs_data.contrats=[];if(!p.docs_data.factures)p.docs_data.factures=[];},
+      title:function(it){return it.title;},
+      sub:function(it){return(it.ent?it.ent+' · ':'')+(it.date||'')+(it.montant?' · '+it.montant:'');},
+      createItem:function(p,fid){p.docs_data.contrats.push({id:'d'+(uid++),title:'Nouveau document',folderId:fid,v:1,size:'—',date:new Date().toLocaleDateString('fr-FR'),status:'draft',color:'#c47a00',type:'pdf',rem:'',tags:'',sigD:'',sigB:'',montant:'',variante:'',archived:false,fileName:'Nouveau document.pdf',mimeType:'application/pdf',fileUrl:SAMPLE_PDF,createdAt:new Date().toISOString()});}},
+  photos:{label:'Photos chantier',ico:'photo',color:'#1a7a4a',itemLabel:'photo',
+      items:function(p){return getDocsForProj(p).photos||[];},
+      ensureItems:function(p){if(!p.docs_data)p.docs_data={plans:[],contrats:[],factures:[],photos:[],admin:[]};if(!p.docs_data.photos)p.docs_data.photos=[];},
+      title:function(it){return it.title;},
+      sub:function(it){return it.date||'';},
+      createItem:function(p,fid){p.docs_data.photos.push({id:'d'+(uid++),title:'Nouvelle photo',folderId:fid,v:1,size:'—',date:new Date().toLocaleDateString('fr-FR'),status:'draft',color:'#1a7a4a',type:'img',rem:'',tags:'',archived:false,fileName:'Nouvelle photo.png',mimeType:'image/png',fileUrl:SAMPLE_IMG,createdAt:new Date().toISOString()});}}
+};
+function isAreaView(v){return!!AREA_CFG[v];}
+function areaFolders(p){if(!p)return[];if(!p.areaFolders||typeof p.areaFolders!=='object')p.areaFolders={};return p.areaFolders;}
+
+// Migration douce + modèle imbriqué.
+// Dossiers : {id,name,parentId,archived,archivedAt,createdAt,sortOrder}. parentId=null -> racine.
+function areaEnsure(p,area){
+  if(!p)return null;const cfg=AREA_CFG[area];if(!cfg)return null;
+  const af=areaFolders(p);
+  if(area==='pv'&&Array.isArray(p.folders)&&p.folders.length&&!af.pv){af.pv=p.folders;} // reprise ancien champ PV
+  // Fusion : récupère les anciens dossiers "factures" dans l'aire "contrats" (Devis / Facture), une seule fois.
+  if(area==='contrats'&&Array.isArray(af.factures)&&af.factures.length&&!p._facturesMerged){
+    if(!Array.isArray(af.contrats))af.contrats=[];
+    af.factures.forEach(function(f){
+      if(f.id&&f.id.indexOf('fgen_')===0)return; // on ne reprend pas le "Général" des factures
+      if(!af.contrats.some(function(x){return x.id===f.id;}))af.contrats.push(f);
+    });
+    p._facturesMerged=true;
   }
-  // Rattacher tout PV sans folderId au premier dossier (Général), sans rien déplacer d'autre.
-  const def=p.folders[0].id;
-  p.pv.forEach(function(v){if(!v.folderId)v.folderId=def;});
+  if(!Array.isArray(af[area])||!af[area].length){af[area]=[{id:'fgen_'+area,name:'Général',parentId:null,createdAt:new Date().toISOString(),sortOrder:0}];}
+  // Normalise les anciens dossiers plats -> ajoute parentId/sortOrder manquants.
+  af[area].forEach(function(f,i){if(typeof f.parentId==='undefined')f.parentId=null;if(typeof f.sortOrder!=='number')f.sortOrder=i;});
+  cfg.ensureItems(p);
+  const def=af[area][0].id;
+  const validIds={};af[area].forEach(function(f){validIds[f.id]=true;});
+  // Rattache au "Général" tout item sans dossier OU pointant vers un dossier absent de cette aire
+  // (cas des factures fusionnées dans "Devis / Facture" : leur ancien folderId n'existe pas ici).
+  cfg.items(p).forEach(function(it){if(!it.folderId||!validIds[it.folderId])it.folderId=def;if(typeof it.archived!=='boolean')it.archived=false;});
+  if(area==='pv')p.folders=af.pv;
   return p;
 }
-function pvFolderById(p,id){return(p&&Array.isArray(p.folders))?p.folders.find(function(f){return f.id===id;}):null;}
+function areaFolderById(p,area,id){const af=areaFolders(p)[area]||[];return af.find(function(f){return f.id===id;});}
+function areaChildFolders(p,area,parentId){return (areaFolders(p)[area]||[]).filter(function(f){return (f.parentId||null)===(parentId||null);}).sort(function(a,b){return (a.sortOrder||0)-(b.sortOrder||0);});}
+function areaDescendantIds(p,area,id){ // tous les sous-dossiers (récursif), id inclus
+  const out=[id];const all=areaFolders(p)[area]||[];
+  (function walk(pid){all.forEach(function(f){if((f.parentId||null)===pid){out.push(f.id);walk(f.id);}});})(id);
+  return out;
+}
+function curFolderId(){return areaPath.length?areaPath[areaPath.length-1]:null;}
 
-function renderPV(){
-  pvEnsure(PROJ);
-  if(pvFolder&&!pvFolderById(PROJ,pvFolder))pvFolder=null; // dossier disparu -> retour liste
-  if(pvFolder)renderPVFolder();else renderPVFolderList();
+function renderArea(area){
+  areaEnsure(PROJ,area);
+  // purge le chemin des dossiers disparus
+  areaPath=areaPath.filter(function(id){return !!areaFolderById(PROJ,area,id);});
+  renderAreaBrowser(area);
 }
 
-// Vue 1 : liste des sous-dossiers du projet
-function renderPVFolderList(){
-  const folders=PROJ.folders;
-  setTB('file-check','var(--blue)','PV',folders.length+(folders.length>1?' sous-dossiers':' sous-dossier'),'Nouveau sous-dossier','folder');
-  setTabs(null);
-  let body='<div class="pad" style="display:flex;flex-direction:column;gap:8px">';
-  body+=folders.map(function(f){
-    const items=PROJ.pv.filter(function(v){return v.folderId===f.id;});
-    const act=items.filter(function(v){return !v.archived;}).length;
-    const arc=items.filter(function(v){return v.archived;}).length;
-    return '<div class="aud-card" onclick="openPVFolder(\''+f.id+'\')" style="display:flex;align-items:center;gap:10px;padding:11px 14px;border:1px solid var(--border);border-radius:var(--r);cursor:pointer">'
-      +'<svg class="ico ico-sm" style="color:var(--blue);flex-shrink:0"><use href="#i-folder"/></svg>'
-      +'<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:500">'+e(f.name)+'</div>'
-      +'<div style="font-size:11px;color:var(--text3);margin-top:2px">'+act+' actif(s)'+(arc?' · '+arc+' archivé(s)':'')+'</div></div>'
-      +'<svg class="ico" style="width:11px;height:11px;color:var(--text3)"><use href="#i-arrow-right"/></svg>'
-    +'</div>';
-  }).join('');
-  body+='</div>';
-  document.getElementById('content').innerHTML=body;
-}
+function renderAreaBrowser(area){
+  const cfg=AREA_CFG[area];
+  const cur=curFolderId();
+  const curName=cur?(areaFolderById(PROJ,area,cur)||{}).name:cfg.label;
+  // Sous-dossiers et items du niveau courant (à la racine : parentId null ; sinon enfants de cur).
+  const children=areaChildFolders(PROJ,area,cur).filter(function(f){return areaArch?f.archived:!f.archived;});
+  const itemsAll=cfg.items(PROJ).filter(function(v){return (v.folderId||null)===(cur||null);});
+  const items=itemsAll.filter(function(v){return areaArch?v.archived:!v.archived;});
+  const arcCount=(areaChildFolders(PROJ,area,cur).filter(function(f){return f.archived;}).length)+(itemsAll.filter(function(v){return v.archived;}).length);
 
-// Vue 2 : contenu d'un sous-dossier (actifs + archives)
-function renderPVFolder(){
-  const f=pvFolderById(PROJ,pvFolder);if(!f){pvFolder=null;return renderPV();}
-  const all=PROJ.pv.filter(function(v){return v.folderId===f.id;});
-  const active=all.filter(function(v){return !v.archived;});
-  const arch=all.filter(function(v){return v.archived;});
-  setTB('folder','var(--blue)','PV — '+f.name,(pvArch?arch.length+' archivé(s)':active.length+' actif(s)'),'Nouveau PV');
+  setTB(cur?'folder':cfg.ico,cfg.color,cfg.label,(cur?curName:(children.length+' dossier(s)')),'Nouveau dossier','folder');
   setTabs(null);
+
+  // Fil d'Ariane (breadcrumb)
+  let crumbs='<button class="crumb" onclick="areaGoRoot(\''+area+'\')" style="background:none;border:none;cursor:pointer;color:'+(cur?'var(--text3)':cfg.color)+';font-size:12px;font-weight:600;font-family:inherit;padding:0">'+e(cfg.label)+'</button>';
+  let acc=[];
+  areaPath.forEach(function(id,i){
+    const f=areaFolderById(PROJ,area,id);if(!f)return;acc.push(id);
+    const isLast=(i===areaPath.length-1);
+    crumbs+='<span style="color:var(--text3);font-size:11px;margin:0 2px">/</span>'
+      +'<button class="crumb" onclick="areaGoTo(\''+area+'\','+i+')" style="background:none;border:none;cursor:pointer;color:'+(isLast?cfg.color:'var(--text3)')+';font-size:12px;font-weight:'+(isLast?'600':'500')+';font-family:inherit;padding:0">'+e(f.name)+'</button>';
+  });
 
   let head='<div class="pad" style="padding-bottom:0">'
-    +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px">'
-      +'<button class="btn btn-g btn-sm" onclick="backPVFolders()"><svg class="ico ico-xs" style="margin-right:3px"><use href="#i-arrow-left"/></svg>Dossiers</button>'
-      +'<button class="btn btn-g btn-sm" onclick="renamePVFolder()"><svg class="ico ico-xs" style="margin-right:3px"><use href="#i-edit"/></svg>Renommer</button>'
-      +'<button class="btn btn-g btn-sm" onclick="archivePVFolder()" style="color:var(--amber)"><svg class="ico ico-xs" style="margin-right:3px"><use href="#i-archive"/></svg>Archiver le dossier</button>'
-    +'</div>'
+    +'<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:12px;min-height:22px">'+crumbs+'</div>'
+    +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px">';
+  if(cur){
+    head+='<button class="btn btn-g btn-sm" onclick="areaUp(\''+area+'\')"><svg class="ico ico-xs" style="margin-right:3px"><use href="#i-arrow-left"/></svg>Retour</button>'
+      +permBtn('folders','<svg class="ico ico-xs" style="margin-right:3px"><use href="#i-edit"/></svg>Renommer','renameAreaFolder(\''+area+'\',\''+cur+'\')','btn-g btn-sm')
+      +permBtn('folders','<svg class="ico ico-xs" style="margin-right:3px"><use href="#i-archive"/></svg>Archiver le dossier','archiveAreaFolder(\''+area+'\',\''+cur+'\')','btn-g btn-sm','color:var(--amber);');
+  }
+  head+=permBtn('items','<svg class="ico ico-xs" style="margin-right:3px"><use href="#i-plus"/></svg>Nouveau '+cfg.itemLabel,'newAreaItem(\''+area+'\')','btn-g btn-sm');
+  head+='</div>'
     +'<div class="tabbar" style="display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:12px">'
-      +'<button class="tab '+(!pvArch?'active':'')+'" onclick="pvShowActive()" style="'+(!pvArch?'color:var(--blue);border-bottom-color:var(--blue)':'')+'">Actifs ('+active.length+')</button>'
-      +'<button class="tab '+(pvArch?'active':'')+'" onclick="pvShowArch()" style="'+(pvArch?'color:var(--blue);border-bottom-color:var(--blue)':'')+'"><svg class="ico ico-xs" style="vertical-align:-2px;margin-right:4px"><use href="#i-archive"/></svg>Archives ('+arch.length+')</button>'
+      +'<button class="tab '+(!areaArch?'active':'')+'" onclick="areaShowActive(\''+area+'\')" style="'+(!areaArch?'color:'+cfg.color+';border-bottom-color:'+cfg.color:'')+'">Actifs</button>'
+      +'<button class="tab '+(areaArch?'active':'')+'" onclick="areaShowArch(\''+area+'\')" style="'+(areaArch?'color:'+cfg.color+';border-bottom-color:'+cfg.color:'')+'"><svg class="ico ico-xs" style="vertical-align:-2px;margin-right:4px"><use href="#i-archive"/></svg>Archives'+(arcCount?' ('+arcCount+')':'')+'</button>'
     +'</div>';
 
-  const shown=pvArch?arch:active;
-  let listHtml;
-  if(!shown.length){
-    const msg=pvArch?'Aucun élément archivé dans ce dossier.':'Aucun PV pour le moment.';
-    const sub=pvArch?'':'Les procès-verbaux seront listés ici.';
-    listHtml='<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:36px 16px;color:var(--text3)">'
-      +'<svg class="ico" style="width:32px;height:32px;color:var(--border2);margin-bottom:10px"><use href="#i-'+(pvArch?'archive':'file-check')+'"/></svg>'
+  let body='';
+  // En-tête section dossiers
+  if(children.length)body+='<div style="font-size:10.5px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin:2px 0 6px">Dossiers</div>';
+  // Lignes dossiers
+  body+=children.map(function(f){
+    const sub=areaChildFolders(PROJ,area,f.id).filter(function(x){return !x.archived;}).length;
+    const inItems=cfg.items(PROJ).filter(function(v){return v.folderId===f.id&&!v.archived;}).length;
+    const meta=[];if(sub)meta.push(sub+' dossier(s)');if(inItems)meta.push(inItems+' élément(s)');
+    const rowActions=areaArch
+      ?(permBtn('folders','<svg class="ico ico-xs" style="margin-right:3px"><use href="#i-refresh"/></svg>Restaurer','event.stopPropagation();restoreAreaFolder(\''+area+'\',\''+f.id+'\')','btn-sm btn-g')
+        +permBtn('folders','<svg class="ico ico-xs" style="margin-right:3px"><use href="#i-trash"/></svg>Supprimer définitivement','event.stopPropagation();deleteAreaFolder(\''+area+'\',\''+f.id+'\')','btn-sm btn-g','margin-left:4px;color:var(--red);'))
+      :(permBtn('folders','<svg class="ico ico-xs"><use href="#i-plus"/></svg>','event.stopPropagation();newAreaFolder(\''+area+'\',\''+f.id+'\')','btn-sm btn-g','margin-left:4px;')
+        +permBtn('folders','<svg class="ico ico-xs"><use href="#i-edit"/></svg>','event.stopPropagation();renameAreaFolder(\''+area+'\',\''+f.id+'\')','btn-sm btn-g','margin-left:4px;')
+        +permBtn('folders','<svg class="ico ico-xs"><use href="#i-archive"/></svg>','event.stopPropagation();archiveAreaFolder(\''+area+'\',\''+f.id+'\')','btn-sm btn-g','margin-left:4px;color:var(--amber);'));
+    return '<div class="aud-card" '+(areaArch?'':'onclick="enterAreaFolder(\''+area+'\',\''+f.id+'\')"')+' style="display:flex;align-items:center;gap:10px;padding:11px 14px;border:1px solid var(--border);border-radius:var(--r);'+(areaArch?'':'cursor:pointer')+'">'
+      +'<svg class="ico ico-sm" style="color:'+cfg.color+';flex-shrink:0"><use href="#i-folder"/></svg>'
+      +'<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:500">'+e(f.name)+'</div>'
+      +(meta.length?'<div style="font-size:11px;color:var(--text3);margin-top:2px">'+meta.join(' · ')+(f.archived&&f.archivedAt?' · archivé le '+e(f.archivedAt):'')+'</div>':(f.archived&&f.archivedAt?'<div style="font-size:11px;color:var(--text3);margin-top:2px">archivé le '+e(f.archivedAt)+'</div>':''))
+      +'</div>'
+      +'<div style="display:flex;align-items:center;flex-shrink:0">'+rowActions+(areaArch?'':'<svg class="ico" style="width:11px;height:11px;color:var(--text3);margin-left:6px"><use href="#i-arrow-right"/></svg>')+'</div>'
+    +'</div>';
+  }).join('');
+
+  // En-tête section fichiers
+  if(items.length)body+='<div style="font-size:10.5px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin:'+(children.length?'12px':'2px')+' 0 6px">Fichiers</div>';
+  // Lignes items (cliquables -> visionneuse)
+  body+=items.map(function(v){
+    const ft=fileKind(v);
+    const voirBtn='<button class="btn btn-sm btn-g" onclick="event.stopPropagation();viewFile(\''+area+'\',\''+v.id+'\')" title="Aperçu"><svg class="ico ico-xs" style="margin-right:3px"><use href="#i-eye"/></svg>Voir</button>';
+    const actBtn=areaArch
+      ?(permBtn('archive','<svg class="ico ico-xs" style="margin-right:3px"><use href="#i-refresh"/></svg>Restaurer','event.stopPropagation();restoreAreaItem(\''+area+'\',\''+v.id+'\')','btn-sm btn-g')
+        +permBtn('archive','<svg class="ico ico-xs" style="margin-right:3px"><use href="#i-trash"/></svg>Supprimer définitivement','event.stopPropagation();deleteAreaItem(\''+area+'\',\''+v.id+'\')','btn-sm btn-g','margin-left:4px;color:var(--red);'))
+      :permBtn('archive','<svg class="ico ico-xs" style="margin-right:3px"><use href="#i-archive"/></svg>Archiver','event.stopPropagation();archiveAreaItem(\''+area+'\',\''+v.id+'\')','btn-sm btn-g','color:var(--amber);');
+    return '<div class="aud-card" onclick="viewFile(\''+area+'\',\''+v.id+'\')" style="display:flex;align-items:center;gap:10px;padding:11px 14px;border:1px solid var(--border);border-radius:var(--r);cursor:pointer">'
+      +'<svg class="ico ico-sm" style="color:'+cfg.color+';flex-shrink:0"><use href="#i-'+(ft==='img'?'photo':(ft==='pdf'?'pdf':'file'))+'"/></svg>'
+      +'<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:500">'+e(cfg.title(v)||'')+'</div>'
+      +'<div style="font-size:11px;color:var(--text3);margin-top:2px">'+e(cfg.sub(v)||'')+(v.archived&&v.archivedAt?' · archivé le '+e(v.archivedAt):'')+'</div></div>'
+      +'<div style="display:flex;align-items:center;gap:4px;flex-shrink:0">'+voirBtn+actBtn+'</div>'
+    +'</div>';
+  }).join('');
+
+  if(!children.length&&!items.length){
+    const msg=areaArch?'Aucun élément archivé dans ce dossier.':'Aucun élément dans ce dossier.';
+    body='<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:36px 16px;color:var(--text3)">'
+      +'<svg class="ico" style="width:32px;height:32px;color:var(--border2);margin-bottom:10px"><use href="#i-'+(areaArch?'archive':cfg.ico)+'"/></svg>'
       +'<div style="font-size:14px;font-weight:500;color:var(--text2);margin-bottom:4px">'+msg+'</div>'
-      +(sub?'<div style="font-size:12px;margin-bottom:16px">'+sub+'</div>':'')
-      +(!pvArch?'<button class="btn btn-p btn-sm" onclick="newPV()"><svg class="ico ico-sm" style="margin-right:4px"><use href="#i-plus"/></svg>Nouveau PV</button>':'')
+      +(!areaArch?permBtn('folders','<svg class="ico ico-sm" style="margin-right:4px"><use href="#i-plus"/></svg>Nouveau dossier','newAreaFolder(\''+area+'\')','btn-p btn-sm','margin-top:8px;'):'')
       +'</div>';
   }else{
-    listHtml='<div style="display:flex;flex-direction:column;gap:8px">'+shown.map(function(v){
-      const actBtn=pvArch
-        ?'<button class="btn btn-sm btn-g" onclick="event.stopPropagation();restorePV(\''+v.id+'\')"><svg class="ico ico-xs" style="margin-right:3px"><use href="#i-refresh"/></svg>Restaurer</button>'
-        :'<button class="btn btn-sm btn-g" onclick="event.stopPropagation();archivePV(\''+v.id+'\')" style="color:var(--amber)"><svg class="ico ico-xs" style="margin-right:3px"><use href="#i-archive"/></svg>Archiver</button>';
-      return '<div class="aud-card" style="display:flex;align-items:center;gap:10px;padding:11px 14px;border:1px solid var(--border);border-radius:var(--r)">'
-        +'<svg class="ico ico-sm" style="color:var(--blue);flex-shrink:0"><use href="#i-file-check"/></svg>'
-        +'<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:500">'+e(v.titre)+'</div>'
-        +'<div style="font-size:11px;color:var(--text3);margin-top:2px">'+e(v.date||'')+(v.archived&&v.archivedAt?' · archivé le '+e(v.archivedAt):'')+'</div></div>'
-        +actBtn
+    body='<div style="display:flex;flex-direction:column;gap:8px">'+body+'</div>';
+  }
+  document.getElementById('content').innerHTML=head+body+'</div>';
+}
+
+/* ── navigation ── */
+function enterAreaFolder(area,id){areaPath.push(id);areaArch=false;renderMain();}
+function areaUp(area){areaPath.pop();areaArch=false;renderMain();}
+function areaGoRoot(area){areaPath=[];areaArch=false;renderMain();}
+function areaGoTo(area,idx){areaPath=areaPath.slice(0,idx+1);areaArch=false;renderMain();}
+function areaShowActive(area){areaArch=false;renderMain();}
+function areaShowArch(area){areaArch=true;renderMain();}
+
+/* ── actions dossiers (imbriqués) ── */
+function newAreaFolder(area,parentId){
+  if(!can('folders'))return denyMsg();
+  areaEnsure(PROJ,area);
+  const pid=(typeof parentId!=='undefined')?parentId:curFolderId();
+  window.__nfParent=pid||null;
+  showModal('<h3>Nouveau dossier</h3>'
+    +'<div class="fi"><label>Nom du dossier</label><input id="nf-name" placeholder="Ex: 01 - Gros oeuvre, NBR, 03 - Situation…"></div>'
+    +'<div class="mo-foot"><button class="btn" onclick="closeModal()">Annuler</button><button class="btn btn-p" onclick="saveNewAreaFolder(\''+area+'\')">Créer</button></div>');
+}
+function saveNewAreaFolder(area){
+  if(!can('folders'))return denyMsg();
+  const name=(document.getElementById('nf-name')?.value||'').trim();if(!name)return;
+  const af=areaFolders(PROJ)[area];
+  const pid=window.__nfParent||null;
+  const sibs=af.filter(function(f){return (f.parentId||null)===pid;});
+  af.push({id:'fld'+Date.now(),name:name,parentId:pid,createdAt:new Date().toISOString(),sortOrder:sibs.length,archived:false});
+  if(area==='pv')PROJ.folders=areaFolders(PROJ).pv;
+  savePROJS();closeModal();renderMain();toast('Dossier créé');
+}
+function renameAreaFolder(area,id){
+  if(!can('folders'))return denyMsg();
+  const f=areaFolderById(PROJ,area,id||curFolderId());if(!f)return;
+  window.__rfId=f.id;
+  showModal('<h3>Renommer le dossier</h3>'
+    +'<div class="fi"><label>Nom</label><input id="rf-name" value="'+e(f.name)+'"></div>'
+    +'<div class="mo-foot"><button class="btn" onclick="closeModal()">Annuler</button><button class="btn btn-p" onclick="saveRenameAreaFolder(\''+area+'\')">Enregistrer</button></div>');
+}
+function saveRenameAreaFolder(area){
+  if(!can('folders'))return denyMsg();
+  const f=areaFolderById(PROJ,area,window.__rfId);if(!f)return;
+  const name=(document.getElementById('rf-name')?.value||'').trim();if(!name)return;
+  f.name=name;savePROJS();closeModal();renderMain();toast('Dossier renommé');
+}
+function archiveAreaFolder(area,id){
+  if(!can('folders'))return denyMsg();
+  const cfg=AREA_CFG[area];const fid=id||curFolderId();const f=areaFolderById(PROJ,area,fid);if(!f)return;
+  if((f.parentId||null)===null&&areaChildFolders(PROJ,area,null).filter(function(x){return !x.archived;}).length<=1){toast('Impossible d\'archiver le dernier dossier racine');return;}
+  const ids=areaDescendantIds(PROJ,area,fid);const now=new Date().toLocaleDateString('fr-FR');
+  // Archive le dossier, ses sous-dossiers et leurs items (données conservées).
+  (areaFolders(PROJ)[area]||[]).forEach(function(x){if(ids.indexOf(x.id)>=0&&!x.archived){x.archived=true;x.archivedAt=now;}});
+  cfg.items(PROJ).forEach(function(v){if(ids.indexOf(v.folderId)>=0&&!v.archived){v.archived=true;v.archivedAt=now;}});
+  if(area==='pv')PROJ.folders=areaFolders(PROJ).pv;
+  // remonte si on était dans le dossier archivé
+  const pos=areaPath.indexOf(fid);if(pos>=0)areaPath=areaPath.slice(0,pos);
+  areaArch=false;savePROJS();renderMain();toast('Dossier archivé');
+}
+function restoreAreaFolder(area,id){
+  if(!can('folders'))return denyMsg();
+  const f=areaFolderById(PROJ,area,id);if(!f)return;
+  f.archived=false;f.archivedAt='';
+  // réactive le parent s'il était archivé pour garder la cohérence du chemin
+  let p=f.parentId;while(p){const pf=areaFolderById(PROJ,area,p);if(pf&&pf.archived){pf.archived=false;pf.archivedAt='';}p=pf?pf.parentId:null;}
+  savePROJS();renderMain();toast('Dossier restauré');
+}
+
+/* ── actions items (génériques) ── */
+function newAreaItem(area){
+  if(!can('items'))return denyMsg();
+  if(!PROJ)return;areaEnsure(PROJ,area);
+  const cfg=AREA_CFG[area];const fid=curFolderId()||areaFolders(PROJ)[area][0].id;
+  cfg.createItem(PROJ,fid);
+  if(area==='pv')PROJ.folders=areaFolders(PROJ).pv;
+  savePROJS();renderSB();renderMain();toast('Élément ajouté');
+}
+function archiveAreaItem(area,id){
+  if(!can('archive'))return denyMsg();
+  const cfg=AREA_CFG[area];const v=cfg.items(PROJ).find(function(x){return x.id===id;});if(!v)return;
+  v.archived=true;v.archivedAt=new Date().toLocaleDateString('fr-FR');
+  savePROJS();renderMain();toast('Élément archivé');
+}
+function restoreAreaItem(area,id){
+  if(!can('archive'))return denyMsg();
+  const cfg=AREA_CFG[area];const v=cfg.items(PROJ).find(function(x){return x.id===id;});if(!v)return;
+  v.archived=false;v.archivedAt='';
+  savePROJS();renderMain();toast('Élément restauré');
+}
+
+/* ── suppression définitive (uniquement depuis les archives) ── */
+// Retire physiquement un item de son tableau source (pv / docs_data.*), en gérant l'aire fusionnée Devis/Facture.
+function removeItemPhysically(area,id){
+  if(area==='pv'){if(Array.isArray(PROJ.pv))PROJ.pv=PROJ.pv.filter(function(x){return x.id!==id;});return;}
+  const d=getDocsForProj(PROJ);
+  if(area==='contrats'){
+    if(Array.isArray(d.contrats))d.contrats=d.contrats.filter(function(x){return x.id!==id;});
+    if(Array.isArray(d.factures))d.factures=d.factures.filter(function(x){return x.id!==id;});
+    return;
+  }
+  if(Array.isArray(d[area]))d[area]=d[area].filter(function(x){return x.id!==id;});
+}
+function deleteAreaItem(area,id){
+  if(!can('archive'))return denyMsg();
+  const cfg=AREA_CFG[area];const v=cfg.items(PROJ).find(function(x){return x.id===id;});if(!v)return;
+  if(!v.archived){toast('Seuls les éléments archivés peuvent être supprimés');return;}
+  showModal('<h3>Supprimer définitivement</h3>'
+    +'<p style="font-size:12.5px;color:var(--text2);margin-bottom:4px">Supprimer définitivement cet élément ? Cette action est irréversible.</p>'
+    +'<div class="mo-foot"><button class="btn" onclick="closeModal()">Annuler</button><button class="btn" style="background:var(--red);color:#fff;border-color:var(--red)" onclick="confirmDeleteAreaItem(\''+area+'\',\''+id+'\')">Supprimer définitivement</button></div>');
+}
+function confirmDeleteAreaItem(area,id){
+  if(!can('archive'))return denyMsg();
+  const cfg=AREA_CFG[area];const v=cfg.items(PROJ).find(function(x){return x.id===id;});if(!v||!v.archived){closeModal();return;}
+  removeItemPhysically(area,id);
+  savePROJS();closeModal();renderMain();toast('Élément supprimé définitivement');
+}
+function deleteAreaFolder(area,id){
+  if(!can('folders'))return denyMsg();
+  const f=areaFolderById(PROJ,area,id);if(!f)return;
+  if(!f.archived){toast('Seuls les dossiers archivés peuvent être supprimés');return;}
+  // Option sûre : bloquer si le dossier contient encore des sous-dossiers ou items (archivés ou non).
+  const cfg=AREA_CFG[area];
+  const hasChild=(areaFolders(PROJ)[area]||[]).some(function(x){return (x.parentId||null)===f.id;});
+  const hasItems=cfg.items(PROJ).some(function(v){return v.folderId===f.id;});
+  if(hasChild||hasItems){toast('Ce dossier contient encore des éléments archivés.');return;}
+  showModal('<h3>Supprimer définitivement</h3>'
+    +'<p style="font-size:12.5px;color:var(--text2);margin-bottom:4px">Supprimer définitivement ce dossier ? Cette action est irréversible.</p>'
+    +'<div class="mo-foot"><button class="btn" onclick="closeModal()">Annuler</button><button class="btn" style="background:var(--red);color:#fff;border-color:var(--red)" onclick="confirmDeleteAreaFolder(\''+area+'\',\''+id+'\')">Supprimer définitivement</button></div>');
+}
+function confirmDeleteAreaFolder(area,id){
+  if(!can('folders'))return denyMsg();
+  const f=areaFolderById(PROJ,area,id);if(!f||!f.archived){closeModal();return;}
+  const cfg=AREA_CFG[area];
+  // Re-vérifie l'absence de contenu au moment de la confirmation (sécurité).
+  const hasChild=(areaFolders(PROJ)[area]||[]).some(function(x){return (x.parentId||null)===f.id;});
+  const hasItems=cfg.items(PROJ).some(function(v){return v.folderId===f.id;});
+  if(hasChild||hasItems){closeModal();toast('Ce dossier contient encore des éléments archivés.');return;}
+  areaFolders(PROJ)[area]=(areaFolders(PROJ)[area]||[]).filter(function(x){return x.id!==id;});
+  if(area==='pv')PROJ.folders=areaFolders(PROJ).pv;
+  savePROJS();closeModal();renderMain();toast('Dossier supprimé définitivement');
+}
+
+/* ══ VISIONNEUSE DE DOCUMENTS (PDF, images, fallback) ══ */
+// Détermine le type d'aperçu à partir du mimeType, du fileName ou du champ legacy "type".
+function fileKind(it){
+  const mt=(it.mimeType||'').toLowerCase();
+  const fn=(it.fileName||it.title||'').toLowerCase();
+  if(mt.indexOf('pdf')>=0||/\.pdf$/.test(fn)||it.type==='pdf')return 'pdf';
+  if(/^image\//.test(mt)||/\.(jpg|jpeg|png|webp|gif)$/.test(fn)||it.type==='img')return 'img';
+  return 'other';
+}
+function fileTypeLabel(it){
+  const k=fileKind(it);
+  if(k==='pdf')return 'PDF';
+  if(k==='img')return 'Image';
+  if(it.mimeType)return it.mimeType;
+  return 'Fichier';
+}
+function findAreaItem(area,id){const cfg=AREA_CFG[area];if(!cfg)return null;return cfg.items(PROJ).find(function(x){return x.id===id;});}
+
+function viewFile(area,id){
+  const it=findAreaItem(area,id);if(!it)return;
+  viewDoc(it);
+}
+// Visionneuse générique : accepte n'importe quel objet document {fileName/title,fileUrl,mimeType,type}.
+function viewDoc(it){
+  if(!it)return;
+  const name=it.fileName||it.title||'Document';
+  const kind=fileKind(it);
+  const url=it.fileUrl||'';
+  let bodyHtml;
+  if(kind==='pdf'&&url){
+    bodyHtml='<iframe title="Aperçu PDF" src="'+url+'"></iframe>';
+  }else if(kind==='img'&&url){
+    bodyHtml='<img alt="'+e(name)+'" src="'+url+'">';
+  }else{
+    const isPdf=(kind==='pdf');
+    const msg=isPdf?'Aperçu PDF indisponible.':'Aperçu non disponible pour ce type de fichier.';
+    bodyHtml='<div style="text-align:center;padding:32px 20px;color:var(--text3)">'
+      +'<svg class="ico" style="width:36px;height:36px;color:var(--border2);margin-bottom:12px"><use href="#i-'+(isPdf?'pdf':'file')+'"/></svg>'
+      +'<div style="font-size:14px;font-weight:500;color:var(--text2);margin-bottom:4px">'+e(name)+'</div>'
+      +'<div style="font-size:12px;margin-bottom:14px">Type : '+e(fileTypeLabel(it))+'</div>'
+      +'<div style="font-size:12.5px;color:var(--text2);margin-bottom:16px">'+msg+'</div>'
+      +(url?'<a class="btn btn-p btn-sm" href="'+url+'" download="'+e(name)+'" target="_blank" rel="noopener"><svg class="ico ico-xs" style="margin-right:4px"><use href="#i-download"/></svg>Télécharger</a>':'<div style="font-size:11px;color:var(--text3)">Aucun fichier joint.</div>')
+      +'</div>';
+  }
+  const dlBtn=url
+    ?'<a class="btn btn-g btn-sm" href="'+url+'" download="'+e(name)+'" target="_blank" rel="noopener"><svg class="ico ico-xs" style="margin-right:3px"><use href="#i-download"/></svg>Télécharger</a>'
+    :'';
+  const html='<div class="vw-ov" onclick="if(event.target===this)closeViewer()">'
+    +'<div class="vw-box" onclick="event.stopPropagation()">'
+      +'<div class="vw-head">'
+        +'<svg class="ico ico-sm" style="color:var(--blue);flex-shrink:0"><use href="#i-'+(kind==='img'?'photo':(kind==='pdf'?'pdf':'file'))+'"/></svg>'
+        +'<div style="flex:1;min-width:0"><div style="font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+e(name)+'</div>'
+        +'<div style="font-size:11px;color:var(--text3)">'+e(fileTypeLabel(it))+'</div></div>'
+        +dlBtn
+        +'<button class="btn btn-g btn-sm" onclick="closeViewer()" style="margin-left:4px"><svg class="ico ico-xs" style="margin-right:3px"><use href="#i-x"/></svg>Fermer</button>'
+      +'</div>'
+      +'<div class="vw-body">'+bodyHtml+'</div>'
+    +'</div></div>';
+  document.getElementById('viewer-root').innerHTML=html;
+}
+function viewPlanDoc(id){const d=(getDocsForProj(PROJ).plans||[]).find(function(x){return x.id===id;});if(d)viewDoc(d);}
+function closeViewer(){document.getElementById('viewer-root').innerHTML='';}
+document.addEventListener('keydown',function(ev){if(ev.key==='Escape'&&document.getElementById('viewer-root')&&document.getElementById('viewer-root').innerHTML)closeViewer();});
+
+/* ── adaptateurs PV (rétro-compat des anciens noms appelés depuis l'UI) ── */
+function renderPV(){renderArea('pv');}
+function newPV(){newAreaItem('pv');}
+
+/* ══ GESTION DES ACCÈS ══ */
+function renderAcces(){
+  setTB('lock','var(--blue)','Gestion des accès','Rôles applicatifs du projet','');
+  setTabs(null);
+  const members=getMembresForProj(PROJ);
+  const p=ACCESS_PERMS[currentAccessRole]||ACCESS_PERMS.lecture;
+  const permLine=function(ok,label){return '<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:'+(ok?'var(--green)':'var(--text3)')+'"><svg class="ico ico-xs"><use href="#i-'+(ok?'check':'x')+'"/></svg>'+label+'</span>';};
+
+  let html='<div class="pad">';
+
+  // Explication du modèle d'accès (rôle global + accès par dossier)
+  html+='<div style="background:var(--blue-bg);border:1px solid var(--border);border-radius:var(--r);padding:11px 14px;margin-bottom:16px;font-size:12px;color:var(--text2);line-height:1.5">'
+    +'<svg class="ico ico-xs" style="vertical-align:-2px;margin-right:5px;color:var(--blue)"><use href="#i-lock"/></svg>'
+    +'Le rôle définit ce que chaque membre peut faire dans tout le projet. Les accès par dossier (onglet Membres) affinent ces droits.'
+    +'</div>';
+
+  // Bandeau : rôle courant (démo) — permet de tester l'application des droits.
+  html+='<div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;margin-bottom:16px">'
+    +'<div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Mon rôle sur ce projet</div>'
+    +'<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'
+      +'<select id="my-role" onchange="changeMyRole(this.value)" style="padding:7px 9px;border:1px solid var(--border2);border-radius:7px;font-size:12.5px;background:var(--panel);color:var(--text);outline:none;font-family:inherit">'
+        +Object.entries(ACCESS_RL).map(function(r){return '<option value="'+r[0]+'" '+(r[0]===currentAccessRole?'selected':'')+'>'+r[1]+'</option>';}).join('')
+      +'</select>'
+      +'<div style="display:flex;gap:12px;flex-wrap:wrap">'
+        +permLine(p.folders,'Dossiers')+permLine(p.items,'Documents')+permLine(p.archive,'Archiver / restaurer')+permLine(p.manageAccess,'Gérer les accès')
+      +'</div>'
+    +'</div></div>';
+
+  if(!can('manageAccess')){
+    html+='<div style="background:var(--amber-bg);border:1px solid var(--amber);border-radius:var(--r);padding:10px 14px;font-size:12px;color:var(--amber);margin-bottom:14px">Vous n\'avez pas les droits pour gérer les accès. La liste est en lecture seule.</div>';
+  }
+
+  html+='<div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Membres et rôles d\'accès</div>';
+
+  if(!members.length){
+    html+='<div style="font-size:12px;color:var(--text3);padding:8px 0">Aucun membre pour le moment. Ajoutez des intervenants dans « Membres & accès ».</div>';
+  }else{
+    html+='<div style="display:flex;flex-direction:column;gap:8px">'+members.map(function(m){
+      const cur=m.accessRole||'collaborateur';
+      const sel='<select onchange="setMemberAccess(\''+m.id+'\',this.value)" '+(can('manageAccess')?'':'disabled title="Vous n\'avez pas les droits pour cette action."')+' style="padding:6px 8px;border:1px solid var(--border2);border-radius:7px;font-size:12px;background:var(--panel);color:var(--text);outline:none;font-family:inherit'+(can('manageAccess')?'':';opacity:.6;cursor:not-allowed')+'">'
+        +Object.entries(ACCESS_RL).map(function(r){return '<option value="'+r[0]+'" '+(r[0]===cur?'selected':'')+'>'+r[1]+'</option>';}).join('')
+      +'</select>';
+      const rmBtn=permBtn('manageAccess','<svg class="ico ico-xs"><use href="#i-trash"/></svg>','removeAccessMember(\''+m.id+'\')','btn-sm btn-g','margin-left:6px;');
+      return '<div class="aud-card" style="display:flex;align-items:center;gap:10px;padding:10px 14px;border:1px solid var(--border);border-radius:var(--r)">'
+        +'<div class="av-sm" style="background:'+(m.color||'var(--blue-lt)')+';color:#fff;flex-shrink:0">'+e(m.ini||(m.name||'?').slice(0,2).toUpperCase())+'</div>'
+        +'<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+e(m.name||'Sans nom')+'</div>'
+        +'<div style="font-size:11px;color:var(--text3)">'+e(m.metier||m.ent||RL[m.role]||'')+'</div></div>'
+        +sel+rmBtn
       +'</div>';
     }).join('')+'</div>';
   }
-  document.getElementById('content').innerHTML=head+listHtml+'</div>';
-}
 
-/* ── actions dossiers ── */
-function openPVFolder(id){pvFolder=id;pvArch=false;renderMain();}
-function backPVFolders(){pvFolder=null;pvArch=false;renderMain();}
-function pvShowActive(){pvArch=false;renderMain();}
-function pvShowArch(){pvArch=true;renderMain();}
-function newPVFolder(){
-  pvEnsure(PROJ);
-  showModal('<h3>Nouveau sous-dossier</h3>'
-    +'<div class="fi"><label>Nom du sous-dossier</label><input id="nf-name" placeholder="Ex: Réception, Lot gros oeuvre…"></div>'
-    +'<div class="mo-foot"><button class="btn" onclick="closeModal()">Annuler</button><button class="btn btn-p" onclick="saveNewPVFolder()">Créer</button></div>');
+  html+='</div>';
+  document.getElementById('content').innerHTML=html;
 }
-function saveNewPVFolder(){
-  const name=(document.getElementById('nf-name')?.value||'').trim();if(!name)return;
-  PROJ.folders.push({id:'fld'+Date.now(),name:name});
-  savePROJS();closeModal();renderMain();toast('Sous-dossier créé');
+function changeMyRole(r){
+  setCurrentAccessRole(r);
+  if(PROJ)PROJ.myAccessRole=r;
+  savePROJS();renderSB();renderMain();
 }
-function renamePVFolder(){
-  const f=pvFolderById(PROJ,pvFolder);if(!f)return;
-  showModal('<h3>Renommer le sous-dossier</h3>'
-    +'<div class="fi"><label>Nom</label><input id="rf-name" value="'+e(f.name)+'"></div>'
-    +'<div class="mo-foot"><button class="btn" onclick="closeModal()">Annuler</button><button class="btn btn-p" onclick="saveRenamePVFolder()">Enregistrer</button></div>');
+function setMemberAccess(id,role){
+  if(!can('manageAccess'))return denyMsg();
+  const m=getMembresForProj(PROJ).find(function(x){return x.id===id;});if(!m)return;
+  m.accessRole=role;savePROJS();toast('Rôle mis à jour');
 }
-function saveRenamePVFolder(){
-  const f=pvFolderById(PROJ,pvFolder);if(!f)return;
-  const name=(document.getElementById('rf-name')?.value||'').trim();if(!name)return;
-  f.name=name;savePROJS();closeModal();renderMain();toast('Sous-dossier renommé');
-}
-function archivePVFolder(){
-  const f=pvFolderById(PROJ,pvFolder);if(!f)return;
-  if(PROJ.folders.length<=1){toast('Impossible d\'archiver le dernier dossier');return;}
-  // Archive le dossier = archive ses PV et le retire de la liste (données conservées).
-  PROJ.pv.forEach(function(v){if(v.folderId===f.id&&!v.archived){v.archived=true;v.archivedAt=new Date().toLocaleDateString('fr-FR');}});
-  PROJ.folders=PROJ.folders.filter(function(x){return x.id!==f.id;});
-  pvFolder=null;pvArch=false;savePROJS();renderMain();toast('Sous-dossier archivé');
-}
-
-/* ── actions PV ── */
-function newPV(){
-  if(!PROJ)return;pvEnsure(PROJ);
-  const fid=pvFolder||PROJ.folders[0].id;
-  const n=PROJ.pv.filter(function(v){return v.folderId===fid;}).length+1;
-  PROJ.pv.push({id:'pv'+Date.now(),titre:'Nouveau PV n°'+n,date:new Date().toLocaleDateString('fr-FR'),folderId:fid,archived:false});
-  savePROJS();renderSB();renderMain();toast('PV ajouté');
-}
-function archivePV(id){
-  const v=PROJ.pv.find(function(x){return x.id===id;});if(!v)return;
-  v.archived=true;v.archivedAt=new Date().toLocaleDateString('fr-FR');
-  savePROJS();renderMain();toast('PV archivé');
-}
-function restorePV(id){
-  const v=PROJ.pv.find(function(x){return x.id===id;});if(!v)return;
-  v.archived=false;v.archivedAt='';
-  savePROJS();renderMain();toast('PV restauré');
+function removeAccessMember(id){
+  if(!can('manageAccess'))return denyMsg();
+  const m=getMembresForProj(PROJ).find(function(x){return x.id===id;});if(!m)return;
+  // Sécurité : on retire seulement le rôle d'accès (on ne supprime pas le membre ni ses données).
+  m.accessRole='lecture';savePROJS();renderMain();toast('Accès réduit à « Lecture seule »');
 }
 
 /* ══ MEMBRES ══ */
@@ -1689,17 +2270,19 @@ function inviteMbr(){
 
 /* ══ PLU ══ */
 function renderPLU(){
-  setTB('arch','var(--blue)','Pré-étude PLU',(PROJ?.name||'')+' · Confiance 82%','Nouvelle analyse','search');
+  setTB('arch','var(--blue)','Pré-étude PLU',(PROJ?.name||''),'Nouvelle analyse','search');
   setTabs(null);
   document.getElementById('content').innerHTML=`<div class="pad">
+    <div style="font-size:12.5px;color:var(--text2);margin-bottom:10px;line-height:1.5">Synthèse réglementaire indicative — à vérifier auprès du service urbanisme.</div>
     <div style="background:var(--amber-bg);border:1px solid var(--amber);border-radius:var(--r);padding:9px 13px;margin-bottom:13px;font-size:12px;color:var(--amber);display:flex;align-items:center;gap:7px">
       <svg class="ico ico-sm"><use href="#i-warning"/></svg> Aide à la décision — non opposable juridiquement
     </div>
     <div style="background:var(--panel);border:1px solid var(--border);border-radius:var(--r);padding:11px 14px;margin-bottom:13px;display:flex;align-items:center;gap:11px">
-      <div style="flex:1"><div style="font-size:12.5px;font-weight:500"></div>
+      <div style="flex:1"><div style="font-size:12.5px;font-weight:500;margin-bottom:5px">Indice de confiance de l'analyse</div>
       <div class="prog-bar"><div class="prog-fill" style="width:82%;background:var(--green)"></div></div></div>
-      <span class="badge bgreen">Confiance 82%</span>
+      <span class="badge bgreen">82%</span>
     </div>
+    <div style="font-size:11px;color:var(--text3);margin-bottom:10px">Données de modèle (exemple) — identiques pour la démonstration.</div>
     <div class="plu-grid">${PLU_FIELDS.map(([k,v])=>`<div class="plu-f">
       <div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px">${k}</div>
       <div style="font-size:13px">${v}</div>
@@ -1730,6 +2313,14 @@ function saveSettings(){
 
 /* ══ MODAL / TOAST ══ */
 function showModal(html){document.getElementById('modal-root').innerHTML=`<div class="mo-ov" onclick="if(event.target===this)closeModal()"><div class="mo-box" onclick="event.stopPropagation()">${html}</div></div>`;}
+function showNotifs(){
+  showModal('<h3 style="display:flex;align-items:center;gap:8px"><svg class="ico ico-sm" style="color:var(--blue)"><use href="#i-bell"/></svg> Notifications</h3>'
+    +'<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px 16px;color:var(--text3)">'
+      +'<svg class="ico" style="width:30px;height:30px;color:var(--border2);margin-bottom:10px"><use href="#i-bell"/></svg>'
+      +'<div style="font-size:13.5px;color:var(--text2)">Aucune notification</div>'
+    +'</div>'
+    +'<div class="mo-foot"><button class="btn btn-p" onclick="closeModal()">Fermer</button></div>');
+}
 function closeModal(){document.getElementById('modal-root').innerHTML='';}
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.style.opacity='1';setTimeout(()=>t.style.opacity='0',2200);}
 
@@ -1762,8 +2353,8 @@ function renderInfo(){
         <div class="fi"><label>Avancement (%)</label><input type="number" id="inf-prog" min="0" max="100" value="${p.progress}"></div>
         <div class="fi"><label>Surface (m²)</label><input id="inf-surf" value="${e(p.surface?.replace(' m²','')||'')}"></div>
         <div class="fi"><label>Budget estimé</label><input id="inf-budget" value="${e(p.budget||'')}"></div>
-        <div class="fi"><label>Date de début</label><input type="date" id="inf-start" value="${toISO(p.start||'')}"></div>
-        <div class="fi"><label>Date de livraison</label><input type="date" id="inf-livr" value="${toISO(p.livraison||'')}"></div>
+        <div class="fi"><label>Date de début</label><input type="text" id="inf-start" value="${e(p.start||'')}" placeholder="jj/mm/aaaa"></div>
+        <div class="fi"><label>Date de livraison</label><input type="text" id="inf-livr" value="${e(p.livraison||'')}" placeholder="jj/mm/aaaa"></div>
       </div>
     </div>
 
@@ -1863,8 +2454,8 @@ function saveInfo(){
   const surf=document.getElementById('inf-surf')?.value?.trim();
   p.surface=surf?surf+' m²':p.surface;
   p.budget=document.getElementById('inf-budget')?.value?.trim()||p.budget;
-  const sv=document.getElementById('inf-start')?.value;if(sv)p.start=fromISO(sv);
-  const lv=document.getElementById('inf-livr')?.value;if(lv)p.livraison=fromISO(lv);
+  const sv=document.getElementById('inf-start')?.value;if(sv!=null)p.start=sv.trim();
+  const lv=document.getElementById('inf-livr')?.value;if(lv!=null)p.livraison=lv.trim();
   if(infoType)p.type=infoType;
   const ints=[];
   document.querySelectorAll('#inf-ints .chip.on').forEach(c=>{if(c.dataset.int)ints.push(c.dataset.int);});
@@ -1905,6 +2496,91 @@ function deleteProj(id){
 }
 
 /* ══ NEW PROJECT ══ */
+/* ══ PROJET DE DÉMONSTRATION (données neutres, pour tester tous les outils) ══ */
+function buildDemoProject(idSuffix){
+  const ts=idSuffix||Date.now();
+  const today=new Date().toLocaleDateString('fr-FR');
+  const demo={
+    id:'demo_'+ts,
+    name:'Chantier démo — Maison Test',
+    address:'1 rue de la Démo, 00000 Démoville',
+    client:'Client démo',
+    type:'maison',
+    ints:['Architecte','BET Structure'],
+    opts:{zone_sismique:false,zone_inondable:false,monument_historique:false},
+    phase:'Chantier',
+    color:'#5c3d1e',bg:'#f5ede6',
+    avs:['AD','BL','CM'],
+    budget:'250 000 €',surface:'140 m²',start:'01/2026',livraison:'12/2026',progress:45,
+    archived:false,
+    myAccessRole:'admin',
+    // Membres + rôles d'accès (pour tester la Gestion des accès)
+    membres:[
+      {id:'m1_'+ts,ini:'AD',name:'Alex Démo',email:'',ent:'Atelier démo',role:'project_admin',metier:'Architecte',color:'#5c3d1e',accessRole:'admin'},
+      {id:'m2_'+ts,ini:'BL',name:'Bea Lambda',email:'',ent:'BET Démo',role:'editor',metier:'Ingénieur structure',color:'#1a7a4a',accessRole:'architecte'},
+      {id:'m3_'+ts,ini:'CM',name:'Chris Muster',email:'',ent:'Entreprise démo',role:'external_contractor',metier:'Maçon',color:'#c47a00',accessRole:'collaborateur'},
+      {id:'m4_'+ts,ini:'DT',name:'Dana Test',email:'',ent:'Client',role:'client_viewer',metier:'Maître d\'ouvrage',color:'#6b3fa0',accessRole:'lecture'}
+    ],
+    // Plans : arborescence imbriquée + 1 PDF importé (visionneuse)
+    planFolders:[
+      {id:'pf1_'+ts,name:'01 - Gros oeuvre',children:[
+        {id:'pf2_'+ts,name:'NBR',children:[
+          {id:'pf3_'+ts,name:'02 - Gros oeuvre - 83 0925',children:[]}
+        ]}
+      ]},
+      {id:'pf4_'+ts,name:'02 - Second oeuvre',children:[]}
+    ],
+    // Sous-dossiers imbriqués par aire (Devis/Facture, Photos, PV) + actifs/archivés
+    areaFolders:{
+      contrats:[
+        {id:'fgen_contrats',name:'Général',parentId:null,sortOrder:0},
+        {id:'cf1_'+ts,name:'01 - Gros oeuvre',parentId:null,sortOrder:1},
+        {id:'cf2_'+ts,name:'NBR',parentId:'cf1_'+ts,sortOrder:0},
+        {id:'cf3_'+ts,name:'03 - Situation',parentId:'cf2_'+ts,sortOrder:0},
+        {id:'cf4_'+ts,name:'Ancien lot',parentId:null,sortOrder:2,archived:true,archivedAt:today}
+      ],
+      photos:[
+        {id:'fgen_photos',name:'Général',parentId:null,sortOrder:0},
+        {id:'ph1_'+ts,name:'Avant travaux',parentId:null,sortOrder:1}
+      ],
+      pv:[
+        {id:'fgen_pv',name:'Général',parentId:null,sortOrder:0},
+        {id:'pvf1_'+ts,name:'Réception',parentId:null,sortOrder:1}
+      ]
+    },
+    docs_data:{
+      plans:[
+        {id:'dpl1_'+ts,title:'Plan masse RDC',folder:'pf3_'+ts,v:1,size:'0,12 Mo',date:today,status:'issued',color:'#2d4ef5',type:'pdf',rem:'',tags:'',sigD:'',sigB:'',montant:'',variante:'',fileName:'plan_masse_rdc.pdf',mimeType:'application/pdf',fileUrl:SAMPLE_PDF,createdAt:new Date().toISOString()}
+      ],
+      contrats:[
+        {id:'dc1_'+ts,title:'Devis gros oeuvre',folderId:'cf3_'+ts,v:1,size:'0,12 Mo',date:today,status:'signed',color:'#c47a00',type:'pdf',rem:'',tags:'',sigD:today,sigB:'Alex Démo',montant:'120 000 €',variante:'',archived:false,fileName:'devis_gros_oeuvre.pdf',mimeType:'application/pdf',fileUrl:SAMPLE_PDF,createdAt:new Date().toISOString()},
+        {id:'dc2_'+ts,title:'Devis obsolète',folderId:'fgen_contrats',v:1,size:'0,12 Mo',date:today,status:'superseded',color:'#c47a00',type:'pdf',rem:'',tags:'',montant:'',variante:'',archived:true,archivedAt:today,fileName:'devis_obsolete.pdf',mimeType:'application/pdf',fileUrl:SAMPLE_PDF,createdAt:new Date().toISOString()}
+      ],
+      factures:[
+        {id:'df1_'+ts,title:'Facture acompte',folderId:'fgen_contrats',v:1,size:'0,12 Mo',date:today,status:'issued',color:'#c0392b',type:'pdf',rem:'',tags:'',montant:'24 000 €',variante:'',archived:false,fileName:'facture_acompte.pdf',mimeType:'application/pdf',fileUrl:SAMPLE_PDF,createdAt:new Date().toISOString()}
+      ],
+      photos:[
+        {id:'dph1_'+ts,title:'Vue façade',folderId:'ph1_'+ts,v:1,size:'0,05 Mo',date:today,status:'draft',color:'#1a7a4a',type:'img',rem:'',tags:'',archived:false,fileName:'vue_facade.png',mimeType:'image/png',fileUrl:SAMPLE_IMG,createdAt:new Date().toISOString()}
+      ],
+      admin:[]
+    },
+    pv:[
+      {id:'pv1_'+ts,titre:'PV de réception',date:today,folderId:'pvf1_'+ts,archived:false,fileName:'pv_reception.pdf',mimeType:'application/pdf',fileUrl:SAMPLE_PDF,createdAt:new Date().toISOString()},
+      {id:'pv2_'+ts,titre:'PV ancien',date:today,folderId:'fgen_pv',archived:true,archivedAt:today,fileName:'pv_ancien.pdf',mimeType:'application/pdf',fileUrl:SAMPLE_PDF,createdAt:new Date().toISOString()}
+    ]
+  };
+  return demo;
+}
+
+function loadDemoProject(){
+  const demo=buildDemoProject();
+  PROJS.push(demo);
+  PROJ_PLAN_FOLDERS[demo.id]=demo.planFolders; // miroir mémoire pour la vue Plans
+  savePROJS();
+  renderProjets();
+  toast('Projet de démonstration créé');
+}
+
 function openNewProj(){
   npType=null;
   const typeCards=PT.map(function(t){
@@ -1940,7 +2616,7 @@ function openNewProj(){
     +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">'
     +'<div class="fi"><label>Surface (m²)</label><input id="np-surf" placeholder="180"></div>'
     +'<div class="fi"><label>Budget estimé</label><input id="np-budget" placeholder="285 000 €"></div>'
-    +'<div class="fi"><label>Date de livraison</label><input type="date" id="np-livr"></div>'
+    +'<div class="fi"><label>Date de livraison</label><input type="text" id="np-livr" placeholder="jj/mm/aaaa"></div>'
     +'</div>'
     +'<div style="margin-bottom:12px">'
     +'<div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Intervenants</div>'
@@ -1975,7 +2651,7 @@ function createProj(){
   const surf=document.getElementById('np-surf')?.value?.trim()||'—';
   const budget=document.getElementById('np-budget')?.value?.trim()||'—';
   const livrRaw=document.getElementById('np-livr')?.value||'';
-  const livraison=livrRaw?fromISO(livrRaw):'—';
+  const livraison=livrRaw.trim()||'—';
 
   // Collect intervenants
   const ints=['Architecte'];
