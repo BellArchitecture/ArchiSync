@@ -828,6 +828,8 @@ function savePROJS(){
   }
   // Sauvegarde automatique différée vers le dossier connecté (anti-perte hors application).
   try{if(typeof BackupFS!=='undefined')BackupFS.schedule();}catch(e){}
+  // Synchronisation en ligne différée du projet courant (si connecté ; jamais la démo).
+  try{if(!_supaSuppressSync&&typeof isSignedIn==='function'&&isSignedIn()&&PROJ)supaQueueSync(PROJ);}catch(e){}
   return true;
 }
 function showSaveFailureModal(){
@@ -852,10 +854,8 @@ function loadPROJS(){
       const parsed=JSON.parse(saved);
       if(parsed&&parsed.length){
         PROJS=parsed;
-        // Migration : garantit que chaque membre a perms+dossiers valides
-        PROJS.forEach(function(p){(p.membres||[]).forEach(normalizeMbr);});
-        // Migration : journal d'audit par projet (vide pour les projets existants).
-        PROJS.forEach(function(p){if(!Array.isArray(p.audit))p.audit=[];});
+        // Migration / robustesse : back-fill des champs attendus (avs, docs_data, membres…).
+        PROJS.forEach(function(p){try{normalizeProject(p);}catch(e){}});
         return;
       }
     }
@@ -1048,6 +1048,8 @@ function setBlob(id,url){
   BLOBS[id]=url;
   // Un fichier a changé : invalide le cache d'octets de la sauvegarde automatique.
   try{if(typeof BackupFS!=='undefined'&&BackupFS.markBlobsDirty)BackupFS.markBlobsDirty();}catch(e){}
+  // Envoi différé vers le stockage en ligne (si connecté et projet synchronisé).
+  try{if(typeof supaQueueBlobUpload==='function')supaQueueBlobUpload(id);}catch(e){}
   try{
     return BlobDB.put(id,url).then(function(okWrite){
       if(!okWrite&&BlobDB.available()){
@@ -1303,7 +1305,7 @@ function renderSB(){
     /* Vue globale: show all projects as list */
     html+=`<div class="sb-proj-list">
       <div class="sb-proj-hd">Projets
-        <button class="btn btn-g" style="padding:2px 6px;font-size:10px" onclick="openNewProj()">+ Nouveau</button>
+        ${_companyMode?'':'<button class="btn btn-g" style="padding:2px 6px;font-size:10px" onclick="openNewProj()">+ Nouveau</button>'}
       </div>`;
     PROJS.forEach(p=>{
       html+=`<div class="proj-item ${PROJ?.id===p.id?'active-proj':''}" onclick="openProj('${p.id}')" style="${p.archived?'opacity:.5':''}">
@@ -1560,7 +1562,7 @@ function renderProjets(){
   const cards=PROJS.map(function(p){
     const archBanner=p.archived
       ?'<div style="background:var(--amber-bg);border:1px solid var(--amber);border-radius:7px;padding:6px 10px;margin-bottom:12px;font-size:11px;color:var(--amber);display:flex;align-items:center;gap:6px"><svg class="ico ico-sm"><use href="#i-archive"/></svg> Projet archivé — <button onclick="event.stopPropagation();unarchiveProj(\''+p.id+'\')" style="background:none;border:none;cursor:pointer;color:var(--blue);font-size:11px;font-family:inherit;padding:0;text-decoration:underline">Désarchiver</button></div>':'';
-    const avs=p.avs.map(function(a,i){return '<div class="av-sm" title="'+e(a)+'" style="background:'+AVC_BG[i%6]+';color:'+AVC_FG[i%6]+';z-index:'+(10-i)+'">'+a+'</div>';}).join('');
+    const avs=(p.avs||[]).map(function(a,i){return '<div class="av-sm" title="'+e(a)+'" style="background:'+AVC_BG[i%6]+';color:'+AVC_FG[i%6]+';z-index:'+(10-i)+'">'+a+'</div>';}).join('');
     return '<div class="pcard '+(PROJ&&PROJ.id===p.id?'activep':'')+(isDemoProj(p)?' pcard-demo':'')+'"'
       +' role="button" tabindex="0"'
       +' aria-label="Ouvrir le projet '+e(p.name)+'"'
@@ -1623,8 +1625,8 @@ function renderProjets(){
       +'<div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:6px">Aucun projet pour l\'instant</div>'
       +'<div style="font-size:12.5px;color:var(--text3);max-width:320px;line-height:1.5;margin-bottom:18px">Créez votre premier projet pour commencer, ou chargez un projet de démonstration pour explorer les outils.</div>'
       +'<div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center">'
-        +'<button class="btn btn-p btn-sm" onclick="openNewProj()"><svg class="ico ico-sm"><use href="#i-plus"/></svg> Nouveau projet</button>'
-        +'<button class="btn btn-g btn-sm" onclick="loadDemoProject()"><svg class="ico ico-sm"><use href="#i-sparkles"/></svg> Projet de démonstration</button>'
+        +(_companyMode?'<div style="font-size:12px;color:var(--text3)">Aucun projet partagé avec votre accès pour l\'instant.</div>':('<button class="btn btn-p btn-sm" onclick="openNewProj()"><svg class="ico ico-sm"><use href="#i-plus"/></svg> Nouveau projet</button>'
+        +'<button class="btn btn-g btn-sm" onclick="loadDemoProject()"><svg class="ico ico-sm"><use href="#i-sparkles"/></svg> Projet de démonstration</button>'))
       +'</div>'
     +'</div>';
 
@@ -1645,10 +1647,10 @@ function renderProjets(){
         +'</div>'
         +'<div class="notif-w"><button class="btn btn-g btn-sm" id="notif-btn-pj" aria-label="Notifications" onclick="showNotifs()"><svg class="ico" style="width:15px;height:15px" aria-hidden="true"><use href="#i-bell"/></svg></button></div>'
         +'<div class="notif-w"><button class="btn btn-g btn-sm" aria-label="Rechercher" onclick="openSearch()" title="Rechercher"><svg class="ico" style="width:15px;height:15px" aria-hidden="true"><use href="#i-search"/></svg></button></div>'
-        +(PROJS.some(function(p){return isDemoProj(p);})?'':'<button class="btn btn-g btn-sm" onclick="loadDemoProject()"><svg class="ico ico-sm"><use href="#i-sparkles"/></svg> Projet de démonstration</button>')
+        +((_companyMode||PROJS.some(function(p){return isDemoProj(p);}))?'':'<button class="btn btn-g btn-sm" onclick="loadDemoProject()"><svg class="ico ico-sm"><use href="#i-sparkles"/></svg> Projet de démonstration</button>')
         +'<button class="btn btn-g btn-sm" onclick="exportData()" title="Télécharge un fichier de sauvegarde JSON (aucune sauvegarde cloud)"><svg class="ico ico-sm"><use href="#i-download"/></svg> Exporter une sauvegarde</button>'
         +'<button class="btn btn-g btn-sm" onclick="openImport()" title="Importer une sauvegarde JSON"><svg class="ico ico-sm"><use href="#i-upload"/></svg> Importer</button>'
-        +'<button class="btn btn-p btn-sm" onclick="openNewProj()"><svg class="ico ico-sm"><use href="#i-plus"/></svg> Nouveau projet</button>'
+        +(_companyMode?'':'<button class="btn btn-p btn-sm" onclick="openNewProj()"><svg class="ico ico-sm"><use href="#i-plus"/></svg> Nouveau projet</button>')
       +'</div>'
       +'<div style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding-right:2px">'
         +'<div id="proj-banner-host" style="display:flex;flex-direction:column;gap:10px"></div>'
@@ -5080,6 +5082,12 @@ function viewDoc(it){
     });
     return;
   }
+  // Absent localement mais connecté : tente de récupérer les octets depuis le stockage en ligne.
+  if(!url&&it.id&&typeof isSignedIn==='function'&&isSignedIn()){
+    renderViewerLoading(it,name,kind);
+    supaDownloadBlob(it.id).then(function(){ if(_lastViewedDoc===it)renderViewerBody(it,name,kind); });
+    return;
+  }
   renderViewerBody(it,name,kind);
 }
 // Affiche un état de chargement pendant la récupération des octets depuis IndexedDB.
@@ -5554,9 +5562,12 @@ function renderMbrs(){
     +'<div style="flex:1;min-width:220px;font-size:12px;color:var(--text2);line-height:1.5">'
       +'Gérez ici qui participe au projet et ce que chacun peut faire : coordonnées, rôle, droits applicatifs et accès par dossier.'
     +'</div>'
-    +'<button class="btn btn-sm btn-g" onclick="openRolesManager()" title="Renommer, ajouter ou supprimer des rôles de projet" style="flex-shrink:0">'
+    +'<div style="display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap">'
+    +(can('manageAccess')&&typeof isSignedIn==='function'&&isSignedIn()?'<button class="btn btn-sm btn-g" onclick="openAccessCodesModal()" title="Inviter une entreprise par code (accès en ligne, lecture seule)"><svg class="ico ico-xs" style="margin-right:3px"><use href="#i-lock"/></svg>Codes d\'accès</button>':'')
+    +'<button class="btn btn-sm btn-g" onclick="openRolesManager()" title="Renommer, ajouter ou supprimer des rôles de projet">'
       +'<svg class="ico ico-xs"><use href="#i-settings"/></svg> Gérer les rôles'
     +'</button>'
+    +'</div>'
   +'</div>';
   html+='<div style="background:var(--amber-bg);border:1px solid var(--amber);border-radius:var(--r);padding:10px 12px;margin-bottom:16px;font-size:11.5px;color:var(--text2);line-height:1.5;display:flex;gap:8px;align-items:flex-start">'
     +'<svg class="ico ico-sm" style="color:var(--amber);flex-shrink:0;margin-top:1px"><use href="#i-lock"/></svg>'
@@ -7195,6 +7206,7 @@ function loadDemoProject(){
 }
 
 function openNewProj(){
+  if(typeof _companyMode!=='undefined'&&_companyMode){toast('Votre compte est un accès entreprise : vous ne pouvez pas créer de projets.','info');return;}
   npType=null;
   const typeCards=PT.map(function(t){
     return '<div class="tc-card" style="padding:9px 6px" onclick="selNPType(\''+t.id+'\',this)">'
@@ -8070,8 +8082,16 @@ function supaClient(){
 function supaInit(){
   if(!supaConfigured())return;
   supaClient().then(function(c){
-    c.auth.onAuthStateChange(function(_ev,session){_supaUser=session?session.user:null;updateAuthUI();});
-    return c.auth.getSession().then(function(r){_supaUser=(r&&r.data&&r.data.session)?r.data.session.user:null;updateAuthUI();});
+    c.auth.onAuthStateChange(function(_ev,session){
+      var was=!!_supaUser; _supaUser=session?session.user:null; updateAuthUI();
+      // À la connexion, charge les projets en ligne (une fois).
+      if(_supaUser&&(!was||!_sbProjectsLoaded)){supaLoadProjects();}
+      if(!_supaUser)_sbProjectsLoaded=false;
+    });
+    return c.auth.getSession().then(function(r){
+      _supaUser=(r&&r.data&&r.data.session)?r.data.session.user:null; updateAuthUI();
+      if(_supaUser)return supaLoadProjects();
+    });
   }).catch(function(){/* hors-ligne ou CDN injoignable : on reste en local */});
 }
 function authName(){if(!_supaUser)return'';var md=_supaUser.user_metadata||{};return md.display_name||_supaUser.email||'Compte';}
@@ -8118,8 +8138,17 @@ function _authField(id,label,type,ph){return '<label style="display:flex;flex-di
 function renderAuthModal(){
   if(!supaConfigured()){toastErr('Aucune configuration en ligne.');return;}
   if(isSignedIn()){
+    var nCloud=PROJS.filter(function(p){return p&&p._sbId;}).length;
+    var nLocal=PROJS.filter(function(p){return p&&!p._sbId&&!isDemoProj(p);}).length;
     showModal('<h3 style="display:flex;align-items:center;gap:8px"><svg class="ico ico-sm" style="color:var(--green)" aria-hidden="true"><use href="#i-check"/></svg>Compte en ligne</h3>'
-      +'<div style="font-size:12.5px;color:var(--text2);line-height:1.55;margin-bottom:12px">Connecté en tant que <strong>'+e(authName())+'</strong>.<br><span style="color:var(--text3);font-size:11.5px">La synchronisation des projets (Phase 2) sera activée prochainement. Pour l\'instant, vos données restent locales.</span></div>'
+      +'<div style="font-size:12.5px;color:var(--text2);line-height:1.55;margin-bottom:10px">Connecté en tant que <strong>'+e(authName())+'</strong>.</div>'
+      +'<div style="display:flex;gap:8px;margin-bottom:10px">'
+        +'<div style="flex:1;border:1px solid var(--border);border-radius:8px;padding:8px 10px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.04em">En ligne</div><div style="font-size:17px;font-weight:700">'+nCloud+'</div></div>'
+        +'<div style="flex:1;border:1px solid var(--border);border-radius:8px;padding:8px 10px"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.04em">Locaux non synchro.</div><div style="font-size:17px;font-weight:700">'+nLocal+'</div></div>'
+      +'</div>'
+      +'<div id="sync-stamp" style="font-size:11px;color:var(--text3);margin-bottom:10px;min-height:14px"></div>'
+      +(nLocal?('<button class="btn btn-p" style="width:100%;justify-content:center;margin-bottom:6px" onclick="supaImportLocal()"><svg class="ico ico-xs" style="margin-right:4px" aria-hidden="true"><use href="#i-upload"/></svg>Importer mes '+nLocal+' projet(s) local(aux) en ligne</button>'):'')
+      +'<div style="font-size:11px;color:var(--text3);line-height:1.45;margin-bottom:4px">Vos modifications sont enregistrées en ligne automatiquement. Le stockage local reste un cache hors-ligne ; l\'export JSON reste une sauvegarde.</div>'
       +'<div class="mo-foot"><button class="btn" onclick="closeModal()">Fermer</button><button class="btn" style="color:var(--red)" onclick="supaSignOut()">Se déconnecter</button></div>');
     return;
   }
@@ -8142,6 +8171,201 @@ function renderAuthModal(){
       +tabBtn('login','Connexion')+tabBtn('signup','Architecte')+tabBtn('code','Entreprise (code)')
     +'</div>'+body
     +'<div class="mo-foot" style="margin-top:14px"><button class="btn" onclick="closeModal()">Annuler</button></div>');
+}
+
+/* ══ SYNCHRONISATION DES PROJETS (SUPABASE) — Phase 2 ════════════════════════
+   Écriture via la fonction save_project (SECURITY DEFINER, contrôle serveur).
+   Lecture via la policy RLS (select). Chaque projet synchronisé porte _sbId
+   (uuid de la ligne). Le local reste le cache hors-ligne ; l'export JSON reste
+   une sauvegarde. Le projet de démonstration n'est jamais envoyé. */
+var _supaSuppressSync=false, _sbSyncTimers={}, _sbProjectsLoaded=false, _companyMode=false, _supaUid=null;
+function projectCloudData(p){var c=JSON.parse(JSON.stringify(p));delete c._sbId;delete c._sbUpdated;return c;}
+// Back-fill des champs attendus par l'UI : un projet venu du cloud (ou minimal) ne
+// doit jamais faire planter le rendu sur un champ manquant.
+function normalizeProject(p){
+  if(!p||typeof p!=='object')return p;
+  if(!Array.isArray(p.avs))p.avs=[];
+  if(!Array.isArray(p.membres))p.membres=[];
+  if(!Array.isArray(p.audit))p.audit=[];
+  if(!Array.isArray(p.pv))p.pv=[];
+  if(!Array.isArray(p.suivi))p.suivi=[];
+  if(!Array.isArray(p.ints))p.ints=[];
+  if(!Array.isArray(p.milestones))p.milestones=[];
+  if(!p.opts||typeof p.opts!=='object')p.opts={};
+  if(!p.docs_data||typeof p.docs_data!=='object')p.docs_data={};
+  ['plans','contrats','factures','photos','admin'].forEach(function(k){if(!Array.isArray(p.docs_data[k]))p.docs_data[k]=[];});
+  if(!p.name)p.name='Projet';
+  if(!p.phase)p.phase='Études';
+  if(!p.type)p.type='maison';
+  if(!p.color)p.color='#5c3d1e';
+  if(!p.bg)p.bg='#f5ede6';
+  try{(p.membres||[]).forEach(function(m){normalizeMbr(m);});}catch(e){}
+  // avs (initiales pour la pile d'avatars) dérivées des membres si absentes.
+  if(!p.avs.length&&p.membres.length)p.avs=p.membres.slice(0,3).map(function(m){return m.ini||((m.name||'?')[0]||'?').toUpperCase();});
+  return p;
+}
+function supaLoadProjects(){
+  if(!isSignedIn())return Promise.resolve();
+  var C=null,roleByPid={};
+  return supaClient().then(function(c){C=c; _supaUid=_supaUser?_supaUser.id:null;
+    // Profil (mode entreprise) + rôles d'accès par projet, en parallèle des projets.
+    return Promise.all([
+      c.from('projects').select('id,name,data,updated_at,owner'),
+      c.from('project_members').select('project_id,access_role'),
+      c.from('profiles').select('account_type,can_create_projects')
+    ]);
+  }).then(function(rs){
+     var pr=rs[0], mem=rs[1], prof=rs[2];
+     if(pr.error)throw pr.error;
+     (mem.data||[]).forEach(function(m){roleByPid[m.project_id]=m.access_role;});
+     _companyMode = !!(prof.data&&prof.data[0]&&prof.data[0].account_type==='company');
+     (pr.data||[]).forEach(function(row){
+       var data=row.data||{}; if(!data.id)data.id=row.id; data._sbId=row.id; data._sbUpdated=row.updated_at;
+       // Rôle effectif : propriétaire => admin ; sinon rôle d'adhésion (défaut lecture).
+       data.myAccessRole = (row.owner===_supaUid) ? 'admin' : (roleByPid[row.id] || 'lecture');
+       normalizeProject(data);
+       var i=PROJS.findIndex(function(p){return (p._sbId&&p._sbId===row.id)||(p.id&&p.id===data.id);});
+       if(i>=0)PROJS[i]=data; else PROJS.push(data);
+       if(data.planFolders)PROJ_PLAN_FOLDERS[data.id]=data.planFolders;
+     });
+     // En mode entreprise : on retire le projet de démonstration (l'entreprise ne voit que son projet).
+     if(_companyMode){ for(var k=PROJS.length-1;k>=0;k--){ if(isDemoProj(PROJS[k]))PROJS.splice(k,1); } }
+     _sbProjectsLoaded=true;
+     _supaSuppressSync=true; try{savePROJS();}finally{_supaSuppressSync=false;}
+     renderSB();renderMain();updateAuthUI();
+     return (pr.data||[]).length;
+   }).catch(function(e){toastErr('Chargement en ligne impossible : '+(e&&e.message?e.message:'erreur'));});
+}
+function supaPushProject(p){
+  if(!isSignedIn()||!p||isDemoProj(p))return Promise.resolve(false);
+  return supaClient().then(function(c){return c.rpc('save_project',{p_id:p._sbId||null,p_name:p.name||'Projet',p_data:projectCloudData(p)});})
+   .then(function(r){
+     if(r.error)throw r.error;
+     if(r.data){p._sbId=r.data.id;p._sbUpdated=r.data.updated_at;_supaSuppressSync=true;try{savePROJS();}finally{_supaSuppressSync=false;}}
+     try{supaUploadProjectBlobs(p);}catch(e){} // synchronise aussi les octets des fichiers
+     _supaSetSyncState('ok');return true;
+   }).catch(function(e){_supaSetSyncState('err');return false;});
+}
+function supaQueueSync(p){
+  if(!isSignedIn()||!p||isDemoProj(p))return;
+  var key=p.id; if(_sbSyncTimers[key])clearTimeout(_sbSyncTimers[key]);
+  _supaSetSyncState('pending');
+  _sbSyncTimers[key]=setTimeout(function(){delete _sbSyncTimers[key];supaPushProject(p);},2500);
+}
+function supaImportLocal(){
+  if(!isSignedIn()){toastErr('Connectez-vous d\'abord.');return;}
+  var locals=PROJS.filter(function(p){return p&&!p._sbId&&!isDemoProj(p);});
+  if(!locals.length){toast('Aucun projet local à importer (déjà synchronisés ou démo).');return;}
+  toast('Import de '+locals.length+' projet(s)…');
+  var done=0,fail=0;
+  Promise.all(locals.map(function(p){return supaPushProject(p).then(function(ok){ok?done++:fail++;});}))
+   .then(function(){toast(done+' projet(s) importé(s) en ligne'+(fail?(' · '+fail+' échec(s)'):''));if(_supaUser)openAuthModal('account');});
+}
+function _supaSetSyncState(s){try{var el=document.getElementById('sync-stamp');if(el)el.textContent=(s==='ok'?'Synchronisé ✓':(s==='pending'?'Synchronisation…':(s==='err'?'Échec de synchro (réessai au prochain enregistrement)':'')));}catch(e){}}
+
+/* ── Codes d'accès entreprise (Phase 4, côté propriétaire) ──────────────────── */
+function _genAccessCode(){var al='ABCDEFGHJKMNPQRSTUVWXYZ23456789';function blk(){var s='';for(var i=0;i<4;i++)s+=al[Math.floor(Math.random()*al.length)];return s;}return blk()+'-'+blk();}
+function supaLoadAccessCodes(){
+  if(!isSignedIn()||!PROJ||!PROJ._sbId)return Promise.resolve([]);
+  return supaClient().then(function(c){return c.from('access_codes').select('code,access_role,email,used_by,used_at,created_at').eq('project_id',PROJ._sbId);})
+   .then(function(r){return r.error?[]:(r.data||[]);}).catch(function(){return [];});
+}
+function supaCreateAccessCode(role){
+  if(!isSignedIn()){toastErr('Connectez-vous en ligne.');return;}
+  if(!PROJ||!PROJ._sbId){toastErr('Synchronisez d\'abord ce projet en ligne (Compte en ligne → Importer).');return;}
+  var code=_genAccessCode();
+  var uid=_supaUid||(_supaUser&&_supaUser.id);
+  supaClient().then(function(c){return c.from('access_codes').insert({code:code,project_id:PROJ._sbId,access_role:role||'lecture',created_by:uid});})
+   .then(function(r){if(r.error)throw r.error;toast('Code créé : '+code);_renderAccessCodes();})
+   .catch(function(e){toastErr('Création du code impossible : '+(e&&e.message?e.message:'erreur'));});
+}
+function supaRevokeAccessCode(code){
+  supaClient().then(function(c){return c.from('access_codes').delete().eq('code',code);})
+   .then(function(r){if(r.error)throw r.error;toast('Code révoqué');_renderAccessCodes();})
+   .catch(function(){toastErr('Révocation impossible.');});
+}
+function openAccessCodesModal(){
+  if(!isSignedIn()){toastErr('Connectez-vous en ligne (pastille « Local » → Compte en ligne) pour gérer les codes.');return;}
+  if(!PROJ||!PROJ._sbId){toastErr('Ce projet n\'est pas encore en ligne. Importez-le : Compte en ligne → « Importer mes projets locaux ».');return;}
+  showModal('<h3 style="display:flex;align-items:center;gap:8px"><svg class="ico ico-sm" style="color:var(--blue)" aria-hidden="true"><use href="#i-lock"/></svg>Codes d\'accès entreprise</h3>'
+    +'<div id="ac-host" style="min-height:60px">Chargement…</div>'
+    +'<div class="mo-foot" style="margin-top:12px"><button class="btn" onclick="closeModal()">Fermer</button></div>');
+  _renderAccessCodes();
+}
+function _renderAccessCodes(){
+  var host=document.getElementById('ac-host'); if(!host)return;
+  supaLoadAccessCodes().then(function(codes){
+    host=document.getElementById('ac-host'); if(!host)return;
+    var rows=codes.length?codes.map(function(c){
+      var used=!!c.used_by;
+      return '<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px">'
+        +'<div style="flex:1;min-width:0"><div style="font-family:ui-monospace,monospace;font-weight:700;font-size:15px;letter-spacing:1.5px">'+e(c.code)+'</div>'
+        +'<div style="font-size:11px;color:var(--text3)">'+e((ACCESS_RL&&ACCESS_RL[c.access_role])||c.access_role)+' · '+(used?'<span style="color:var(--green)">utilisé</span>':'non utilisé')+'</div></div>'
+        +'<button class="btn btn-g btn-sm" onclick="(navigator.clipboard&&navigator.clipboard.writeText(\''+e(jsq(c.code))+'\'));toast(\'Code copié\')">Copier</button>'
+        +'<button class="btn btn-g btn-sm" style="color:var(--red)" onclick="supaRevokeAccessCode(\''+e(jsq(c.code))+'\')" title="Révoquer">'+ico('trash','ico-xs')+'</button>'
+      +'</div>';
+    }).join(''):'<div style="font-size:12px;color:var(--text3);padding:6px 0 10px">Aucun code pour l\'instant.</div>';
+    host.innerHTML='<div style="font-size:11.5px;color:var(--text3);line-height:1.5;margin-bottom:10px">Donnez un code à une entreprise. Elle créera un compte via l\'onglet « Entreprise (code) » et accédera à <strong>ce projet uniquement, en lecture seule</strong>.</div>'
+      +'<button class="btn btn-p btn-sm" style="margin-bottom:12px" onclick="supaCreateAccessCode(\'lecture\')"><svg class="ico ico-xs" style="margin-right:4px" aria-hidden="true"><use href="#i-plus"/></svg>Générer un code (lecture seule)</button>'
+      +rows;
+  });
+}
+
+/* ══ FICHIERS → SUPABASE STORAGE — Phase 3 ════════════════════════════════════
+   Les octets (PDF/photos) sont stockés dans le bucket 'project-files' au chemin
+   {sbProjectId}/{docId}. IndexedDB reste le cache principal ; l'envoi est « best
+   effort » (un échec ne casse rien, le fichier reste local) ; le téléchargement
+   n'a lieu qu'en cas d'absence locale (ex. nouvel appareil). */
+var _sbBlobUploaded={}, _sbBlobQueue=[], _sbUploadRunning=false, _supaSuppressBlobUp=false;
+// Résout l'_sbId du projet propriétaire d'un blob (doc / pv / pdf de suivi).
+function _blobProjectSbId(blobId){
+  for(var i=0;i<PROJS.length;i++){var p=PROJS[i];if(!p)continue;
+    var d=p.docs_data||{},areas=['plans','contrats','factures','photos','admin'];
+    for(var a=0;a<areas.length;a++){var arr=d[areas[a]]||[];for(var j=0;j<arr.length;j++){if(arr[j]&&arr[j].id===blobId)return p._sbId||null;}}
+    var pv=p.pv||[];for(var k=0;k<pv.length;k++){if(pv[k]&&pv[k].id===blobId)return p._sbId||null;}
+    var sv=p.suivi||[];for(var s=0;s<sv.length;s++){var dv=sv[s].devis||[];for(var t=0;t<dv.length;t++){if(dv[t].devisPdf&&dv[t].devisPdf.blobId===blobId)return p._sbId||null;var fa=dv[t].factures||[];for(var u=0;u<fa.length;u++){if(fa[u].facturePdf&&fa[u].facturePdf.blobId===blobId)return p._sbId||null;}}}
+  }
+  return null;
+}
+function supaQueueBlobUpload(blobId){
+  if(!isSignedIn()||!blobId||_supaSuppressBlobUp||_sbBlobUploaded[blobId])return;
+  if(!_blobProjectSbId(blobId))return; // projet non synchronisé : réessai à la synchro projet
+  if(_sbBlobQueue.indexOf(blobId)<0)_sbBlobQueue.push(blobId);
+  _supaRunBlobQueue();
+}
+function _supaRunBlobQueue(){
+  if(_sbUploadRunning||!_sbBlobQueue.length)return;
+  _sbUploadRunning=true; var blobId=_sbBlobQueue.shift();
+  supaUploadBlob(blobId).then(function(){_sbUploadRunning=false;_supaRunBlobQueue();},function(){_sbUploadRunning=false;_supaRunBlobQueue();});
+}
+function supaUploadBlob(blobId){
+  var sbId=_blobProjectSbId(blobId); if(!sbId)return Promise.resolve(false);
+  var getUrl=BLOBS[blobId]?Promise.resolve(BLOBS[blobId]):((BlobDB.has&&BlobDB.has(blobId))?BlobDB.get(blobId):Promise.resolve(null));
+  return getUrl.then(function(dataUrl){
+    if(!dataUrl)return false;
+    return fetch(dataUrl).then(function(r){return r.blob();}).then(function(blob){
+      return supaClient().then(function(c){return c.storage.from('project-files').upload(sbId+'/'+blobId,blob,{upsert:true,contentType:blob.type||'application/octet-stream'});});
+    }).then(function(r){if(r.error)throw r.error;_sbBlobUploaded[blobId]=true;return true;});
+  }).catch(function(){return false;});
+}
+function supaDownloadBlob(blobId){
+  var sbId=_blobProjectSbId(blobId); if(!sbId)return Promise.resolve(null);
+  return supaClient().then(function(c){return c.storage.from('project-files').download(sbId+'/'+blobId);})
+   .then(function(r){ if(r.error||!r.data)return null;
+     return new Promise(function(res){var fr=new FileReader();fr.onload=function(){res(fr.result);};fr.onerror=function(){res(null);};fr.readAsDataURL(r.data);});
+   }).then(function(dataUrl){
+     if(dataUrl){_supaSuppressBlobUp=true;BLOBS[blobId]=dataUrl;try{BlobDB.put(blobId,dataUrl);}catch(e){}_supaSuppressBlobUp=false;_sbBlobUploaded[blobId]=true;}
+     return dataUrl;
+   }).catch(function(){return null;});
+}
+// Envoie en arrière-plan tous les octets d'un projet (après import/synchro).
+function supaUploadProjectBlobs(p){
+  if(!isSignedIn()||!p||!p._sbId||isDemoProj(p))return;
+  var ids=[],d=p.docs_data||{};
+  ['plans','contrats','factures','photos','admin'].forEach(function(a){(d[a]||[]).forEach(function(it){if(it&&it.id)ids.push(it.id);});});
+  (p.pv||[]).forEach(function(it){if(it&&it.id)ids.push(it.id);});
+  (p.suivi||[]).forEach(function(g){(g.devis||[]).forEach(function(dv){if(dv.devisPdf&&dv.devisPdf.blobId)ids.push(dv.devisPdf.blobId);(dv.factures||[]).forEach(function(f){if(f.facturePdf&&f.facturePdf.blobId)ids.push(f.facturePdf.blobId);});});});
+  ids.forEach(supaQueueBlobUpload);
 }
 
 /* ══ INIT ══ */
