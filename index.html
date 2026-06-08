@@ -16,7 +16,7 @@
   --blue:#5c3d1e;--blue-bg:#f5ede6;--blue-lt:#e8d5c4;  /* couleur marque / accent UI */
   --accent-blue:#5c3d1e;                                 /* unifié sur le brun de marque (icônes Plans/PDF) */
   --green:#1a7a4a;--green-bg:#e8f5ee;
-  --amber:#c47a00;--amber-bg:#fef3d8;
+  --amber:#c47a00;--amber-bg:#fef3d8;--amber-text:#8a5800; /* amber lisible (AA) sur blanc et sur --amber-bg */
   --red:#c0392b;--red-bg:#fdecea;
   --purple:#6b3fa0;--purple-bg:#f0ebfa;
   --r:10px;--r2:14px;
@@ -550,7 +550,6 @@ body{background:var(--bg);overflow:hidden;height:100vh;font-family:inherit}
 <script>
 /* ══ helper: build SVG use tag ══ */
 function ico(id,cls=''){return`<svg class="ico ${cls}" aria-hidden="true"><use href="#i-${id}"/></svg>`;}
-function icoC(id,col,cls=''){return`<svg class="ico ${cls}" style="color:${col}" aria-hidden="true"><use href="#i-${id}"/></svg>`;}
 
 /* ══ DATA ══ */
 const PT=[
@@ -720,7 +719,6 @@ function permBtn(action,html,onclick,extraCls,extraStyle,ariaLabel){
   const aria=ariaLabel?' aria-label="'+ariaLabel+'"':'';
   return '<button class="'+cls+'"'+aria+' onclick="'+handler+'" title="'+title+'" style="'+(extraStyle||'')+(ok?'':'opacity:.5;cursor:not-allowed')+'">'+html+'</button>';
 }
-const METIERS=[];
 const PI_IC={voir:'eye',dl:'download',import:'upload',publier:'check',contrats:'invoice',admin:'settings'};
 const PI_LB={voir:'Voir',dl:'Télécharger',import:'Importer',publier:'Publier',contrats:'Contrats',admin:'Admin'};
 // Libellés complets affichés au survol (infobulle) de chaque icône de permission.
@@ -829,9 +827,20 @@ function savePROJS(){
   // Sauvegarde automatique différée vers le dossier connecté (anti-perte hors application).
   try{if(typeof BackupFS!=='undefined')BackupFS.schedule();}catch(e){}
   // Synchronisation en ligne différée du projet courant (si connecté ; jamais la démo).
-  try{if(!_supaSuppressSync&&typeof isSignedIn==='function'&&isSignedIn()&&PROJ)supaQueueSync(PROJ);}catch(e){}
+  try{if(!_supaSuppressSync&&typeof isSignedIn==='function'&&isSignedIn()&&PROJ)supaQueueSync(PROJ);}catch(e){console.warn('[savePROJS] supaQueueSync',e);}
   return true;
 }
+// Persistance différée pour les champs texte tapés au kilomètre (CCTP, suivi, pré-chiffrage) :
+// la mutation en mémoire est immédiate, seul l'enregistrement localStorage est groupé (~400 ms).
+// Toujours vidé avant toute navigation, perte de focus ou fermeture → aucune saisie n'est perdue.
+var _saveLaterTimer=null;
+function saveLater(){ if(_saveLaterTimer)return; _saveLaterTimer=setTimeout(function(){_saveLaterTimer=null;savePROJS();},400); }
+function flushSave(){ if(_saveLaterTimer){clearTimeout(_saveLaterTimer);_saveLaterTimer=null;return savePROJS();} return true; }
+try{
+  window.addEventListener('beforeunload',flushSave);
+  window.addEventListener('pagehide',flushSave);
+  document.addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden')flushSave();});
+}catch(e){}
 function showSaveFailureModal(){
   try{
     showModal('<h3 style="color:var(--red);display:flex;align-items:center;gap:8px"><svg class="ico ico-sm" style="color:var(--red)"><use href="#i-alert"/></svg>Enregistrement impossible</h3>'
@@ -855,7 +864,7 @@ function loadPROJS(){
       if(parsed&&parsed.length){
         PROJS=parsed;
         // Migration / robustesse : back-fill des champs attendus (avs, docs_data, membres…).
-        PROJS.forEach(function(p){try{normalizeProject(p);}catch(e){}});
+        PROJS.forEach(function(p){try{normalizeProject(p);}catch(e){console.warn('[normalizeProject] projet ignoré',p&&p.id,e);}});
         return;
       }
     }
@@ -1129,7 +1138,6 @@ let planListPath=[]; // chemin de dossiers (ids) pour la vue Liste façon naviga
 let planArch=false; // affichage des archives Plans
 let activeEntMembre=null;  // member id
 let activeEntFolder=null;  // {id, name}
-let activeDocFolder=null;  // for other views
 
 // Membres gérés par projet (proj.membres), chargé depuis localStorage
 function getMembresForProj(p){return(p&&p.membres)?p.membres:[];}
@@ -1165,7 +1173,6 @@ const DEMO_AUD=[
   {ic:'lock',label:'Permissions modifiées',sub:'Bea Lambda → Architecte',time:'01/04 11:20'},
 ];
 
-const PLU_FIELDS=[['Zone PLU','UA – Zone urbaine dense'],['Emprise au sol','40%'],['Hauteur max','9 m à l\'égout'],['Recul façade','5 m minimum'],['Retrait latéral','3 m'],['Biotope','30% espaces verts'],['Stationnement','2 places/logement'],['Risques','Zone sismique 2']];
 
 /* ══ STATE ══ */
 let VIEW='projets',PROJ=null,curMbr=null,curMbrPending=false,clTab='depot',clTree=null,clArch=false,detDoc=null,detFolder=null,uid=1000;
@@ -1215,18 +1222,18 @@ function buildCL(p){
       ...(opts.zone_sismique?[{id:'d11',l:'Attestation parasismique',tag:'Zone sismique',tc:'amber',done:false,arch:false}]:[]),
       ...(opts.monument_historique?[{id:'d12',l:'Avis ABF',tag:'Monument hist.',tc:'purple',done:false,arch:false}]:[]),
     ],children:[
-      ...(th?[{id:'therm',label:'Thermicien',ico:'temperature',color:'#c47a00',open:false,items:[
+      ...(th?[{id:'therm',label:'Thermicien',ico:'temperature',color:'#7a6040',open:false,items:[
         {id:'t1',l:'Étude thermique RE2020',tag:'Obligatoire',tc:'red',done:false,arch:false},
         {id:'t2',l:'Note de calcul thermique',tag:'Obligatoire',tc:'red',done:false,arch:false},
         {id:'t3',l:'Attestation RE2020 pour dépôt PC',tag:'Obligatoire',tc:'red',done:false,arch:false},
       ],children:[]}]:[]),
-      ...(ge?[{id:'geo',label:'Géologue / G2',ico:'mountain',color:'#1a7a4a',open:false,items:[
+      ...(ge?[{id:'geo',label:'Géologue / G2',ico:'mountain',color:'#6b5035',open:false,items:[
         {id:'g1',l:'Étude géotechnique G1 ES',n:'Avant permis',tag:'Recommandé',tc:'amber',done:false,arch:false},
         {id:'g2',l:'Étude géotechnique G2 PRO',n:'Loi ELAN',tag:'Obligatoire',tc:'red',done:false,arch:false},
         {id:'g3',l:'Rapport synthèse géotechnique',tag:'Obligatoire',tc:'red',done:false,arch:false},
       ],children:[]}]:[]),
     ]},
-    {id:'exe',label:'Plans d\'exécution',ico:'ruler',color:'#1a7a4a',open:false,items:[
+    {id:'exe',label:'Plans d\'exécution',ico:'ruler',color:'#7c5230',open:false,items:[
       {id:'ex1',l:'Plans architecturaux 1/50',tag:'Archi',tc:'blue',done:false,arch:false},
       {id:'ex2',l:'Plans de façades définitifs',tag:'Archi',tc:'blue',done:false,arch:false},
       {id:'ex3',l:'Plans de coupes techniques',tag:'Archi',tc:'blue',done:false,arch:false},
@@ -1238,7 +1245,7 @@ function buildCL(p){
       {id:'ex9',l:'CCTP par lot',tag:'Marché',tc:'purple',done:false,arch:false},
       {id:'ex10',l:'DPGF',tag:'Marché',tc:'purple',done:false,arch:false},
     ],children:[]},
-    {id:'chantier',label:'Phase chantier',ico:'helmet',color:'#c47a00',open:false,items:[
+    {id:'chantier',label:'Phase chantier',ico:'helmet',color:'#9c5e27',open:false,items:[
       {id:'ch1',l:'DOE – Ouverture chantier (Cerfa n°13407)',tag:'Admin',tc:'red',done:false,arch:false},
       {id:'ch2',l:'Affichage PC sur terrain',tag:'Légal',tc:'red',done:false,arch:false},
       {id:'ch3',l:'Plan installation de chantier',tag:'Sécurité',tc:'amber',done:false,arch:false},
@@ -1250,7 +1257,7 @@ function buildCL(p){
       {id:'ch9',l:'Photos chantier hebdomadaires',tag:'Trace',tc:'green',done:false,arch:false},
       {id:'ch10',l:'Journal de chantier',tag:'Trace',tc:'green',done:false,arch:false},
     ],children:[]},
-    {id:'finition',label:'Finitions & réception',ico:'sparkles',color:'#6b3fa0',open:false,items:[
+    {id:'finition',label:'Finitions & réception',ico:'sparkles',color:'#8c601f',open:false,items:[
       {id:'fi1',l:'Pré-réception OPR',tag:'Réception',tc:'purple',done:false,arch:false},
       {id:'fi2',l:'Levée des réserves',tag:'Réception',tc:'purple',done:false,arch:false},
       {id:'fi3',l:'PV de réception signé',tag:'Légal',tc:'red',done:false,arch:false},
@@ -1313,9 +1320,9 @@ function renderSB(){
           <svg class="ico" style="color:${p.color};width:16px;height:16px"><use href="#i-building"/></svg>
         </div>
         <div class="proj-item-info">
-          <div class="proj-item-name">${p.name}${isDemoProj(p)?` <span style="font-size:9px;color:var(--amber);background:var(--amber-bg);padding:1px 4px;border-radius:3px">Démo</span>`:''}${p.archived?` <span style="font-size:9px;color:var(--amber);background:var(--amber-bg);padding:1px 4px;border-radius:3px">Archivé</span>`:''}</div>
+          <div class="proj-item-name">${e(p.name)}${isDemoProj(p)?` <span style="font-size:9px;color:var(--amber);background:var(--amber-bg);padding:1px 4px;border-radius:3px">Démo</span>`:''}${p.archived?` <span style="font-size:9px;color:var(--amber);background:var(--amber-bg);padding:1px 4px;border-radius:3px">Archivé</span>`:''}</div>
           <div class="proj-item-sub">
-            <span class="badge" style="font-size:9px;background:${p.bg};color:${p.color}">${p.phase}</span>
+            <span class="badge" style="font-size:9px;background:${e(p.bg)};color:${e(p.color)}">${e(p.phase)}</span>
             <div class="proj-prog"><div class="proj-prog-fill" style="width:${effProgress(p)}%;background:${p.color}"></div></div>
             <span style="font-size:10px">${effProgress(p)}%</span>
           </div>
@@ -1342,11 +1349,16 @@ function renderSB(){
       ${navItem('photos','camera','Photos chantier')}
       ${navItem('admin','folder','Documents admin')}
       ${navItem('pv','file-check','PV')}
+      ${navItem('cctp','check-list','CCTP')}
       ${navItem('chantier','helmet','Planning chantier')}
       ${navItem('membres','users','Équipe & contacts')}
       ${navItem('messagerie','message','Notes','',messagerieBadge())}
 
       <div class="nl" style="color:#854d0e;margin-top:4px">Pilotage &amp; conformité</div>
+      ${navItem('copilote','sparkles','Co-pilote',' ',copiloteBadge())}
+      ${navItem('contrat','invoice','Contrat')}
+      ${navItem('paliers','git-branch','Paliers & validations')}
+      ${navItem('horsresp','warning','Commandes client')}
       ${navItem('suivi','receipt','Suivi des dépenses')}
       ${navItem('timeline','check-list','Chronologie')}
       ${navItem('diffusion','file-check','Diffusion des plans')}
@@ -1424,6 +1436,7 @@ function setupMobileNav(){
 }
 function nav(v){
   closeMobileNav();
+  try{flushSave();}catch(e){console.warn('[flushSave]',e);} // persiste toute saisie en attente avant de changer de vue
   if(!infoNavGuard(function(){nav(v);}))return;
   // « Rôles & permissions » a été fusionné dans « Accès & permissions » (clé 'membres').
   if(v==='acces')v='membres';
@@ -1433,10 +1446,10 @@ function nav(v){
   if(v==='membres'&&VIEW!=='membres'&&!curMbrPending)curMbr=null;
   curMbrPending=false;
   VIEW=v;closeDP();if(v!=='plans'){activePlanFolder=null;planListPath=[];planColPath=[];}if(v!=='entreprises'){activeEntMembre=null;activeEntFolder=null;}if(v!=='pv'&&v!=='pv_arch'){pvFolder=null;pvArch=false;}areaFolderId=null;areaArch=false;areaPath=[];renderSB();renderMain();}
-function backGlobal(){closeMobileNav();viewAsMemberId=null;plansTradeFilter='';suiviIntFilter='';suiviTab='reel';activeConvId='__project__';if(!infoNavGuard(backGlobal))return;PROJ=null;VIEW='projets';closeDP();renderSB();renderMain();}
+function backGlobal(){closeMobileNav();try{flushSave();}catch(e){console.warn('[flushSave]',e);}viewAsMemberId=null;plansTradeFilter='';suiviIntFilter='';suiviTab='reel';cctpTab='apercu';activeConvId='__project__';if(!infoNavGuard(backGlobal))return;PROJ=null;VIEW='projets';closeDP();renderSB();renderMain();}
 // Annulation explicite : on jette les modifications sans redemander.
 function discardInfo(){_infoDirty=false;_navGuardBypass=true;nav('plans');_navGuardBypass=false;}
-function openProj(id){closeMobileNav();viewAsMemberId=null;plansTradeFilter='';suiviIntFilter='';suiviQ='';suiviTab='reel';activeConvId='__project__';PROJ=PROJS.find(p=>p.id===id);loadRoles();VIEW='plans';clTree=PROJ&&PROJ.clTree?PROJ.clTree:buildCL(PROJ);clTab='depot';pvFolder=null;pvArch=false;areaFolderId=null;areaArch=false;areaPath=[];currentAccessRole=(PROJ&&PROJ.myAccessRole)||'admin';closeDP();renderSB();renderMain();}
+function openProj(id){closeMobileNav();try{flushSave();}catch(e){console.warn('[flushSave]',e);}viewAsMemberId=null;plansTradeFilter='';suiviIntFilter='';suiviQ='';suiviTab='reel';activeConvId='__project__';PROJ=PROJS.find(p=>p.id===id);loadRoles();VIEW='plans';clTree=PROJ&&PROJ.clTree?PROJ.clTree:buildCL(PROJ);clTab='depot';pvFolder=null;pvArch=false;areaFolderId=null;areaArch=false;areaPath=[];currentAccessRole=(PROJ&&PROJ.myAccessRole)||'admin';closeDP();renderSB();renderMain();}
 
 /* ══ TOPBAR ══ */
 function setTB(iconId,col,title,sub,btnL,btnIco='plus'){
@@ -1511,6 +1524,8 @@ function switchTab(id,btn){
 function mainAction(){
   if(VIEW==='projets'){openNewProj();return;}
   else if(VIEW==='suivi'){if(suiviTab==='prechiffrage')pcAddLot();else suiviAddGroup();return;}
+  else if(VIEW==='cctp'){cctpAddSection();return;}
+  else if(VIEW==='horsresp'){hrAdd();return;}
   else if(VIEW==='membres'){focusInviteForm();return;}
   else if(VIEW==='plu'){savePLU();return;}
   else if(VIEW==='info'){saveInfo();return;}
@@ -1540,6 +1555,11 @@ function renderMain(){
   else if(FMETA[v])renderDocs(v);
   else if(v==='checklists')renderCL();
   else if(v==='suivi')renderSuivi();
+  else if(v==='cctp')renderCctp();
+  else if(v==='contrat')renderContrat();
+  else if(v==='copilote')renderCopilote();
+  else if(v==='paliers')renderPaliers();
+  else if(v==='horsresp')renderHorsResp();
   else if(v==='timeline')renderTimeline();
   else if(v==='diffusion')renderDiffusion();
   else if(v==='chantier')renderChantier();
@@ -1576,12 +1596,12 @@ function renderProjets(){
         +'</div>'
         +'<div style="flex:1;min-width:0">'
           +'<div class="pcard-titlerow" style="display:flex;align-items:center;gap:8px;margin-bottom:3px">'
-            +'<div class="pcard-name" style="font-weight:600;font-size:15px;letter-spacing:-.2px;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+p.name+'</div>'
+            +'<div class="pcard-name" style="font-weight:600;font-size:15px;letter-spacing:-.2px;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+e(p.name)+'</div>'
             +(isDemoProj(p)?'<span class="badge bamber">Démo</span>':'')
-            +'<span class="badge bgreen">'+p.phase+'</span>'
+            +'<span class="badge bgreen">'+e(p.phase)+'</span>'
           +'</div>'
-          +'<div style="font-size:12px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+p.address+'</div>'
-          +'<div style="font-size:12px;color:var(--text3);margin-bottom:10px">Client : '+p.client+'</div>'
+          +'<div style="font-size:12px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+e(p.address)+'</div>'
+          +'<div style="font-size:12px;color:var(--text3);margin-bottom:10px">Client : '+e(p.client)+'</div>'
           +(function(){
             const pct=effProgress(p),auto=autoProgress(p),manual=hasManualProgress(p);
             const label=manual?'Avancement (manuel)':'Avancement (auto)';
@@ -1897,7 +1917,6 @@ function renderPlansColumns(){
     +'</div>';
 }
 
-function selectPlanFolder(id,name){activePlanFolder={id,name};renderPlansContent('pt-docs');}
 
 /* ── Archives Plans (dossiers + fichiers) ── */
 function planFolderDescIds(roots,id){
@@ -1945,7 +1964,6 @@ function restorePlanDoc(id){
   d.archived=false;d.archivedAt='';
   savePROJS();renderPlansContent('pt-docs');toast('Fichier restauré');
 }
-function planShowActive(){planArch=false;renderPlansContent('pt-docs');}
 function planShowArch(){planArch=true;renderPlansContent('pt-docs');}
 // liste à plat de tous les dossiers archivés (avec chemin lisible)
 function flatPlanFolders(nodes,prefix,acc){
@@ -2676,7 +2694,7 @@ function formatBudgetField(el){
   if(isNaN(n))return;
   el.value=suiviEuro(n);
 }
-function e(s){return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');}
+function e(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 
 /* ══ CHECKLISTS ══ */
 function renderCL(){
@@ -3391,6 +3409,7 @@ function suiviIntOptions(sel){
   return opts;
 }
 function suiviSetDevisIntervenant(devisId,memberId){
+  if(!can('items'))return denyMsg();
   var r=suiviFindDevis(devisId); if(!r)return;
   if(memberId){
     var m=getMembresForProj(PROJ).find(function(x){return x.id===memberId;});
@@ -3400,17 +3419,17 @@ function suiviSetDevisIntervenant(devisId,memberId){
 }
 
 /* ── Ajouts / suppressions ── */
-function suiviAddGroup(){if(!PROJ)return;ensureSuivi(PROJ);PROJ.suivi.push({id:'sg'+(uid++),nom:'',devis:[]});savePROJS();renderSuivi();toast('Groupe ajouté');}
-function suiviDelGroup(id){var i=PROJ.suivi.findIndex(function(x){return x.id===id;});if(i<0)return;var rm=PROJ.suivi.splice(i,1)[0];savePROJS();renderSuivi();toast('Groupe supprimé',{undo:function(){PROJ.suivi.splice(i,0,rm);savePROJS();renderSuivi();toast('Groupe rétabli');}});}
-function suiviAddDevis(gid){var g=suiviFindGroup(gid);if(!g)return;g.devis.push({id:'sd'+(uid++),article:'',entreprise:'',refDevis:'',tva:20,prixHT:'',dateDevis:'',dateSignature:'',signe:false,devisPdf:null,factures:[]});savePROJS();renderSuiviList();toast('Devis ajouté');}
-function suiviDelDevis(id){var r=suiviFindDevis(id);if(!r)return;var i=r.g.devis.indexOf(r.d);r.g.devis.splice(i,1);savePROJS();renderSuiviList();toast('Devis supprimé',{undo:function(){r.g.devis.splice(i,0,r.d);savePROJS();renderSuiviList();toast('Devis rétabli');}});}
-function suiviAddFacture(did){var r=suiviFindDevis(did);if(!r)return;if(!Array.isArray(r.d.factures))r.d.factures=[];r.d.factures.push({id:'sf'+(uid++),refFacture:'',libelle:'',montant:'',dateFacture:'',datePaiement:'',facturePdf:null});savePROJS();renderSuiviList();toast('Facture ajoutée');}
-function suiviDelFacture(id){var r=suiviFindFacture(id);if(!r)return;var i=r.d.factures.indexOf(r.f);r.d.factures.splice(i,1);savePROJS();renderSuiviList();toast('Facture supprimée',{undo:function(){r.d.factures.splice(i,0,r.f);savePROJS();renderSuiviList();toast('Facture rétablie');}});}
+function suiviAddGroup(){if(!can('items'))return denyMsg();if(!PROJ)return;ensureSuivi(PROJ);PROJ.suivi.push({id:'sg'+(uid++),nom:'',devis:[]});savePROJS();renderSuivi();toast('Groupe ajouté');}
+function suiviDelGroup(id){if(!can('items'))return denyMsg();var i=PROJ.suivi.findIndex(function(x){return x.id===id;});if(i<0)return;var rm=PROJ.suivi.splice(i,1)[0];savePROJS();renderSuivi();toast('Groupe supprimé',{undo:function(){PROJ.suivi.splice(i,0,rm);savePROJS();renderSuivi();toast('Groupe rétabli');}});}
+function suiviAddDevis(gid){if(!can('items'))return denyMsg();var g=suiviFindGroup(gid);if(!g)return;g.devis.push({id:'sd'+(uid++),article:'',entreprise:'',refDevis:'',tva:20,prixHT:'',dateDevis:'',dateSignature:'',signe:false,devisPdf:null,factures:[]});savePROJS();renderSuiviList();toast('Devis ajouté');}
+function suiviDelDevis(id){if(!can('items'))return denyMsg();var r=suiviFindDevis(id);if(!r)return;var i=r.g.devis.indexOf(r.d);r.g.devis.splice(i,1);savePROJS();renderSuiviList();toast('Devis supprimé',{undo:function(){r.g.devis.splice(i,0,r.d);savePROJS();renderSuiviList();toast('Devis rétabli');}});}
+function suiviAddFacture(did){if(!can('items'))return denyMsg();var r=suiviFindDevis(did);if(!r)return;if(!Array.isArray(r.d.factures))r.d.factures=[];r.d.factures.push({id:'sf'+(uid++),refFacture:'',libelle:'',montant:'',dateFacture:'',datePaiement:'',facturePdf:null});savePROJS();renderSuiviList();toast('Facture ajoutée');}
+function suiviDelFacture(id){if(!can('items'))return denyMsg();var r=suiviFindFacture(id);if(!r)return;var i=r.d.factures.indexOf(r.f);r.d.factures.splice(i,1);savePROJS();renderSuiviList();toast('Facture supprimée',{undo:function(){r.d.factures.splice(i,0,r.f);savePROJS();renderSuiviList();toast('Facture rétablie');}});}
 
 /* ── Mises à jour de champs ── */
-function suiviUpdateGroup(id,field,val){var g=suiviFindGroup(id);if(!g)return;g[field]=val;savePROJS();}
-function suiviUpdateDevis(id,field,val,rc){var r=suiviFindDevis(id);if(!r)return;r.d[field]=val;savePROJS();if(rc)suiviRefreshTotals();}
-function suiviUpdateFacture(id,field,val,rc){var r=suiviFindFacture(id);if(!r)return;r.f[field]=val;savePROJS();if(rc)suiviRefreshTotals();}
+function suiviUpdateGroup(id,field,val){if(!can('items'))return;var g=suiviFindGroup(id);if(!g)return;g[field]=val;saveLater();}
+function suiviUpdateDevis(id,field,val,rc){if(!can('items'))return;var r=suiviFindDevis(id);if(!r)return;r.d[field]=val;saveLater();if(rc)suiviRefreshTotals();}
+function suiviUpdateFacture(id,field,val,rc){if(!can('items'))return;var r=suiviFindFacture(id);if(!r)return;r.f[field]=val;saveLater();if(rc)suiviRefreshTotals();}
 
 /* ── Validation client d'une facture ──────────────────────────────────────
    Champs facture : envoiClient (date d'envoi au client) + valideClient (date
@@ -3474,6 +3493,7 @@ function suiviOpenFactureMail(){
 }
 // Marque la facture comme envoyée (date du jour) et ferme la fenêtre.
 function suiviMarkFactureSent(id){
+  if(!can('items'))return denyMsg();
   var r=suiviFindFacture(id); if(!r)return;
   if(!r.f.envoiClient){ r.f.envoiClient=new Date().toISOString().slice(0,10); savePROJS(); }
   closeModal(); renderSuiviList(); toast('Facture marquée comme envoyée au client');
@@ -3497,20 +3517,24 @@ function suiviRefreshTotals(){
 
 /* ── PDF ── */
 function suiviPinPDF(kind,id,evt){
+  if(!can('items')){if(evt&&evt.target)evt.target.value='';return denyMsg();}
   var f=evt.target.files&&evt.target.files[0];evt.target.value='';
   if(!f)return;
   if(!(f.type==='application/pdf'||/\.pdf$/i.test(f.name))){toastErr('Veuillez sélectionner un fichier PDF.');return;}
   var rd=new FileReader();
   rd.onload=function(){
-    var bid='svpdf'+(uid++);setBlob(bid,rd.result);
-    if(kind==='devis'){var r=suiviFindDevis(id);if(r)r.d.devisPdf={blobId:bid,fileName:f.name};}
-    else{var rf=suiviFindFacture(id);if(rf)rf.f.facturePdf={blobId:bid,fileName:f.name};}
-    savePROJS();renderSuiviList();toast('PDF épinglé');
+    var bid='svpdf'+(uid++);setBlob(bid,rd.result).then(function(ok){
+      if(!ok){toastErr('Fichier non stocké (stockage plein) — PDF non épinglé.');return;}
+      if(kind==='devis'){var r=suiviFindDevis(id);if(r)r.d.devisPdf={blobId:bid,fileName:f.name};}
+      else{var rf=suiviFindFacture(id);if(rf)rf.f.facturePdf={blobId:bid,fileName:f.name};}
+      savePROJS();renderSuiviList();toast('PDF épinglé');
+    }).catch(function(er){console.warn('[suiviPinPDF]',er);toastErr('Erreur lors de l\'enregistrement du fichier.');});
   };
   rd.onerror=function(){toastErr('Erreur de lecture du fichier');};
   rd.readAsDataURL(f);
 }
 function suiviUnpin(kind,id){
+  if(!can('items'))return denyMsg();
   if(kind==='devis'){var r=suiviFindDevis(id);if(r)r.d.devisPdf=null;}
   else{var rf=suiviFindFacture(id);if(rf)rf.f.facturePdf=null;}
   savePROJS();renderSuiviList();toast('PDF retiré');
@@ -3570,17 +3594,17 @@ function pcSurfaceTotals(p){var reno=0,ext=0;((p&&p.prechiffrage&&p.prechiffrage
 function pcFindLot(id){if(!PROJ||!PROJ.prechiffrage)return null;return(PROJ.prechiffrage.lots||[]).find(function(l){return l.id===id;})||null;}
 function pcFindLigne(id){if(!PROJ||!PROJ.prechiffrage)return null;var lots=PROJ.prechiffrage.lots||[];for(var i=0;i<lots.length;i++){var l=(lots[i].lignes||[]).find(function(x){return x.id===id;});if(l)return{lot:lots[i],ligne:l};}return null;}
 
-function pcAddLot(){if(!PROJ)return;ensurePrechiffrage(PROJ);PROJ.prechiffrage.lots.push({id:'pcl'+(uid++),nom:'',lignes:[{id:'pcg'+(uid++),designation:'',unite:'m²',pu:'',qte:'',tva:PROJ.prechiffrage.tvaDefault}]});savePROJS();renderPrechiffrage();toast('Lot ajouté');}
-function pcDelLot(id){var lots=PROJ.prechiffrage.lots,i=lots.findIndex(function(x){return x.id===id;});if(i<0)return;var rm=lots.splice(i,1)[0];savePROJS();renderPrechiffrage();toast('Lot supprimé',{undo:function(){lots.splice(i,0,rm);savePROJS();renderPrechiffrage();toast('Lot rétabli');}});}
-function pcUpdateLot(id,field,val){var l=pcFindLot(id);if(!l)return;l[field]=val;savePROJS();}
-function pcAddLigne(lotId){var l=pcFindLot(lotId);if(!l)return;l.lignes.push({id:'pcg'+(uid++),designation:'',unite:'m²',pu:'',qte:'',tva:PROJ.prechiffrage.tvaDefault});savePROJS();renderPrechiffrage();}
-function pcDelLigne(id){var r=pcFindLigne(id);if(!r)return;var i=r.lot.lignes.indexOf(r.ligne);r.lot.lignes.splice(i,1);savePROJS();renderPrechiffrage();toast('Ligne supprimée',{undo:function(){r.lot.lignes.splice(i,0,r.ligne);savePROJS();renderPrechiffrage();}});}
-function pcUpdateLigne(id,field,val,rc){var r=pcFindLigne(id);if(!r)return;r.ligne[field]=val;savePROJS();if(rc)pcRefreshTotals();}
-function pcAddSurface(){if(!PROJ)return;ensurePrechiffrage(PROJ);PROJ.prechiffrage.surfaces.push({id:'pcs'+(uid++),nom:'',reno:'',ext:''});savePROJS();renderPrechiffrage();}
-function pcDelSurface(id){var s=PROJ.prechiffrage.surfaces,i=s.findIndex(function(x){return x.id===id;});if(i<0)return;s.splice(i,1);savePROJS();renderPrechiffrage();}
-function pcUpdateSurface(id,field,val,rc){var s=(PROJ.prechiffrage.surfaces||[]).find(function(x){return x.id===id;});if(!s)return;s[field]=val;savePROJS();if(rc)pcRefreshTotals();}
-function pcSetTvaDefault(v){ensurePrechiffrage(PROJ);PROJ.prechiffrage.tvaDefault=suiviNum(v);savePROJS();}
-function pcSetTitre(v){ensurePrechiffrage(PROJ);PROJ.prechiffrage.titre=v;savePROJS();}
+function pcAddLot(){if(!can('items'))return denyMsg();if(!PROJ)return;ensurePrechiffrage(PROJ);PROJ.prechiffrage.lots.push({id:'pcl'+(uid++),nom:'',lignes:[{id:'pcg'+(uid++),designation:'',unite:'m²',pu:'',qte:'',tva:PROJ.prechiffrage.tvaDefault}]});savePROJS();renderPrechiffrage();toast('Lot ajouté');}
+function pcDelLot(id){if(!can('items'))return denyMsg();var lots=PROJ.prechiffrage.lots,i=lots.findIndex(function(x){return x.id===id;});if(i<0)return;var rm=lots.splice(i,1)[0];savePROJS();renderPrechiffrage();toast('Lot supprimé',{undo:function(){lots.splice(i,0,rm);savePROJS();renderPrechiffrage();toast('Lot rétabli');}});}
+function pcUpdateLot(id,field,val){if(!can('items'))return;var l=pcFindLot(id);if(!l)return;l[field]=val;saveLater();}
+function pcAddLigne(lotId){if(!can('items'))return denyMsg();var l=pcFindLot(lotId);if(!l)return;l.lignes.push({id:'pcg'+(uid++),designation:'',unite:'m²',pu:'',qte:'',tva:PROJ.prechiffrage.tvaDefault});savePROJS();renderPrechiffrage();}
+function pcDelLigne(id){if(!can('items'))return denyMsg();var r=pcFindLigne(id);if(!r)return;var i=r.lot.lignes.indexOf(r.ligne);r.lot.lignes.splice(i,1);savePROJS();renderPrechiffrage();toast('Ligne supprimée',{undo:function(){r.lot.lignes.splice(i,0,r.ligne);savePROJS();renderPrechiffrage();}});}
+function pcUpdateLigne(id,field,val,rc){if(!can('items'))return;var r=pcFindLigne(id);if(!r)return;r.ligne[field]=val;saveLater();if(rc)pcRefreshTotals();}
+function pcAddSurface(){if(!can('items'))return denyMsg();if(!PROJ)return;ensurePrechiffrage(PROJ);PROJ.prechiffrage.surfaces.push({id:'pcs'+(uid++),nom:'',reno:'',ext:''});savePROJS();renderPrechiffrage();}
+function pcDelSurface(id){if(!can('items'))return denyMsg();var s=PROJ.prechiffrage.surfaces,i=s.findIndex(function(x){return x.id===id;});if(i<0)return;s.splice(i,1);savePROJS();renderPrechiffrage();}
+function pcUpdateSurface(id,field,val,rc){if(!can('items'))return;var s=(PROJ.prechiffrage.surfaces||[]).find(function(x){return x.id===id;});if(!s)return;s[field]=val;saveLater();if(rc)pcRefreshTotals();}
+function pcSetTvaDefault(v){if(!can('items'))return;ensurePrechiffrage(PROJ);PROJ.prechiffrage.tvaDefault=suiviNum(v);saveLater();}
+function pcSetTitre(v){if(!can('items'))return;ensurePrechiffrage(PROJ);PROJ.prechiffrage.titre=v;saveLater();}
 
 function pcRefreshTotals(){
   if(!PROJ||!PROJ.prechiffrage)return;
@@ -3744,6 +3768,772 @@ function pcSurfacesPanel(pc,st){
     body+='</table></div>';
   }
   return '<div style="border:1px solid var(--border);border-radius:var(--r2);background:var(--panel);margin-bottom:14px;overflow:hidden">'+head+body+'</div>';
+}
+
+/* ══ CCTP — Cahier des Clauses Techniques Particulières ═══════════════════════
+   Deux onglets : « Rédaction » (architecte/admin : ajoute, modifie, supprime les
+   articles) et « CCTP publié » (lecture seule, visible par tous, numéroté façon
+   document). Données : PROJ.cctp = { sections:[ {id,titre, items:[ {id,titre,texte} ] } ] }.
+   Stocké dans le projet → synchronisé en ligne et soumis aux droits (can('items')). */
+var CCTP_TEMPLATE={"intro": "Le présent CCTP définit les prescriptions techniques des travaux. Les ouvrages seront exécutés conformément aux règles de l’art, aux DTU et normes en vigueur, aux plans et aux prescriptions des bureaux d’études.", "sections": [{"titre": "Généralités", "items": [{"titre": "Généralités", "texte": "Le présent Cahier des Clauses Techniques Particulières définit les principes généraux des travaux à réaliser dans le cadre de l’extension et de la rénovation de la maison existante.\n\nLe projet étant réalisé sur une construction existante, certains éléments ne pourront être confirmés définitivement qu’après démolition, sondages, ouvertures et reconnaissance sur site. Cela concerne notamment les dimensions réelles, les niveaux, les fondations existantes, les réseaux, les supports, les épaisseurs de murs, les évacuations, les pentes et l’état général des ouvrages conservés.\n\nToute entreprise intervenant sur le chantier devra vérifier sur place les dimensions, niveaux et contraintes avant exécution. Toute incohérence entre les plans, les études, les détails ou l’état réel du chantier devra être signalée à la maîtrise d’œuvre avant réalisation des travaux concernés.\n\nLes travaux devront être exécutés conformément aux règles de l’art, aux normes en vigueur, aux autorisations obtenues, aux plans architecte, aux détails d’exécution, aux prescriptions des bureaux d’études et aux indications du présent CCTP."}, {"titre": "Documents de référence", "texte": "Les documents de référence du projet sont notamment :\n\nPermis de construire / autorisation d’urbanisme : référence à compléter, si applicable ;\n\nPlans architecte phase PE : voir annexes — liste et références des plans à compléter ;\n\nPlans établis sur la base du relevé géomètre Dossier S25-BRA – Paolo Buso, Géomètre Topographe ;\n\nPlans géomètre reçus : plans intérieurs, élévations, plan de masse et plans de toiture ;\n\nÉtude thermique RE2020 – Rapport d’étude simplifié – Extension d’une maison individuelle – le maître d’ouvrage ;\n\nRSET / RSEE – Extension d’une maison individuelle – le maître d’ouvrage, document daté du 28/03/2026 ;\n\nÉtude géotechnique G2AVP / G5 – 3G Expertises – Dossier n° 26-03-21-15’094 X – Projet le maître d’ouvrage – Valbonne – 06/05/2026 ;\n\nÉtude hydrologique eaux pluviales – 3G Expertises – Dossier n° 26-03-21-15’094 U – Projet le maître d’ouvrage – Valbonne – 07/05/2026 ;\n\nRèglement du PLU de Valbonne – zone applicable au projet et dispositions générales ;\n\nPlans, notes et prescriptions du bureau d’étude structure : références à compléter dès réception ;\n\nPlans et prescriptions des entreprises spécialisées : références à compléter selon lots et avancement des études;\n\nAutorisations administratives obtenues : à compléter selon dossier validé.\n\nLes plans architecte et détails d’exécution seront annexés au présent CCTP ou transmis séparément aux entreprises dès finalisation.\n\nLa référence altimétrique du projet est fixée à : ± 0.00 = +204.74, sauf indication contraire sur les plans ou correction validée par la maîtrise d’œuvre.\n\nEn cas de contradiction entre les documents, l’entreprise devra demander une clarification à la maîtrise d’œuvre avant toute exécution."}, {"titre": "Cotes, dimensions et niveaux", "texte": "Les différences de dimensions, de cotes ou de plans devront être clarifiées avant exécution avec les architectes, par l’intermédiaire de la direction des travaux.\n\nAvant l’exécution des travaux, toutes les dimensions devront être vérifiées ou relevées précisément sur site.\n\nToutes les données concernant les réservations, percements, trémies et ouvertures devront être vérifiées par l’entreprise principale avec les concepteurs avant exécution.\n\nSauf indication contraire, toutes les dimensions se rapportent au gros œuvre, hors enduit, crépi ou revêtement.\n\nToutes les dimensions des linteaux de portes et des hauteurs d’allège se réfèrent au niveau du sol fini.\n\nRéférence altimétrique selon NHN2016 : ± 0.00 = +190.70 NHN, à confirmer selon le système altimétrique applicable au projet.\n\nLe présent dossier n’est valable qu’en combinaison avec les plans de l’ingénieur structure, les études techniques, les plans des entreprises spécialisées et les détails correspondants des architectes."}, {"titre": "Obligations administratives des entreprises", "texte": "Avant toute intervention, chaque entreprise devra fournir au maître d’ouvrage ou à la maîtrise d’œuvre :\n\nattestation d’assurance responsabilité civile professionnelle en cours de validité ;\n\nattestation d’assurance décennale couvrant les travaux réalisés, lorsque celle-ci est applicable ;\n\nattestation de vigilance URSSAF en cours de validité ;\n\nextrait Kbis ou justificatif d’immatriculation ;\n\ncoordonnées du responsable de chantier ;\n\nqualifications ou justificatifs techniques si nécessaires selon la nature des travaux.\n\nChaque entreprise devra employer du personnel déclaré et respecter ses obligations sociales, fiscales, administratives et d’assurance.\n\nAucune entreprise ne pourra intervenir sans avoir transmis les justificatifs nécessaires."}, {"titre": "Sous-traitance", "texte": "Toute sous-traitance devra être déclarée préalablement au maître d’ouvrage et à la maîtrise d’œuvre.\n\nL’entreprise titulaire restera responsable de ses sous-traitants, de la qualité de leurs travaux, de leur sécurité, de leur conformité réglementaire et du respect des délais.\n\nAucun sous-traitant ne pourra intervenir sur le chantier sans accord préalable et sans transmission des pièces administratives nécessaires, notamment assurances, attestation URSSAF et justificatif d’immatriculation.\n\nLes sous-traitants devront respecter les mêmes obligations techniques, administratives et de sécurité que l’entreprise principale."}]}, {"titre": "Structure", "items": [{"titre": "Démolitions et préparation", "texte": "Les démolitions et déposes nécessaires à la réalisation des extensions et adaptations intérieures seront exécutées avec précaution.\n\nLes ouvrages conservés devront être protégés pendant toute la durée des travaux.\n\nAvant toute démolition, les entreprises devront vérifier la présence de réseaux, canalisations, câbles, évacuations ou ouvrages enterrés.\n\nLes démolitions devront être réalisées de manière à ne pas déstabiliser les ouvrages existants conservés.\n\nTout élément découvert après démolition ou ouverture et non conforme aux plans ou aux hypothèses devra être signalé avant poursuite des travaux."}, {"titre": "Terrassements et fondations", "texte": "Les terrassements et fondations seront réalisés suivant les prescriptions de l’étude géotechnique et du bureau d’étude structure.\n\nLes fondations des extensions seront indépendantes de la construction existante. Un joint de rupture sera prévu entre les nouveaux ouvrages et l’existant.\n\nLes fondations seront réalisées sur semelles filantes ou longrines béton armé, suivant étude structure, encastrées dans le terrain sain.\n\nLes fondations ne devront pas être réalisées dans des remblais, argiles décompressées ou zones altérées.\n\nLes fonds de fouille devront être propres, plans, contrôlés et protégés par un béton de propreté réalisé rapidement après terrassement.\n\nLes profondeurs définitives d’ancrage seront adaptées à la nature réelle du sol rencontrée, aux sondages, à l’étude géotechnique et aux indications du bureau d’étude structure.\n\nEn cas de découverte de zones décompressées, remblais, venues d’eau, fondations existantes non prévues ou anomalie de terrain, les travaux concernés devront être suspendus et validés avant reprise.\n\nLes travaux de terrassement à proximité de l’existant devront être réalisés avec prudence et, si nécessaire, par phases."}, {"titre": "Protection contre l’eau / drainage / eaux pluviales", "texte": "La gestion des eaux est un point essentiel du projet. Les eaux de ruissellement, d’infiltration et les eaux pluviales devront être éloignées des fondations, des murs existants et des nouveaux ouvrages.\n\nLes eaux pluviales des extensions seront récupérées par gouttières et descentes EP, positionnées de préférence aux angles des toitures, suivant faisabilité technique et plans d’exécution.\n\nLes descentes seront raccordées au système de gestion des eaux pluviales prévu pour le projet.\n\nDevant les portes-fenêtres et le long des murs en contact avec une terrasse ou une surface imperméable, lorsqu’il n’y a pas de pleine terre en pied de façade, il sera prévu un caniveau ou une cunette de récupération des eaux sur toute la longueur concernée.\n\nUn drain périphérique sera prévu autour de l’extension Sud-Ouest, suivant les prescriptions géotechniques, avec évacuation gravitaire vers l’aval lorsque cela est techniquement possible.\n\nAu droit des murs existants, terrasses, parties semi-enterrées ou zones en contact avec le terrain, l’étanchéité devra être vérifiée après ouverture et traitée si nécessaire.\n\nLa position définitive des drains, caniveaux, regards, exutoires et ouvrages de rétention sera confirmée sur chantier selon les niveaux réels, les réseaux existants et les contraintes découvertes.\n\nLes eaux de drainage des fondations ne devront pas être mélangées aux eaux de rétention pluviale, sauf validation technique spécifique.\n\nLes ouvrages de rétention, d’infiltration et les regards devront rester accessibles pour entretien."}, {"titre": "Plancher bas", "texte": "Le plancher bas sera réalisé suivant étude structure, sur système poutrelles-hourdis isolant ou équivalent, conformément aux prescriptions thermiques.\n\nDes rupteurs de ponts thermiques seront prévus en périphérie selon l’étude thermique et les prescriptions du bureau d’étude.\n\nLa composition définitive du plancher bas devra être coordonnée avec les niveaux finis, les seuils, les réservations techniques, les revêtements de sol et les détails d’exécution."}, {"titre": "Murs porteurs", "texte": "Les murs porteurs extérieurs des extensions seront réalisés en agglomérés béton de 20 cm d’épaisseur, suivant étude structure.\n\nLes chaînages verticaux et horizontaux, linteaux, poteaux, raidisseurs et appuis seront réalisés conformément aux plans béton et aux prescriptions parasismiques applicables.\n\nLes agglomérés ne devront pas rester apparents."}, {"titre": "Plancher intermédiaire", "texte": "Le plancher intermédiaire sera réalisé en poutrelles-hourdis béton à plâtrer, épaisseur 20 cm, suivant étude structure.\n\nLes réservations, trémies, appuis, chaînages et percements devront être validés avant exécution.\n\nToute modification ou création d’ouverture dans un plancher ou un mur porteur devra être validée par le bureau d’étude structure."}, {"titre": "Toiture / charpente / couverture", "texte": "La toiture sera réalisée sur charpente bois, suivant étude structure.\n\nLa couverture sera composée de plaques support de tuiles type PST avec tuiles canal en finition, en cohérence avec l’aspect architectural de l’existant.\n\nL’isolation sous combles sera réalisée conformément à l’étude thermique, avec laine de verre 400 mm, R = 10,00 m².K/W, ou équivalent.\n\nLes raccords avec l’existant, sorties de toiture, ventilations, évacuations EP et points singuliers seront vérifiés et ajustés sur site."}]}, {"titre": "Menuiseries extérieures", "items": [{"titre": "Menuiseries extérieures", "texte": "Toutes les fenêtres existantes seront remplacées par des menuiseries bois avec double vitrage isolant, suivant les performances prévues à l’étude thermique.\n\nLes menuiseries seront en finition blanche, sauf indication contraire validée par le maître d’ouvrage.\n\nLes dimensions définitives des menuiseries seront relevées sur site après démolition, ouverture et vérification des tableaux existants.\n\nLes fenêtres issues des locaux de sommeil seront équipées de protections mobiles de type store ou volet, avec fermeture automatique si exigée par l’étude RE2020.\n\nSur les extensions, les volets roulants automatiques seront prévus lorsque requis par l’étude RE2020.\n\nLes volets extérieurs visibles seront de type persienne, couleur à définir par le maître d’ouvrage et à confirmer selon prescriptions architecturales.\n\nLa porte d’entrée existante sera conservée et sauvegardée dans la mesure du possible. Toute intervention devra préserver son aspect et son intégration avec la façade existante.\n\nLa porte de garage sera remplacée par une porte en bois motorisée, à deux vantaux, finition à confirmer par le maître d’ouvrage."}]}, {"titre": "Plomberie / climatisation / ventilation", "items": [{"titre": "Plomberie / assainissement", "texte": "Les réseaux de plomberie seront raccordés aux réseaux existants lorsque cela est techniquement possible et conforme.\n\nL’état, le tracé, la capacité et la conformité des réseaux existants devront être vérifiés avant raccordement.\n\nL’évacuation des eaux usées sera raccordée à la fosse existante, sous réserve de vérification préalable de son état, de sa capacité et de sa conformité.\n\nLes évacuations gravitaires seront privilégiées. En cas d’impossibilité technique, une solution adaptée devra être proposée et validée avant exécution.\n\nLes appareils sanitaires, robinetteries, meubles vasques, WC, douches, baignoires et accessoires sont à définir par le maître d’ouvrage.\n\nLes implantations seront réalisées suivant les plans d’exécution et les détails spécifiques des salles de bains.\n\nPour les précisions techniques relatives aux salles de bains, se référer au détail D800."}, {"titre": "Chauffage / climatisation", "texte": "Le chauffage et la climatisation seront réalisés par pompe à chaleur air-air de type gainable, suivant étude thermique, avec régulation de température par pièce.\n\nDans la partie existante, les combles seront utilisés pour le passage des gaines et l’intégration des équipements lorsque cela est techniquement possible.\n\nLe système complet devra être repris et adapté aux nouveaux volumes, aux contraintes de l’existant et aux possibilités de passage découvertes sur chantier.\n\nL’implantation des unités, gaines, bouches, reprises, évacuations de condensats et trappes d’accès sera à valider avant exécution.\n\nLes équipements devront rester accessibles pour entretien et maintenance."}, {"titre": "Ventilation", "texte": "La ventilation sera réalisée suivant l’étude thermique et les contraintes du projet.\n\nLa mise en place d’une VMC thermodynamique pourra être étudiée, notamment avec récupération de calories, sous réserve de faisabilité technique et validation du maître d’ouvrage.\n\nLa ventilation sera organisée avec reprise d’air dans les pièces humides et insufflation ou arrivée d’air dans les pièces sèches, suivant la solution technique retenue.\n\nL’ensemble des réseaux de ventilation sera coordonné avec la climatisation, les plafonds, les combles, les trappes d’accès et les contraintes de l’existant."}, {"titre": "Eau chaude sanitaire", "texte": "L’eau chaude sanitaire sera assurée par ballon thermodynamique ou équipement équivalent conforme à l’étude thermique.\n\nL’implantation définitive sera confirmée selon les possibilités de raccordement, d’accès, d’entretien et de passage des réseaux."}]}, {"titre": "Électricité", "items": [{"titre": "Électricité", "texte": "L’installation électrique sera réalisée avec un tableau électrique classique, sans système domotique prévu à ce stade.\n\nLe raccordement et l’organisation générale de l’installation reprendront l’existant lorsque cela est techniquement possible et conforme aux normes en vigueur.\n\nLes réseaux existants devront être vérifiés avant reprise.\n\nL’implantation des prises, interrupteurs, points lumineux, sorties de câbles et équipements électriques sera réalisée conformément aux plans d’exécution.\n\nLes appareillages seront de type standard, sauf indication contraire portée sur les plans ou dans le descriptif des pièces.\n\nLes éclairages dimmables sont à confirmer par le maître d’ouvrage avant commande et exécution.\n\nToute anomalie, incompatibilité ou impossibilité de reprise de l’existant devra être signalée avant exécution."}]}, {"titre": "Finitions intérieures et extérieures", "items": [{"titre": "Doublages / isolation intérieure", "texte": "Les murs extérieurs des extensions recevront une isolation intérieure conforme à l’étude thermique, avec complexe isolant type laine de verre GR32 de 120 mm, R = 3,75 m².K/W, ou équivalent.\n\nLe parement intérieur sera réalisé en placo BA13.\n\nDans les pièces humides, les plaques seront de type hydrofuge, adaptées à l’hygrométrie des locaux.\n\nLes jonctions entre isolants verticaux et horizontaux seront particulièrement soignées."}, {"titre": "Cloisons intérieures", "texte": "Les cloisons intérieures seront réalisées avec ossature métallique, isolation en laine de verre et double parement en plaques de plâtre BA13.\n\nL’épaisseur courante des cloisons sera de 10 cm, sauf indication contraire portée sur les plans ou détails techniques.\n\nDans les pièces humides, les parements seront hydrofuges."}, {"titre": "Plafonds / sous-faces", "texte": "Les plafonds et sous-faces seront réalisés en plaques de plâtre BA13, avec finition peinture, sauf indication contraire sur les plans.\n\nLes trappes d’accès techniques seront prévues aux emplacements nécessaires pour l’entretien des équipements.\n\nLes hauteurs et retombées de faux plafonds seront confirmées selon le passage des réseaux, gaines et équipements techniques."}, {"titre": "Revêtements de sols", "texte": "Les sols intérieurs seront réalisés en pierre de Bourgogne sur l’ensemble de la maison, sauf indication contraire dans le descriptif des pièces ou sur les plans de finition.\n\nLa composition précise des sols, chapes, supports, réservations et hauteurs finies sera réalisée suivant le détail D500.\n\nLes niveaux finis devront être coordonnés avec les seuils, portes, escaliers, sanitaires, évacuations et menuiseries."}, {"titre": "Pièces humides", "texte": "Dans les salles de bains et pièces humides, une étanchéité adaptée sera prévue sous revêtement, suivant règles de l’art et prescriptions techniques.\n\nLes revêtements muraux, hauteurs de faïence, receveurs, niches, meubles et équipements seront réalisés selon les plans et détails des pièces concernées.\n\nLes choix définitifs de sanitaires et finitions restent à confirmer par le maître d’ouvrage."}, {"titre": "Peinture / finitions intérieures", "texte": "Les finitions intérieures seront réalisées en peinture sur murs, cloisons et plafonds, sauf finition spécifique décrite sur les plans ou dans le descriptif des pièces.\n\nEn cas de finition différente selon les pièces, se référer aux détails et annotations indiqués dans le descriptif de chaque pièce.\n\nLes supports devront être préparés avant peinture : rebouchage, ponçage, nettoyage et impression adaptée selon support."}, {"titre": "Façades / enduits extérieurs", "texte": "L’ensemble des façades de la maison recevra une reprise d’enduit extérieur ton pierre, teinte à confirmer par le maître d’ouvrage et selon prescriptions éventuelles de la commune.\n\nL’enduit devra être adapté au support existant et aux nouvelles maçonneries, afin d’assurer une finition homogène entre les extensions et la construction existante.\n\nLes agglomérés, reprises de maçonnerie et supports techniques ne devront pas rester apparents.\n\nLes raccords d’enduit avec l’existant seront traités avec soin afin d’éviter les différences visibles et les fissurations."}]}, {"titre": "Sécurité / coordination chantier", "items": [{"titre": "Coordination générale", "texte": "Les travaux seront exécutés conformément aux plans architecte, aux plans d’exécution, aux détails techniques, ainsi qu’aux prescriptions des bureaux d’études structure, thermique, géotechnique et hydrologique.\n\nToute incohérence entre plans, détails, études ou état réel du chantier devra être signalée avant exécution.\n\nToute modification technique, dimensionnelle ou esthétique devra être validée par la maîtrise d’œuvre et, si nécessaire, par les bureaux d’études concernés avant réalisation.\n\nLes entreprises devront intégrer le caractère rénové du projet. Les solutions définitives pourront être adaptées après démolitions, sondages, ouvertures et vérification de l’existant."}, {"titre": "Organisation de chantier / accès", "texte": "L’organisation du chantier devra être adaptée à la configuration du site, aux accès existants et à la conservation des ouvrages maintenus.\n\nLe portail existant pourra être remplacé temporairement par un portail de chantier, suivant faisabilité et besoins d’accès.\n\nLe chemin pavé existant devra être protégé pendant les travaux. Si la protection n’est pas suffisante ou si l’accès chantier le nécessite, un accès provisoire alternatif pourra être étudié sur place.\n\nLa position de la grue, des zones de stockage, des circulations chantier et des accès engins sera à définir sur site avant démarrage des travaux.\n\nLes zones de stockage devront être limitées et positionnées de manière à ne pas surcharger les talus, murs de soutènement, restanques ou ouvrages existants.\n\nLe chantier devra rester propre, sécurisé et organisé pendant toute la durée des travaux."}, {"titre": "Protection de l’existant", "texte": "Toutes les précautions devront être prises pour ne pas déstabiliser les fondations existantes, les murs, les restanques, les terrasses, les cheminements et les réseaux existants.\n\nLes travaux proches de l’existant seront réalisés avec prudence et par phases si nécessaire.\n\nLes protections provisoires nécessaires seront prévues pour préserver les accès, façades, menuiseries conservées, ouvrages paysagers, murs existants, réseaux et revêtements conservés."}, {"titre": "Réseaux / sondages / découvertes", "texte": "Les réseaux existants devront être repérés avant terrassement ou démolition.\n\nEn cas de découverte d’un réseau non identifié, d’un ouvrage enterré, d’une fondation non prévue, d’une venue d’eau ou d’un désordre structurel, l’entreprise devra suspendre les travaux concernés et demander validation avant poursuite.\n\nLes adaptations nécessaires seront définies sur site avec la maîtrise d’œuvre et les bureaux d’études concernés."}, {"titre": "Sécurité incendie et sécurité chantier", "texte": "Les prescriptions relatives à la sécurité incendie devront être respectées pendant l’exécution des travaux et dans les ouvrages réalisés.\n\nLes entreprises devront respecter les règles de sécurité applicables au chantier, notamment en matière de protections collectives, équipements de protection individuelle, accès, stockage, manutention, échafaudages, travaux en hauteur, terrassements et réseaux.\n\nChaque entreprise est responsable de la sécurité de son personnel et de ses sous-traitants."}]}, {"titre": "Documents de fin de chantier / DOE", "items": [{"titre": "Documents de fin de chantier / DOE", "texte": "En fin de chantier, les entreprises devront remettre les documents nécessaires à la constitution du dossier des ouvrages exécutés, notamment :\n\nplans de recollement si nécessaires ;\n\nfiches techniques des matériaux et équipements mis en œuvre ;\n\nnotices d’utilisation et d’entretien ;\n\ngaranties fabricants ;\n\nattestations de conformité lorsque nécessaires ;\n\nprocès-verbaux ou rapports de mise en service des équipements techniques ;\n\ndocuments d’assurance et garanties applicables ;\n\ninformations utiles pour l’entretien futur des ouvrages.\n\nLa réception des travaux pourra être conditionnée à la remise des documents nécessaires au maître d’ouvrage."}]}]};
+
+// Modèle type de CCTP (8 chapitres, 31 articles) — chargeable dans n'importe quel projet.
+function cctpFromTemplate(){
+  return {intro:CCTP_TEMPLATE.intro, sections:(CCTP_TEMPLATE.sections||[]).map(function(s){
+    return {id:'cs'+(uid++),titre:s.titre,items:(s.items||[]).map(function(a){return {id:'ca'+(uid++),titre:a.titre,texte:a.texte};})};
+  })};
+}
+function cctpLoadTemplate(){
+  if(!can('items'))return denyMsg();
+  cctpEnsure(PROJ);
+  var proj=PROJ; // capturé : la confirmation peut être validée après navigation
+  var has=PROJ.cctp.sections.length>0||(PROJ.cctp.intro||'').trim();
+  var apply=function(){if(!proj)return;cctpEnsure(proj);var t=cctpFromTemplate();proj.cctp.intro=t.intro;proj.cctp.sections=t.sections;savePROJS();if(PROJ===proj){cctpTab='edit';renderCctp();}toast('Modèle de CCTP chargé');};
+  if(has)confirmModal({title:'Charger le modèle type ?',danger:true,body:'Le contenu actuel du CCTP sera <strong>remplacé</strong> par le modèle type (8 chapitres, 31 articles). Pensez à exporter une sauvegarde si besoin.',confirmLabel:'Remplacer par le modèle',onConfirm:apply});
+  else apply();
+}
+var cctpTab='apercu';
+function cctpEnsure(p){
+  if(!p)return;
+  if(!p.cctp||typeof p.cctp!=='object')p.cctp={};
+  if(typeof p.cctp.intro!=='string')p.cctp.intro='';
+  if(!Array.isArray(p.cctp.sections))p.cctp.sections=[];
+  p.cctp.sections.forEach(function(s){if(!Array.isArray(s.items))s.items=[];});
+  if(!Array.isArray(p.cctp.additifs))p.cctp.additifs=[];
+  p.cctp.additifs.forEach(function(a){if(typeof a.statut!=='string')a.statut='projet';});
+}
+function cctpFindSection(id){return (PROJ&&PROJ.cctp)?PROJ.cctp.sections.find(function(s){return s.id===id;}):null;}
+function cctpFindArticle(id){if(!PROJ||!PROJ.cctp)return null;var ss=PROJ.cctp.sections;for(var i=0;i<ss.length;i++){var a=(ss[i].items||[]).find(function(x){return x.id===id;});if(a)return{s:ss[i],a:a};}return null;}
+function cctpAddSection(){if(!can('items'))return denyMsg();cctpEnsure(PROJ);PROJ.cctp.sections.push({id:'cs'+(uid++),titre:'',items:[]});savePROJS();renderCctp();}
+function cctpDelSection(id){if(!can('items'))return denyMsg();if(!PROJ||!PROJ.cctp)return;var ss=PROJ.cctp.sections,i=ss.findIndex(function(x){return x.id===id;});if(i<0)return;var rm=ss.splice(i,1)[0];savePROJS();renderCctp();toast('Chapitre supprimé',{undo:function(){ss.splice(i,0,rm);savePROJS();renderCctp();}});}
+function cctpUpdateSection(id,v){if(!can('items'))return;var s=cctpFindSection(id);if(s){s.titre=v;saveLater();}}
+function cctpAddArticle(sid){if(!can('items'))return denyMsg();var s=cctpFindSection(sid);if(!s)return;s.items.push({id:'ca'+(uid++),titre:'',texte:''});savePROJS();renderCctp();}
+function cctpDelArticle(id){if(!can('items'))return denyMsg();var r=cctpFindArticle(id);if(!r)return;var i=r.s.items.indexOf(r.a);r.s.items.splice(i,1);savePROJS();renderCctp();toast('Article supprimé',{undo:function(){r.s.items.splice(i,0,r.a);savePROJS();renderCctp();}});}
+function cctpUpdateArticle(id,field,v){if(!can('items'))return;if(field!=='titre'&&field!=='texte')return;var r=cctpFindArticle(id);if(r){r.a[field]=v;saveLater();}}
+function cctpUpdateIntro(v){if(!can('items'))return;cctpEnsure(PROJ);PROJ.cctp.intro=v;saveLater();}
+function cctpSetTab(t){cctpTab=t;renderCctp();}
+// CCTP signé (PDF) attaché : version officielle stockée à côté du CCTP rédigé, visible par tous.
+function cctpPinPdf(ev){
+  if(!can('items'))return denyMsg();
+  var proj=PROJ; // capturé avant la lecture asynchrone (l'utilisateur peut naviguer entre-temps)
+  var f=ev.target.files&&ev.target.files[0]; if(ev.target)ev.target.value='';
+  if(!f)return;
+  if(!(f.type==='application/pdf'||/\.pdf$/i.test(f.name))){toastErr('Veuillez sélectionner un fichier PDF.');return;}
+  var rd=new FileReader();
+  rd.onload=function(){
+    if(!proj)return;
+    var bid='cctppdf'+(uid++);
+    setBlob(bid,rd.result).then(function(ok){
+      if(!ok){toastErr('Fichier non stocké (stockage plein) — CCTP signé non attaché.');return;}
+      cctpEnsure(proj);proj.cctp.pdf={blobId:bid,fileName:f.name};savePROJS();if(PROJ===proj)renderCctp();toast('CCTP signé attaché');
+    }).catch(function(er){console.warn('[cctpPinPdf]',er);toastErr('Erreur lors de l\'enregistrement du fichier.');});
+  };
+  rd.onerror=function(){toastErr('Erreur de lecture du fichier.');};
+  rd.readAsDataURL(f);
+}
+function cctpUnpinPdf(){if(!can('items'))return denyMsg();cctpEnsure(PROJ);PROJ.cctp.pdf=null;savePROJS();renderCctp();toast('PDF retiré');}
+function cctpViewPdf(){var pdf=PROJ&&PROJ.cctp&&PROJ.cctp.pdf;if(!pdf||!pdf.blobId)return;viewDoc({id:pdf.blobId,fileName:pdf.fileName,title:pdf.fileName||'CCTP signé',mimeType:'application/pdf',type:'pdf'});}
+/* ── Additifs / modificatifs du CCTP : compléter sans réécrire le CCTP complet. ── */
+function cctpFindAdditif(id){return (PROJ&&PROJ.cctp)?PROJ.cctp.additifs.find(function(x){return x.id===id;}):null;}
+function cctpAddAdditif(){if(!can('items'))return denyMsg();cctpEnsure(PROJ);var n=String(PROJ.cctp.additifs.length+1);PROJ.cctp.additifs.push({id:'cad'+(uid++),num:n,date:new Date().toISOString().slice(0,10),objet:'',texte:'',statut:'projet',pdf:null});savePROJS();renderCctp();toast('Additif ajouté');}
+function cctpDelAdditif(id){if(!can('items'))return denyMsg();var arr=PROJ.cctp.additifs,i=arr.findIndex(function(x){return x.id===id;});if(i<0)return;var rm=arr.splice(i,1)[0];savePROJS();renderCctp();toast('Additif supprimé',{undo:function(){arr.splice(i,0,rm);savePROJS();renderCctp();}});}
+function cctpUpdateAdditif(id,field,v){if(!can('items'))return;if(['num','date','objet','texte'].indexOf(field)<0)return;var a=cctpFindAdditif(id);if(a){a[field]=v;saveLater();}}
+function cctpSetAdditifStatut(id,s){if(!can('items'))return denyMsg();var a=cctpFindAdditif(id);if(a){a.statut=(s==='publie'?'publie':'projet');savePROJS();renderCctp();}}
+function cctpPinAdditifPdf(id,ev){
+  if(!can('items'))return denyMsg();
+  var proj=PROJ,aId=id; var f=ev.target.files&&ev.target.files[0]; if(ev.target)ev.target.value='';
+  if(!f)return;
+  if(!(f.type==='application/pdf'||/\.pdf$/i.test(f.name))){toastErr('Veuillez sélectionner un fichier PDF.');return;}
+  var rd=new FileReader();
+  rd.onload=function(){if(!proj)return;var bid='cadpdf'+(uid++);setBlob(bid,rd.result).then(function(ok){if(!ok){toastErr('Fichier non stocké (stockage plein).');return;}var a=(proj.cctp.additifs||[]).find(function(x){return x.id===aId;});if(a){a.pdf={blobId:bid,fileName:f.name};savePROJS();if(PROJ===proj)renderCctp();toast('Additif signé attaché');}}).catch(function(er){console.warn('[cctpPinAdditifPdf]',er);toastErr('Erreur lors de l\'enregistrement du fichier.');});};
+  rd.onerror=function(){toastErr('Erreur de lecture du fichier.');};
+  rd.readAsDataURL(f);
+}
+function cctpUnpinAdditifPdf(id){if(!can('items'))return denyMsg();var a=cctpFindAdditif(id);if(a){a.pdf=null;savePROJS();renderCctp();toast('PDF retiré');}}
+function cctpViewAdditifPdf(id){var a=cctpFindAdditif(id);if(a&&a.pdf&&a.pdf.blobId)viewDoc({id:a.pdf.blobId,fileName:a.pdf.fileName,title:a.pdf.fileName||'Additif CCTP',mimeType:'application/pdf',type:'pdf'});}
+function cctpAdditifPdfBtn(a){
+  var can_=can('items');
+  if(a.pdf&&a.pdf.blobId){return '<button class="btn btn-g btn-sm" onclick="cctpViewAdditifPdf(\''+a.id+'\')" aria-label="Voir l\'additif signé" title="'+e(a.pdf.fileName||'Additif signé')+'"><svg class="ico ico-xs" style="margin-right:3px" aria-hidden="true"><use href="#i-pdf"/></svg>PDF</button>'
+    +(can_?'<button class="btn btn-g btn-sm" style="padding:4px 6px;color:var(--text3)" onclick="cctpUnpinAdditifPdf(\''+a.id+'\')" aria-label="Retirer le PDF" title="Retirer"><svg class="ico ico-xs" aria-hidden="true"><use href="#i-x"/></svg></button>':'');}
+  return can_?'<label class="btn btn-g btn-sm" style="cursor:pointer;padding:4px 8px"><svg class="ico ico-xs" style="margin-right:3px" aria-hidden="true"><use href="#i-upload"/></svg>PDF<input type="file" accept=".pdf,application/pdf" style="display:none" onchange="cctpPinAdditifPdf(\''+a.id+'\',event)"></label>':'';
+}
+function cctpPdfBtn(){
+  var pdf=PROJ&&PROJ.cctp&&PROJ.cctp.pdf, can_=can('items');
+  if(pdf&&pdf.blobId){
+    return '<span style="display:inline-flex;align-items:center;gap:4px">'
+      +'<button class="btn btn-g btn-sm" onclick="cctpViewPdf()" aria-label="Voir le CCTP signé" title="'+e(pdf.fileName||'CCTP signé')+'"><svg class="ico ico-xs" style="margin-right:3px" aria-hidden="true"><use href="#i-pdf"/></svg>CCTP signé</button>'
+      +(can_?'<button class="btn btn-g btn-sm" style="padding:4px 6px;color:var(--text3)" onclick="cctpUnpinPdf()" aria-label="Retirer le CCTP signé" title="Retirer le PDF"><svg class="ico ico-xs" aria-hidden="true"><use href="#i-x"/></svg></button>':'')+'</span>';
+  }
+  return can_?'<label class="btn btn-g btn-sm" style="cursor:pointer"><svg class="ico ico-xs" style="margin-right:3px" aria-hidden="true"><use href="#i-upload"/></svg>Joindre le CCTP signé (PDF)<input type="file" accept=".pdf,application/pdf" style="display:none" onchange="cctpPinPdf(event)"></label>':'';
+}
+function cctpCounts(){var p=PROJ&&PROJ.cctp;if(!p)return{s:0,a:0};var a=0;(p.sections||[]).forEach(function(s){a+=(s.items||[]).length;});return{s:(p.sections||[]).length,a:a};}
+function cctpTabBar(){
+  var canEdit=can('items');
+  function tab(id,ico,label){var on=cctpTab===id;return '<button role="tab" aria-selected="'+(on?'true':'false')+'" onclick="cctpSetTab(\''+id+'\')" style="display:inline-flex;align-items:center;gap:6px;padding:7px 15px;border:none;border-radius:8px;font-family:inherit;font-size:12.5px;font-weight:600;cursor:pointer;'+(on?'background:var(--panel);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.14)':'background:transparent;color:var(--text3)')+'"><svg class="ico ico-sm" aria-hidden="true"><use href="#i-'+ico+'"/></svg>'+label+'</button>';}
+  return '<div role="tablist" aria-label="Vue du CCTP" style="display:inline-flex;gap:3px;padding:3px;background:var(--bg2);border:1px solid var(--border);border-radius:11px;margin-bottom:16px">'
+    +(canEdit?tab('edit','edit','Rédaction'):'')
+    +tab('apercu','file-check','CCTP publié')+'</div>';
+}
+function renderCctp(){
+  cctpEnsure(PROJ);
+  var canEdit=can('items');
+  if(!canEdit&&cctpTab==='edit')cctpTab='apercu';   // lecture seule pour entreprises / rôle lecture
+  var c=cctpCounts();
+  var nAdd=(PROJ.cctp.additifs||[]).length;
+  setTB('check-list','#c47a00','CCTP',c.s+(c.s>1?' chapitres':' chapitre')+' · '+c.a+' article'+(c.a>1?'s':'')+(nAdd?(' · '+nAdd+' additif'+(nAdd>1?'s':'')):''),(canEdit&&cctpTab==='edit'?'+ Chapitre':''),'plus');
+  setTabs(null);
+  document.getElementById('content').innerHTML='<div class="pad">'+cctpTabBar()+'<div id="cctp-body"></div></div>';
+  if(canEdit&&cctpTab==='edit')renderCctpEdit();else renderCctpView();
+}
+function renderCctpEdit(){
+  var host=document.getElementById('cctp-body');if(!host||!PROJ)return;var p=PROJ.cctp;
+  var html='<div style="display:flex;justify-content:flex-end;gap:6px;flex-wrap:wrap;margin-bottom:10px">'+cctpPdfBtn()+'<button class="btn btn-g btn-sm" onclick="cctpLoadTemplate()" title="Remplir le CCTP avec un modèle type (8 chapitres, 31 articles) à adapter"><svg class="ico ico-xs" style="margin-right:4px"><use href="#i-check-list"/></svg>Charger le modèle type</button></div>'
+    +'<div style="border:1px solid var(--border);border-radius:var(--r2);background:var(--panel);padding:11px 13px;margin-bottom:14px">'
+    +'<label for="cctp-intro" style="display:block;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Préambule / objet du marché</label>'
+    +'<textarea id="cctp-intro" oninput="cctpUpdateIntro(this.value)" placeholder="Objet du CCTP, intervenants, documents de référence (DTU, normes)…" style="width:100%;min-height:64px;resize:vertical;border:1px solid var(--border2);border-radius:8px;padding:8px 10px;font-size:12.5px;font-family:inherit;background:var(--bg);color:var(--text);box-sizing:border-box">'+e(p.intro||'')+'</textarea>'
+  +'</div>';
+  if(!p.sections.length){
+    html+='<div style="color:var(--text3);font-size:13px;padding:24px;text-align:center;border:1px dashed var(--border);border-radius:var(--r2)">Aucun chapitre. Cliquez sur « + Chapitre » en haut à droite, ou sur « Charger le modèle type » pour partir d\'un CCTP complet à adapter.</div>';
+  }
+  p.sections.forEach(function(s,si){
+    html+='<div style="border:1px solid var(--border);border-radius:var(--r2);background:var(--panel);margin-bottom:14px;overflow:hidden">'
+      +'<div style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid var(--border);background:var(--bg2)">'
+        +'<span style="font-weight:700;color:#8a5800;font-size:14px;min-width:20px">'+(si+1)+'.</span>'
+        +'<input value="'+e(s.titre||'')+'" aria-label="Titre du chapitre '+(si+1)+'" placeholder="Titre du chapitre (ex. GROS ŒUVRE)" oninput="cctpUpdateSection(\''+s.id+'\',this.value)" style="flex:1;min-width:120px;font-weight:600;font-size:13px;border:1px solid transparent;border-radius:6px;padding:4px 6px;background:transparent;color:var(--text)" onfocus="this.style.borderColor=\'var(--border)\';this.style.background=\'var(--panel)\'" onblur="this.style.borderColor=\'transparent\';this.style.background=\'transparent\'">'
+        +'<button class="btn btn-g btn-sm" style="padding:4px 8px" onclick="cctpAddArticle(\''+s.id+'\')"><svg class="ico ico-xs" style="margin-right:3px" aria-hidden="true"><use href="#i-plus"/></svg>Article</button>'
+        +'<button class="btn btn-g btn-sm" style="padding:4px 6px;color:var(--red)" aria-label="Supprimer le chapitre '+(si+1)+'" onclick="cctpDelSection(\''+s.id+'\')" title="Supprimer le chapitre"><svg class="ico ico-xs" aria-hidden="true"><use href="#i-trash"/></svg></button>'
+      +'</div>';
+    if(!s.items.length)html+='<div style="padding:12px;color:var(--text3);font-size:12px">Aucun article. Utilisez « + Article ».</div>';
+    s.items.forEach(function(a,ai){
+      html+='<div style="padding:10px 12px;border-bottom:1px solid var(--border)">'
+        +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'
+          +'<span style="font-weight:700;color:#8a5800;font-size:12px;min-width:34px">'+(si+1)+'.'+(ai+1)+'</span>'
+          +'<input value="'+e(a.titre||'')+'" aria-label="Titre de l\'article '+(si+1)+'.'+(ai+1)+'" placeholder="Titre de l\'article (ex. Fondations)" oninput="cctpUpdateArticle(\''+a.id+'\',\'titre\',this.value)" style="flex:1;min-width:120px;font-weight:500;font-size:12.5px;border:1px solid var(--border2);border-radius:6px;padding:5px 7px;background:var(--bg);color:var(--text)">'
+          +'<button class="btn btn-g btn-sm" style="padding:4px 6px;color:var(--red)" aria-label="Supprimer l\'article '+(si+1)+'.'+(ai+1)+'" onclick="cctpDelArticle(\''+a.id+'\')" title="Supprimer l\'article"><svg class="ico ico-xs" aria-hidden="true"><use href="#i-trash"/></svg></button>'
+        +'</div>'
+        +'<textarea aria-label="Description de l\'article '+(si+1)+'.'+(ai+1)+'" oninput="cctpUpdateArticle(\''+a.id+'\',\'texte\',this.value)" placeholder="Description technique : matériaux, mise en œuvre, normes/DTU, tolérances…" style="width:100%;min-height:70px;resize:vertical;border:1px solid var(--border2);border-radius:8px;padding:8px 10px;font-size:12.5px;font-family:inherit;line-height:1.5;background:var(--bg);color:var(--text);box-sizing:border-box">'+e(a.texte||'')+'</textarea>'
+      +'</div>';
+    });
+    html+='</div>';
+  });
+  // ── Additifs / modificatifs ──
+  html+='<div style="display:flex;align-items:center;justify-content:space-between;margin:18px 2px 8px"><div style="font-weight:700;font-size:13px;color:#5c3d1e">Additifs / modificatifs <span style="color:var(--text3);font-weight:400">(compléter sans réécrire le CCTP)</span></div><button class="btn btn-g btn-sm" onclick="cctpAddAdditif()"><svg class="ico ico-xs" style="margin-right:3px"><use href="#i-plus"/></svg>Additif</button></div>';
+  if(!p.additifs.length)html+='<div style="color:var(--text3);font-size:12.5px;padding:16px;text-align:center;border:1px dashed var(--border);border-radius:var(--r2)">Aucun additif. Un additif ajoute ou modifie une prescription technique en cours de projet, sans toucher au CCTP initial.</div>';
+  p.additifs.forEach(function(a){
+    var pub=a.statut==='publie';
+    html+='<div style="border:1px solid var(--border);border-left:3px solid '+(pub?'#1a7a4a':'#c47a00')+';border-radius:var(--r2);background:var(--panel);margin-bottom:12px;padding:10px 12px">'
+      +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">'
+        +'<span style="font-weight:700;color:#5c3d1e;font-size:12.5px;white-space:nowrap">Additif n°</span>'
+        +'<input value="'+e(a.num||'')+'" aria-label="Numéro d\'additif" oninput="cctpUpdateAdditif(\''+a.id+'\',\'num\',this.value)" style="width:42px;font-weight:700;font-size:12.5px;border:1px solid var(--border2);border-radius:6px;padding:4px;text-align:center;background:var(--bg);color:var(--text)">'
+        +'<input type="date" value="'+e(a.date||'')+'" aria-label="Date de l\'additif" oninput="cctpUpdateAdditif(\''+a.id+'\',\'date\',this.value)" style="border:1px solid var(--border2);border-radius:6px;padding:4px 6px;font-size:12px;font-family:inherit;background:var(--bg);color:var(--text)">'
+        +'<select aria-label="Statut de l\'additif" onchange="cctpSetAdditifStatut(\''+a.id+'\',this.value)" style="font-size:11.5px;border:1px solid var(--border2);border-radius:6px;padding:4px 6px;font-family:inherit;background:var(--bg);color:var(--text)"><option value="projet"'+(pub?'':' selected')+'>Projet</option><option value="publie"'+(pub?' selected':'')+'>Publié</option></select>'
+        +'<span style="margin-left:auto;display:inline-flex;gap:4px">'+cctpAdditifPdfBtn(a)+'<button class="btn btn-g btn-sm" style="padding:4px 6px;color:var(--red)" aria-label="Supprimer l\'additif" onclick="cctpDelAdditif(\''+a.id+'\')" title="Supprimer l\'additif"><svg class="ico ico-xs" aria-hidden="true"><use href="#i-trash"/></svg></button></span>'
+      +'</div>'
+      +'<input value="'+e(a.objet||'')+'" placeholder="Objet de l\'additif (ex. ajout d\'un lot domotique, révision de l\'isolation)" aria-label="Objet de l\'additif" oninput="cctpUpdateAdditif(\''+a.id+'\',\'objet\',this.value)" style="width:100%;font-weight:500;font-size:12.5px;border:1px solid var(--border2);border-radius:6px;padding:6px 8px;margin-bottom:6px;background:var(--bg);color:var(--text);box-sizing:border-box">'
+      +'<textarea aria-label="Texte de l\'additif" oninput="cctpUpdateAdditif(\''+a.id+'\',\'texte\',this.value)" placeholder="Prescription technique ajoutée ou modifiée…" style="width:100%;min-height:58px;resize:vertical;border:1px solid var(--border2);border-radius:8px;padding:8px 10px;font-size:12.5px;font-family:inherit;line-height:1.5;background:var(--bg);color:var(--text);box-sizing:border-box">'+e(a.texte||'')+'</textarea></div>';
+  });
+  host.innerHTML=html;
+}
+function renderCctpView(){
+  var host=document.getElementById('cctp-body');if(!host||!PROJ)return;var p=PROJ.cctp;
+  var empty=!p.sections.length&&!(p.intro||'').trim()&&!(p.pdf&&p.pdf.blobId)&&!p.additifs.length;
+  if(empty){host.innerHTML='<div style="color:var(--text3);font-size:13px;padding:24px;text-align:center;border:1px dashed var(--border);border-radius:var(--r2)">Le CCTP n\'a pas encore été rédigé.</div>';return;}
+  var html='<div style="display:flex;justify-content:flex-end;gap:6px;flex-wrap:wrap;margin-bottom:10px">'+cctpPdfBtn()+'<button class="btn btn-g btn-sm" onclick="window.print()"><svg class="ico ico-xs" style="margin-right:4px"><use href="#i-download"/></svg>Imprimer / PDF</button></div>'
+    +'<div style="border:1px solid var(--border);border-radius:var(--r2);background:var(--panel);padding:22px 26px;max-width:820px;margin:0 auto;line-height:1.6">'
+    +'<div style="text-align:center;margin-bottom:18px"><h2 style="font-size:18px;font-weight:700;letter-spacing:-.01em;margin:0">Cahier des Clauses Techniques Particulières</h2>'
+      +'<div style="font-size:12.5px;color:var(--text3);margin-top:3px">'+e(PROJ.name||'')+(PROJ.address?(' — '+e(PROJ.address)):'')+'</div></div>';
+  if((p.intro||'').trim())html+='<div style="font-size:13px;white-space:pre-wrap;color:var(--text2);border-bottom:1px solid var(--border);padding-bottom:14px;margin-bottom:14px">'+e(p.intro)+'</div>';
+  p.sections.forEach(function(s,si){
+    html+='<div style="margin-bottom:16px"><h3 style="font-size:14.5px;font-weight:700;color:#5c3d1e;margin:0 0 8px">'+(si+1)+'. '+e(s.titre||'(sans titre)')+'</h3>';
+    (s.items||[]).forEach(function(a,ai){
+      html+='<div style="margin:0 0 12px 4px"><h4 style="font-size:13px;font-weight:600;margin:0 0 3px">'+(si+1)+'.'+(ai+1)+'  '+e(a.titre||'(sans titre)')+'</h4>'
+        +(((a.texte||'').trim())?'<div style="font-size:12.5px;color:var(--text2);white-space:pre-wrap">'+e(a.texte)+'</div>':'')
+      +'</div>';
+    });
+    html+='</div>';
+  });
+  if(p.additifs.length){
+    html+='<div style="margin-top:8px;border-top:2px solid var(--border);padding-top:14px"><h3 style="font-size:15px;font-weight:700;color:#5c3d1e;margin:0 0 10px">Additifs / modificatifs</h3>';
+    p.additifs.forEach(function(a){
+      var pub=a.statut==='publie';
+      html+='<div style="border:1px solid var(--border);border-left:3px solid '+(pub?'#1a7a4a':'#c47a00')+';border-radius:var(--r);background:var(--bg);padding:11px 13px;margin-bottom:10px">'
+        +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px"><span style="font-weight:700;color:#5c3d1e;font-size:13px">Additif n°'+e(a.num||'')+'</span>'
+        +(a.date?'<span style="font-size:11.5px;color:var(--text3)">'+e(fmtDateFR(a.date))+'</span>':'')
+        +'<span style="font-size:10.5px;font-weight:600;padding:1px 8px;border-radius:20px;'+(pub?'background:var(--green-bg);color:var(--green)':'background:var(--amber-bg);color:var(--amber-text)')+'">'+(pub?'Publié':'Projet')+'</span>'
+        +(a.pdf&&a.pdf.blobId?'<button class="btn btn-g btn-sm" style="margin-left:auto;padding:3px 8px" onclick="cctpViewAdditifPdf(\''+a.id+'\')"><svg class="ico ico-xs" style="margin-right:3px" aria-hidden="true"><use href="#i-pdf"/></svg>PDF</button>':'')+'</div>'
+        +(a.objet?'<div style="font-weight:600;font-size:12.5px;margin-bottom:3px">'+e(a.objet)+'</div>':'')
+        +(((a.texte||'').trim())?'<div style="font-size:12.5px;color:var(--text2);white-space:pre-wrap">'+e(a.texte)+'</div>':'')+'</div>';
+    });
+    html+='</div>';
+  }
+  html+='</div>';
+  host.innerHTML=html;
+}
+
+/* ══ CONTRAT D'ARCHITECTE (maître d'ouvrage ↔ architecte) ══
+   Modèle dérivé des contrats-types du Conseil national de l'Ordre des Architectes.
+   Deux onglets : Rédaction (architecte) + Contrat publié (lecture, client/tous).
+   Gère une synthèse (parties, budget, honoraires, dates), des articles éditables,
+   un PDF signé joint, et des AVENANTS (addendums chiffrés, chacun avec PDF signé). */
+var CONTRAT_TEMPLATES={
+  mission_complete:{label:'Mission complète',intro:'Contrat de maîtrise d\'œuvre — mission complète, établi sur la base du contrat-type du Conseil national de l\'Ordre des Architectes. Les présentes clauses précisent le contrat-type signé (PDF joint).',articles:[
+    {num:'1',titre:'Parties contractantes',texte:'Entre le client (maître d\'ouvrage) : «CLIENT», demeurant «ADRESSE CLIENT» ;\nEt l\'architecte : «ARCHITECTE» (n° d\'inscription à l\'Ordre : «N° ORDRE»), assuré en responsabilité civile professionnelle.\nLes parties contractent en leur nom propre.'},
+    {num:'2',titre:'Informations concernant le projet',texte:'Adresse des travaux : [à compléter]\nRéférences cadastrales : [à compléter]\nSurface du terrain / de l\'existant : [à compléter]\nProgramme et contraintes du client : [programme, budget d\'objectif, contraintes de délai et de site].\nMission confiée : mission complète (conception + suivi de chantier).'},
+    {num:'3',titre:'Pièces contractuelles',texte:'Constituent le contrat, par ordre de priorité : le présent contrat et ses avenants ; les éléments de programmation du client ; le contrat-type de l\'Ordre des architectes et ses annexes ; les documents graphiques et écrits approuvés.'},
+    {num:'4',titre:'Budget travaux et rémunération',texte:'Budget travaux déclaré par le client : «BUDGET» € TTC (VRD inclus).\nRémunération de l\'architecte : «HONORAIRES» — méthode : «MÉTHODE».\nSeuil de tolérance sur le coût prévisionnel : [x] %.'},
+    {num:'4.1',titre:'Rémunération des modifications après validation',texte:'Chaque palier du projet (esquisse, avant-projet, permis de construire, projet, etc.) est validé par l\'approbation et la signature du livrable correspondant par le client. Le passage d\'un palier au suivant suppose cette validation.\n\nUne fois un livrable approuvé et signé, toute modification ultérieure demandée par le client sur ce livrable constitue une prestation supplémentaire non comprise dans les honoraires de base. Elle est facturée au temps réellement passé, au taux horaire de «TAUX» € HT / heure, et formalisée par un avenant.\n\nLe registre des paliers du projet tient le suivi de ces validations et des modifications facturables.'},
+    {num:'5',titre:'Contenu des éléments de mission',texte:'La mission complète comprend : esquisse (ESQ), avant-projet (APS/APD), projet (PRO), demande de permis de construire (PC), consultation des entreprises (DCE/ACT), direction de l\'exécution des travaux (DET), assistance aux opérations de réception (AOR). L\'architecte peut s\'adjoindre les bureaux d\'études nécessaires.'},
+    {num:'6',titre:'Durée de la mission et délais',texte:'La mission prend fin à l\'issue de la réception sans réserve (ou levée des réserves) et du décompte définitif. Délais prévisionnels par phase : [à compléter]. Les délais sont suspendus en cas de retard d\'approbation du client ou d\'aléa extérieur.'},
+    {num:'7',titre:'Approbation des livrables',texte:'Les livrables sont remis de façon dématérialisée et datée. Le client approuve ou formule ses observations sous [x] jours. L\'approbation d\'un élément autorise l\'engagement du suivant et déclenche la facturation correspondante.'},
+    {num:'8',titre:'Modalités de rémunération',texte:'L\'architecte est rémunéré exclusivement par le client sous forme d\'honoraires. Toute prestation supplémentaire non prévue (modification de programme, mission complémentaire) fait l\'objet d\'un avenant chiffré et approuvé au préalable.'},
+    {num:'9',titre:'Modalités de règlement',texte:'Échelonnement des honoraires par phase : ESQ [x]%, APS/APD [x]%, PRO [x]%, PC [x]%, DCE/ACT [x]%, DET [x]%, AOR [x]%. Délai de paiement : [30] jours à réception de facture. Intérêts de retard au taux légal en vigueur.'},
+    {num:'10',titre:'Droits et obligations des parties',texte:'Les parties respectent les lois et règlements en vigueur (loi du 3 janvier 1977 sur l\'architecture, code de la construction). Le client fournit informations et autorisations nécessaires ; l\'architecte exécute sa mission avec diligence et devoir de conseil. (Texte intégral : voir contrat-type signé joint.)'},
+    {num:'11',titre:'Responsabilités et assurances',texte:'Le client souscrit avant ouverture de chantier une assurance dommages-ouvrage (art. L.242-1 du code des assurances). L\'architecte justifie d\'une assurance de responsabilité civile professionnelle et décennale couvrant la mission. Attestations à annexer.'},
+    {num:'11.3',titre:'Commandes et contacts directs du client — décharge de responsabilité',texte:'Lorsque le client commande directement des prestations, fournitures ou matériaux, ou entre en relation directe avec une entreprise, un fournisseur ou un prestataire sans passer par l\'architecte, ces commandes et relations relèvent de la seule responsabilité du client. L\'architecte ne peut être tenu responsable de leur choix, de leur exécution, de leur coût, de leurs délais, de leur conformité ni de leurs conséquences.\n\nSi ces commandes ou contacts directs génèrent un travail supplémentaire pour l\'architecte (coordination, reprise d\'études, mise en cohérence, vérifications, etc.), ce travail constitue une prestation supplémentaire facturée au temps passé, au taux horaire prévu à l\'article 4.1, par avenant.\n\nCette facturation n\'emporte aucun transfert de responsabilité : l\'architecte demeure non responsable des commandes et des contacts directs du client et de leurs suites.'},
+    {num:'12',titre:'Propriété intellectuelle',texte:'Le client peut réaliser le projet en un seul exemplaire après paiement des honoraires dus. L\'architecte conserve la propriété intellectuelle de ses études et son droit de mention. Toute réutilisation ou modification requiert son accord écrit.'},
+    {num:'13',titre:'Suspension de la mission',texte:'La suspension peut être demandée par l\'une des parties en cas d\'événement imprévisible extérieur ou de manquement de l\'autre partie, par lettre recommandée. Les prestations réalisées restent dues.'},
+    {num:'14',titre:'Litiges',texte:'En cas de différend, les parties saisissent préalablement le Conseil régional de l\'Ordre des architectes pour un règlement amiable. Le client consommateur peut recourir à la médiation de la consommation. À défaut d\'accord, le tribunal compétent est saisi.'},
+    {num:'15',titre:'Résiliation du contrat',texte:'Le contrat peut être résilié d\'un commun accord, sans faute (avec indemnisation des prestations réalisées et du préjudice), pour indisponibilité de l\'architecte, ou pour faute après mise en demeure restée infructueuse.'},
+    {num:'16',titre:'Stipulations particulières',texte:'[Clauses spécifiques au projet : missions partielles, options, conditions particulières…]\nFait en deux exemplaires.\nLe client «CLIENT» (signature) — L\'architecte «ARCHITECTE» (signature) — Date : «DATE SIGNATURE».'}
+  ]},
+  esquisses:{label:'Esquisses (étude préalable)',intro:'Contrat d\'études d\'esquisses préalable à une éventuelle mission complète, sur la base du contrat-type de l\'Ordre des architectes.',articles:[
+    {num:'1',titre:'Parties contractantes',texte:'Client (maître d\'ouvrage) : «CLIENT», demeurant «ADRESSE CLIENT». Architecte : «ARCHITECTE» (n° Ordre : «N° ORDRE»).'},
+    {num:'2',titre:'Objet et programme',texte:'Études d\'esquisse pour : [adresse, programme, budget d\'objectif].'},
+    {num:'3',titre:'Contenu de la prestation',texte:'Analyse du site et du programme, faisabilité, esquisse(s) et première estimation sommaire du coût des travaux.'},
+    {num:'4',titre:'Rémunération',texte:'Honoraires d\'esquisse : «HONORAIRES» — forfaitaire. Déductibles des honoraires de la mission complète en cas de poursuite.'},
+    {num:'5',titre:'Délais et règlement',texte:'Remise sous [x] semaines. Paiement à la remise de l\'esquisse, délai [30] jours.'},
+    {num:'6',titre:'Propriété et suite',texte:'L\'esquisse reste la propriété intellectuelle de l\'architecte ; sa réutilisation suppose la conclusion de la mission complète.'}
+  ]},
+  visite_conseil:{label:'Visite-conseil',intro:'Contrat de visite-conseil ponctuelle, sur la base du contrat-type de l\'Ordre des architectes.',articles:[
+    {num:'1',titre:'Parties',texte:'Client : «CLIENT», demeurant «ADRESSE CLIENT». Architecte : «ARCHITECTE» (n° Ordre : «N° ORDRE»).'},
+    {num:'2',titre:'Objet de la visite',texte:'Visite-conseil sur site : [adresse] — objet : [diagnostic / faisabilité / conseil].'},
+    {num:'3',titre:'Rémunération',texte:'Honoraires forfaitaires de la visite : «HONORAIRES» € TTC.'},
+    {num:'4',titre:'Compte rendu et limites',texte:'Un avis écrit est remis. La prestation n\'inclut ni étude de conception ni maîtrise d\'œuvre ; toute suite fera l\'objet d\'un contrat distinct.'}
+  ]}
+};
+var CT_FIELDS={client:1,clientAdr:1,architecte:1,ordre:1,budget:1,remu:1,remuMode:1,tauxHoraire:1,dateSign:1,dateDebut:1};
+var ctTab='apercu';
+// Affiche une date ISO (yyyy-mm-dd, issue d'un <input type=date>) en jj/mm/aaaa.
+function fmtDateFR(v){if(!v)return '';var m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(String(v));return m?(m[3]+'/'+m[2]+'/'+m[1]):String(v);}
+// Publipostage contrat : remplace les champs «…» par les valeurs de la synthèse.
+// Un champ non renseigné reste affiché (ex. «CLIENT») pour signaler ce qui manque.
+function ctTokens(c){c=c||{};return {
+  'CLIENT':c.client,'ADRESSE CLIENT':c.clientAdr,'ARCHITECTE':c.architecte,'N° ORDRE':c.ordre,
+  'BUDGET':c.budget,'HONORAIRES':c.remu,'MÉTHODE':c.remuMode,'TAUX':c.tauxHoraire,
+  'DATE SIGNATURE':fmtDateFR(c.dateSign),'DÉBUT':fmtDateFR(c.dateDebut)
+};}
+function ctFill(text,c){
+  if(text==null)return '';
+  var map=ctTokens(c);
+  return String(text).replace(/«\s*([^«»]+?)\s*»/g,function(m,key){
+    var v=map[key.trim().toUpperCase()];
+    return (v&&String(v).trim())?String(v):m;
+  });
+}
+function ctEnsure(p){
+  if(!p)return;
+  if(!p.contrat||typeof p.contrat!=='object')p.contrat={};
+  var c=p.contrat;
+  if(typeof c.type!=='string')c.type='mission_complete';
+  ['client','clientAdr','architecte','ordre','budget','remu','remuMode','tauxHoraire','dateSign','dateDebut','intro'].forEach(function(k){if(typeof c[k]!=='string')c[k]='';});
+  if(c.statut!=='signe')c.statut='brouillon';
+  if(!Array.isArray(c.articles))c.articles=[];
+  if(!Array.isArray(c.avenants))c.avenants=[];
+  c.avenants.forEach(function(a){if(typeof a.statut!=='string')a.statut='projet';});
+}
+function ctFromTemplate(type){
+  var t=CONTRAT_TEMPLATES[type]||CONTRAT_TEMPLATES.mission_complete;
+  return {intro:t.intro,articles:(t.articles||[]).map(function(a){return {id:'ct'+(uid++),num:a.num,titre:a.titre,texte:a.texte};})};
+}
+function ctLoadTemplate(){
+  if(!can('items'))return denyMsg();
+  ctEnsure(PROJ);var proj=PROJ;
+  var type=PROJ.contrat.type||'mission_complete';
+  var has=PROJ.contrat.articles.length>0||(PROJ.contrat.intro||'').trim();
+  var apply=function(){if(!proj)return;ctEnsure(proj);var t=ctFromTemplate(type);proj.contrat.intro=t.intro;proj.contrat.articles=t.articles;savePROJS();if(PROJ===proj){ctTab='edit';renderContrat();}toast('Modèle de contrat chargé');};
+  if(has)confirmModal({title:'Charger le modèle type ?',danger:true,body:'Les articles actuels du contrat seront <strong>remplacés</strong> par le modèle « '+e((CONTRAT_TEMPLATES[type]||{}).label||'')+' ». Pensez à exporter une sauvegarde si besoin.',confirmLabel:'Remplacer par le modèle',onConfirm:apply});
+  else apply();
+}
+function ctFindArticle(id){return (PROJ&&PROJ.contrat)?PROJ.contrat.articles.find(function(a){return a.id===id;}):null;}
+function ctFindAvenant(id){return (PROJ&&PROJ.contrat)?PROJ.contrat.avenants.find(function(a){return a.id===id;}):null;}
+function ctSetTab(t){ctTab=t;renderContrat();}
+function ctField(field,v){if(!can('items'))return;if(!CT_FIELDS[field])return;ctEnsure(PROJ);PROJ.contrat[field]=v;saveLater();}
+function ctUpdateIntro(v){if(!can('items'))return;ctEnsure(PROJ);PROJ.contrat.intro=v;saveLater();}
+function ctSetType(t){if(!can('items'))return denyMsg();if(!CONTRAT_TEMPLATES[t])return;ctEnsure(PROJ);PROJ.contrat.type=t;savePROJS();renderContrat();}
+function ctSetStatut(s){if(!can('items'))return denyMsg();ctEnsure(PROJ);PROJ.contrat.statut=(s==='signe'?'signe':'brouillon');savePROJS();renderContrat();}
+function ctAddArticle(){if(!can('items'))return denyMsg();ctEnsure(PROJ);var n=String(PROJ.contrat.articles.length+1);PROJ.contrat.articles.push({id:'ct'+(uid++),num:n,titre:'',texte:''});savePROJS();renderContrat();}
+function ctDelArticle(id){if(!can('items'))return denyMsg();var arr=PROJ.contrat.articles,i=arr.findIndex(function(x){return x.id===id;});if(i<0)return;var rm=arr.splice(i,1)[0];savePROJS();renderContrat();toast('Article supprimé',{undo:function(){arr.splice(i,0,rm);savePROJS();renderContrat();}});}
+function ctUpdateArticle(id,field,v){if(!can('items'))return;if(field!=='num'&&field!=='titre'&&field!=='texte')return;var a=ctFindArticle(id);if(a){a[field]=v;saveLater();}}
+/* ── Avenants ── */
+function avAdd(){if(!can('items'))return denyMsg();ctEnsure(PROJ);var n=String(PROJ.contrat.avenants.length+1);PROJ.contrat.avenants.push({id:'av'+(uid++),num:n,date:'',objet:'',montant:'',texte:'',statut:'projet',pdf:null});savePROJS();renderContrat();toast('Avenant ajouté');}
+function avDel(id){if(!can('items'))return denyMsg();var arr=PROJ.contrat.avenants,i=arr.findIndex(function(x){return x.id===id;});if(i<0)return;var rm=arr.splice(i,1)[0];savePROJS();renderContrat();toast('Avenant supprimé',{undo:function(){arr.splice(i,0,rm);savePROJS();renderContrat();}});}
+function avUpdate(id,field,v){if(!can('items'))return;if(['num','date','objet','montant','texte'].indexOf(field)<0)return;var a=ctFindAvenant(id);if(a){a[field]=v;saveLater();}}
+function avSetStatut(id,s){if(!can('items'))return denyMsg();var a=ctFindAvenant(id);if(a){a.statut=(s==='signe'?'signe':'projet');savePROJS();renderContrat();}}
+function avPinPdf(id,ev){
+  if(!can('items'))return denyMsg();
+  var proj=PROJ,avId=id; var f=ev.target.files&&ev.target.files[0]; if(ev.target)ev.target.value='';
+  if(!f)return;
+  if(!(f.type==='application/pdf'||/\.pdf$/i.test(f.name))){toastErr('Veuillez sélectionner un fichier PDF.');return;}
+  var rd=new FileReader();
+  rd.onload=function(){if(!proj)return;var bid='avpdf'+(uid++);setBlob(bid,rd.result).then(function(ok){if(!ok){toastErr('Fichier non stocké (stockage plein).');return;}var a=(proj.contrat.avenants||[]).find(function(x){return x.id===avId;});if(a){a.pdf={blobId:bid,fileName:f.name};savePROJS();if(PROJ===proj)renderContrat();toast('Avenant signé attaché');}}).catch(function(er){console.warn('[avPinPdf]',er);toastErr('Erreur lors de l\'enregistrement du fichier.');});};
+  rd.onerror=function(){toastErr('Erreur de lecture du fichier.');};
+  rd.readAsDataURL(f);
+}
+function avUnpinPdf(id){if(!can('items'))return denyMsg();var a=ctFindAvenant(id);if(a){a.pdf=null;savePROJS();renderContrat();toast('PDF retiré');}}
+function avViewPdf(id){var a=ctFindAvenant(id);if(a&&a.pdf&&a.pdf.blobId)viewDoc({id:a.pdf.blobId,fileName:a.pdf.fileName,title:a.pdf.fileName||'Avenant signé',mimeType:'application/pdf',type:'pdf'});}
+/* ── Contrat signé (PDF) ── */
+function ctPinPdf(ev){
+  if(!can('items'))return denyMsg();
+  var proj=PROJ; var f=ev.target.files&&ev.target.files[0]; if(ev.target)ev.target.value='';
+  if(!f)return;
+  if(!(f.type==='application/pdf'||/\.pdf$/i.test(f.name))){toastErr('Veuillez sélectionner un fichier PDF.');return;}
+  var rd=new FileReader();
+  rd.onload=function(){if(!proj)return;var bid='ctpdf'+(uid++);setBlob(bid,rd.result).then(function(ok){if(!ok){toastErr('Fichier non stocké (stockage plein) — contrat signé non attaché.');return;}ctEnsure(proj);proj.contrat.pdf={blobId:bid,fileName:f.name};savePROJS();if(PROJ===proj)renderContrat();toast('Contrat signé attaché');}).catch(function(er){console.warn('[ctPinPdf]',er);toastErr('Erreur lors de l\'enregistrement du fichier.');});};
+  rd.onerror=function(){toastErr('Erreur de lecture du fichier.');};
+  rd.readAsDataURL(f);
+}
+function ctUnpinPdf(){if(!can('items'))return denyMsg();ctEnsure(PROJ);PROJ.contrat.pdf=null;savePROJS();renderContrat();toast('PDF retiré');}
+function ctViewPdf(){var pdf=PROJ&&PROJ.contrat&&PROJ.contrat.pdf;if(pdf&&pdf.blobId)viewDoc({id:pdf.blobId,fileName:pdf.fileName,title:pdf.fileName||'Contrat signé',mimeType:'application/pdf',type:'pdf'});}
+function ctPdfBtn(){
+  var pdf=PROJ&&PROJ.contrat&&PROJ.contrat.pdf, can_=can('items');
+  if(pdf&&pdf.blobId){return '<span style="display:inline-flex;align-items:center;gap:4px">'
+    +'<button class="btn btn-g btn-sm" onclick="ctViewPdf()" aria-label="Voir le contrat signé" title="'+e(pdf.fileName||'Contrat signé')+'"><svg class="ico ico-xs" style="margin-right:3px" aria-hidden="true"><use href="#i-pdf"/></svg>Contrat signé</button>'
+    +(can_?'<button class="btn btn-g btn-sm" style="padding:4px 6px;color:var(--text3)" onclick="ctUnpinPdf()" aria-label="Retirer le contrat signé" title="Retirer le PDF"><svg class="ico ico-xs" aria-hidden="true"><use href="#i-x"/></svg></button>':'')+'</span>';}
+  return can_?'<label class="btn btn-g btn-sm" style="cursor:pointer"><svg class="ico ico-xs" style="margin-right:3px" aria-hidden="true"><use href="#i-upload"/></svg>Joindre le contrat signé (PDF)<input type="file" accept=".pdf,application/pdf" style="display:none" onchange="ctPinPdf(event)"></label>':'';
+}
+function ctTabBar(){
+  var canEdit=can('items');
+  function tab(id,ico,label){var on=ctTab===id;return '<button role="tab" aria-selected="'+(on?'true':'false')+'" onclick="ctSetTab(\''+id+'\')" style="display:inline-flex;align-items:center;gap:6px;padding:7px 15px;border:none;border-radius:8px;font-family:inherit;font-size:12.5px;font-weight:600;cursor:pointer;'+(on?'background:var(--panel);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.14)':'background:transparent;color:var(--text3)')+'"><svg class="ico ico-sm" aria-hidden="true"><use href="#i-'+ico+'"/></svg>'+label+'</button>';}
+  return '<div role="tablist" aria-label="Vue du contrat" style="display:inline-flex;gap:3px;padding:3px;background:var(--bg2);border:1px solid var(--border);border-radius:11px;margin-bottom:16px">'
+    +(canEdit?tab('edit','edit','Rédaction'):'')+tab('apercu','file-check','Contrat publié')+'</div>';
+}
+function renderContrat(){
+  ctEnsure(PROJ);
+  var canEdit=can('items');
+  if(!canEdit&&ctTab==='edit')ctTab='apercu';
+  var c=PROJ.contrat, nav=(CONTRAT_TEMPLATES[c.type]||{}).label||'Contrat';
+  var sub=nav+' · '+c.articles.length+' article'+(c.articles.length>1?'s':'')+(c.avenants.length?(' · '+c.avenants.length+' avenant'+(c.avenants.length>1?'s':'')):'');
+  setTB('invoice','#5c3d1e','Contrat d\'architecte',sub,'','');
+  setTabs(null);
+  document.getElementById('content').innerHTML='<div class="pad">'+ctTabBar()+'<div id="ct-body"></div></div>';
+  if(canEdit&&ctTab==='edit')renderContratEdit();else renderContratView();
+}
+function ctInput(field,label,ph,val,wide){
+  return '<div style="'+(wide?'grid-column:1/-1;':'')+'">'
+    +'<label style="display:block;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px">'+e(label)+'</label>'
+    +'<input value="'+e(val||'')+'" placeholder="'+e(ph||'')+'" oninput="ctField(\''+field+'\',this.value)" style="width:100%;border:1px solid var(--border2);border-radius:8px;padding:7px 9px;font-size:12.5px;font-family:inherit;background:var(--bg);color:var(--text);box-sizing:border-box"></div>';
+}
+function renderContratEdit(){
+  var host=document.getElementById('ct-body');if(!host||!PROJ)return;var c=PROJ.contrat;
+  var typeOpts=Object.keys(CONTRAT_TEMPLATES).map(function(k){return '<option value="'+k+'"'+(c.type===k?' selected':'')+'>'+e(CONTRAT_TEMPLATES[k].label)+'</option>';}).join('');
+  var html='<div style="display:flex;justify-content:flex-end;gap:6px;flex-wrap:wrap;margin-bottom:10px">'+ctPdfBtn()
+    +'<button class="btn btn-g btn-sm" onclick="ctLoadTemplate()" title="Remplir le contrat avec le modèle type Ordre des architectes"><svg class="ico ico-xs" style="margin-right:4px"><use href="#i-invoice"/></svg>Charger le modèle type</button></div>';
+  // Synthèse
+  html+='<div style="border:1px solid var(--border);border-radius:var(--r2);background:var(--panel);padding:13px 15px;margin-bottom:14px">'
+    +'<div style="font-weight:700;font-size:13px;color:#5c3d1e;margin-bottom:10px">Synthèse du contrat</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+    +'<div><label style="display:block;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px">Type de contrat</label>'
+      +'<select aria-label="Type de contrat" onchange="ctSetType(this.value)" style="width:100%;border:1px solid var(--border2);border-radius:8px;padding:7px 9px;font-size:12.5px;font-family:inherit;background:var(--bg);color:var(--text)">'+typeOpts+'</select></div>'
+    +'<div><label style="display:block;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px">Statut</label>'
+      +'<select aria-label="Statut du contrat" onchange="ctSetStatut(this.value)" style="width:100%;border:1px solid var(--border2);border-radius:8px;padding:7px 9px;font-size:12.5px;font-family:inherit;background:var(--bg);color:var(--text)"><option value="brouillon"'+(c.statut!=='signe'?' selected':'')+'>Brouillon</option><option value="signe"'+(c.statut==='signe'?' selected':'')+'>Signé</option></select></div>'
+    +ctInput('client','Client (maître d\'ouvrage)','Nom du client',c.client)
+    +ctInput('clientAdr','Adresse du client','Adresse',c.clientAdr)
+    +ctInput('architecte','Architecte','Nom / cabinet',c.architecte)
+    +ctInput('ordre','N° d\'inscription à l\'Ordre','N° Ordre des architectes',c.ordre)
+    +ctInput('budget','Budget travaux (€ TTC)','ex. 250 000',c.budget)
+    +ctInput('remu','Honoraires','ex. 12 % ou 30 000 €',c.remu)
+    +ctInput('remuMode','Méthode de rémunération','forfait / pourcentage',c.remuMode)
+    +ctInput('tauxHoraire','Taux horaire — modifications (€ HT/h)','ex. 90',c.tauxHoraire)
+    +'<div><label style="display:block;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px">Date de signature</label><input type="date" value="'+e(c.dateSign||'')+'" oninput="ctField(\'dateSign\',this.value)" style="width:100%;border:1px solid var(--border2);border-radius:8px;padding:6px 9px;font-size:12.5px;font-family:inherit;background:var(--bg);color:var(--text);box-sizing:border-box"></div>'
+    +'<div><label style="display:block;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px">Début de mission</label><input type="date" value="'+e(c.dateDebut||'')+'" oninput="ctField(\'dateDebut\',this.value)" style="width:100%;border:1px solid var(--border2);border-radius:8px;padding:6px 9px;font-size:12.5px;font-family:inherit;background:var(--bg);color:var(--text);box-sizing:border-box"></div>'
+    +'</div></div>';
+  // Préambule
+  html+='<div style="border:1px solid var(--border);border-radius:var(--r2);background:var(--panel);padding:11px 13px;margin-bottom:14px">'
+    +'<label for="ct-intro" style="display:block;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Préambule / objet du contrat</label>'
+    +'<textarea id="ct-intro" oninput="ctUpdateIntro(this.value)" placeholder="Objet du contrat, référence au contrat-type de l\'Ordre…" style="width:100%;min-height:58px;resize:vertical;border:1px solid var(--border2);border-radius:8px;padding:8px 10px;font-size:12.5px;font-family:inherit;background:var(--bg);color:var(--text);box-sizing:border-box">'+e(c.intro||'')+'</textarea></div>';
+  // Articles
+  html+='<div style="display:flex;align-items:center;justify-content:space-between;margin:4px 2px 8px"><div style="font-weight:700;font-size:13px;color:#5c3d1e">Articles du contrat</div><button class="btn btn-g btn-sm" onclick="ctAddArticle()"><svg class="ico ico-xs" style="margin-right:3px"><use href="#i-plus"/></svg>Article</button></div>';
+  html+='<div style="display:flex;align-items:center;gap:8px;background:var(--blue-bg);border:1px solid var(--blue-lt);border-radius:8px;padding:7px 11px;margin-bottom:10px;font-size:11.5px;color:var(--text2)"><svg class="ico ico-sm" style="color:#5c3d1e;flex-shrink:0" aria-hidden="true"><use href="#i-sparkles"/></svg><span>Les champs entre guillemets (ex. « CLIENT », « BUDGET », « TAUX ») se remplissent automatiquement depuis la synthèse ci-dessus dans le contrat publié.</span></div>';
+  if(!c.articles.length)html+='<div style="color:var(--text3);font-size:13px;padding:20px;text-align:center;border:1px dashed var(--border);border-radius:var(--r2);margin-bottom:14px">Aucun article. Cliquez sur « Charger le modèle type » pour partir du contrat-type de l\'Ordre des architectes, ou ajoutez vos articles.</div>';
+  c.articles.forEach(function(a,i){
+    html+='<div style="border:1px solid var(--border);border-radius:var(--r2);background:var(--panel);margin-bottom:12px;padding:10px 12px">'
+      +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'
+        +'<input value="'+e(a.num||'')+'" aria-label="Numéro d\'article" oninput="ctUpdateArticle(\''+a.id+'\',\'num\',this.value)" style="width:48px;font-weight:700;color:#5c3d1e;font-size:12.5px;border:1px solid var(--border2);border-radius:6px;padding:5px;text-align:center;background:var(--bg);color:var(--text)">'
+        +'<input value="'+e(a.titre||'')+'" aria-label="Titre de l\'article" placeholder="Intitulé de l\'article" oninput="ctUpdateArticle(\''+a.id+'\',\'titre\',this.value)" style="flex:1;min-width:120px;font-weight:600;font-size:12.5px;border:1px solid var(--border2);border-radius:6px;padding:5px 7px;background:var(--bg);color:var(--text)">'
+        +'<button class="btn btn-g btn-sm" style="padding:4px 6px;color:var(--red)" aria-label="Supprimer l\'article" onclick="ctDelArticle(\''+a.id+'\')" title="Supprimer"><svg class="ico ico-xs" aria-hidden="true"><use href="#i-trash"/></svg></button>'
+      +'</div>'
+      +'<textarea aria-label="Texte de l\'article" oninput="ctUpdateArticle(\''+a.id+'\',\'texte\',this.value)" placeholder="Texte de la clause…" style="width:100%;min-height:64px;resize:vertical;border:1px solid var(--border2);border-radius:8px;padding:8px 10px;font-size:12.5px;font-family:inherit;line-height:1.5;background:var(--bg);color:var(--text);box-sizing:border-box">'+e(a.texte||'')+'</textarea></div>';
+  });
+  // Avenants
+  html+='<div style="display:flex;align-items:center;justify-content:space-between;margin:18px 2px 8px"><div style="font-weight:700;font-size:13px;color:#5c3d1e">Avenants <span style="color:var(--text3);font-weight:400">(modifications du contrat)</span></div><button class="btn btn-g btn-sm" onclick="avAdd()"><svg class="ico ico-xs" style="margin-right:3px"><use href="#i-plus"/></svg>Avenant</button></div>';
+  if(!c.avenants.length)html+='<div style="color:var(--text3);font-size:12.5px;padding:16px;text-align:center;border:1px dashed var(--border);border-radius:var(--r2)">Aucun avenant. Un avenant formalise une modification du contrat (programme, honoraires, délais…).</div>';
+  c.avenants.forEach(function(a){
+    var signed=a.statut==='signe';
+    html+='<div style="border:1px solid var(--border);border-left:3px solid '+(signed?'#1a7a4a':'#c47a00')+';border-radius:var(--r2);background:var(--panel);margin-bottom:12px;padding:10px 12px">'
+      +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">'
+        +'<span style="font-weight:700;color:#5c3d1e;font-size:12.5px;white-space:nowrap">Avenant n°</span>'
+        +'<input value="'+e(a.num||'')+'" aria-label="Numéro d\'avenant" oninput="avUpdate(\''+a.id+'\',\'num\',this.value)" style="width:42px;font-weight:700;font-size:12.5px;border:1px solid var(--border2);border-radius:6px;padding:4px;text-align:center;background:var(--bg);color:var(--text)">'
+        +'<input type="date" value="'+e(a.date||'')+'" aria-label="Date de l\'avenant" oninput="avUpdate(\''+a.id+'\',\'date\',this.value)" style="border:1px solid var(--border2);border-radius:6px;padding:4px 6px;font-size:12px;font-family:inherit;background:var(--bg);color:var(--text)">'
+        +'<input value="'+e(a.montant||'')+'" placeholder="Impact € (ex. +5 000)" aria-label="Montant de l\'avenant" oninput="avUpdate(\''+a.id+'\',\'montant\',this.value)" style="width:130px;font-size:12px;border:1px solid var(--border2);border-radius:6px;padding:4px 7px;background:var(--bg);color:var(--text)">'
+        +'<select aria-label="Statut de l\'avenant" onchange="avSetStatut(\''+a.id+'\',this.value)" style="font-size:11.5px;border:1px solid var(--border2);border-radius:6px;padding:4px 6px;font-family:inherit;background:var(--bg);color:var(--text)"><option value="projet"'+(signed?'':' selected')+'>Projet</option><option value="signe"'+(signed?' selected':'')+'>Signé</option></select>'
+        +'<span style="margin-left:auto;display:inline-flex;gap:4px">'+avPdfBtn(a)+'<button class="btn btn-g btn-sm" style="padding:4px 6px;color:var(--red)" aria-label="Supprimer l\'avenant" onclick="avDel(\''+a.id+'\')" title="Supprimer l\'avenant"><svg class="ico ico-xs" aria-hidden="true"><use href="#i-trash"/></svg></button></span>'
+      +'</div>'
+      +'<input value="'+e(a.objet||'')+'" placeholder="Objet de l\'avenant (ex. extension de mission, révision d\'honoraires)" aria-label="Objet de l\'avenant" oninput="avUpdate(\''+a.id+'\',\'objet\',this.value)" style="width:100%;font-weight:500;font-size:12.5px;border:1px solid var(--border2);border-radius:6px;padding:6px 8px;margin-bottom:6px;background:var(--bg);color:var(--text);box-sizing:border-box">'
+      +'<textarea aria-label="Texte de l\'avenant" oninput="avUpdate(\''+a.id+'\',\'texte\',this.value)" placeholder="Détail des modifications apportées au contrat…" style="width:100%;min-height:54px;resize:vertical;border:1px solid var(--border2);border-radius:8px;padding:8px 10px;font-size:12.5px;font-family:inherit;line-height:1.5;background:var(--bg);color:var(--text);box-sizing:border-box">'+e(a.texte||'')+'</textarea></div>';
+  });
+  host.innerHTML=html;
+}
+function avPdfBtn(a){
+  var can_=can('items');
+  if(a.pdf&&a.pdf.blobId){return '<button class="btn btn-g btn-sm" onclick="avViewPdf(\''+a.id+'\')" aria-label="Voir l\'avenant signé" title="'+e(a.pdf.fileName||'Avenant signé')+'"><svg class="ico ico-xs" style="margin-right:3px" aria-hidden="true"><use href="#i-pdf"/></svg>PDF</button>'
+    +(can_?'<button class="btn btn-g btn-sm" style="padding:4px 6px;color:var(--text3)" onclick="avUnpinPdf(\''+a.id+'\')" aria-label="Retirer le PDF" title="Retirer"><svg class="ico ico-xs" aria-hidden="true"><use href="#i-x"/></svg></button>':'');}
+  return can_?'<label class="btn btn-g btn-sm" style="cursor:pointer;padding:4px 8px"><svg class="ico ico-xs" style="margin-right:3px" aria-hidden="true"><use href="#i-upload"/></svg>PDF<input type="file" accept=".pdf,application/pdf" style="display:none" onchange="avPinPdf(\''+a.id+'\',event)"></label>':'';
+}
+function ctRow(label,val){return val?('<div style="display:flex;gap:8px;padding:3px 0"><div style="min-width:180px;color:var(--text3);font-size:12px">'+e(label)+'</div><div style="font-size:12.5px;color:var(--text);font-weight:500">'+e(val)+'</div></div>'):'';}
+function renderContratView(){
+  var host=document.getElementById('ct-body');if(!host||!PROJ)return;var c=PROJ.contrat;
+  var empty=!c.articles.length&&!(c.intro||'').trim()&&!c.client&&!(c.pdf&&c.pdf.blobId)&&!c.avenants.length;
+  if(empty){host.innerHTML='<div style="color:var(--text3);font-size:13px;padding:24px;text-align:center;border:1px dashed var(--border);border-radius:var(--r2)">Le contrat n\'a pas encore été rédigé.</div>';return;}
+  var typeLabel=(CONTRAT_TEMPLATES[c.type]||{}).label||'Contrat d\'architecte';
+  var statutChip='<span style="font-size:11px;font-weight:600;padding:2px 9px;border-radius:20px;'+(c.statut==='signe'?'background:var(--green-bg);color:var(--green)':'background:var(--amber-bg);color:var(--amber-text)')+'">'+(c.statut==='signe'?'Signé':'Brouillon')+'</span>';
+  var html='<div style="display:flex;justify-content:flex-end;gap:6px;flex-wrap:wrap;margin-bottom:10px">'+ctPdfBtn()+'<button class="btn btn-g btn-sm" onclick="window.print()"><svg class="ico ico-xs" style="margin-right:4px"><use href="#i-download"/></svg>Imprimer / PDF</button></div>'
+    +'<div style="border:1px solid var(--border);border-radius:var(--r2);background:var(--panel);padding:22px 26px;max-width:820px;margin:0 auto;line-height:1.6">'
+    +'<div style="text-align:center;margin-bottom:16px"><h2 style="font-size:18px;font-weight:700;margin:0">Contrat d\'architecte</h2>'
+      +'<div style="font-size:12.5px;color:var(--text3);margin-top:3px">'+e(typeLabel)+' — '+e(PROJ.name||'')+(PROJ.address?(' — '+e(PROJ.address)):'')+'</div>'
+      +'<div style="margin-top:8px">'+statutChip+'</div></div>';
+  // Synthèse
+  var syn=ctRow('Client (maître d\'ouvrage)',c.client)+ctRow('Adresse du client',c.clientAdr)+ctRow('Architecte',c.architecte)+ctRow('N° Ordre des architectes',c.ordre)+ctRow('Budget travaux',c.budget?(c.budget+' € TTC'):'')+ctRow('Honoraires',c.remu)+ctRow('Méthode de rémunération',c.remuMode)+ctRow('Taux horaire (modifications)',c.tauxHoraire?(c.tauxHoraire+' € HT/h'):'')+ctRow('Date de signature',fmtDateFR(c.dateSign))+ctRow('Début de mission',fmtDateFR(c.dateDebut));
+  if(syn.trim())html+='<div style="border:1px solid var(--border);border-radius:var(--r);background:var(--bg);padding:12px 14px;margin-bottom:16px">'+syn+'</div>';
+  if((c.intro||'').trim())html+='<div style="font-size:13px;white-space:pre-wrap;color:var(--text2);border-bottom:1px solid var(--border);padding-bottom:14px;margin-bottom:14px">'+e(ctFill(c.intro,c))+'</div>';
+  c.articles.forEach(function(a){
+    html+='<div style="margin-bottom:14px"><h3 style="font-size:14px;font-weight:700;color:#5c3d1e;margin:0 0 5px">Article '+e(a.num||'')+(a.titre?(' — '+e(a.titre)):'')+'</h3>'
+      +(((a.texte||'').trim())?'<div style="font-size:12.5px;color:var(--text2);white-space:pre-wrap">'+e(ctFill(a.texte,c))+'</div>':'')+'</div>';
+  });
+  // Avenants
+  if(c.avenants.length){
+    html+='<div style="margin-top:8px;border-top:2px solid var(--border);padding-top:14px"><h3 style="font-size:15px;font-weight:700;color:#5c3d1e;margin:0 0 10px">Avenants</h3>';
+    c.avenants.forEach(function(a){
+      var signed=a.statut==='signe';
+      html+='<div style="border:1px solid var(--border);border-left:3px solid '+(signed?'#1a7a4a':'#c47a00')+';border-radius:var(--r);background:var(--bg);padding:11px 13px;margin-bottom:10px">'
+        +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px"><span style="font-weight:700;color:#5c3d1e;font-size:13px">Avenant n°'+e(a.num||'')+'</span>'
+        +(a.date?'<span style="font-size:11.5px;color:var(--text3)">'+e(fmtDateFR(a.date))+'</span>':'')
+        +(a.montant?'<span style="font-size:11.5px;font-weight:600;color:var(--text2)">'+e(a.montant)+' €</span>':'')
+        +'<span style="font-size:10.5px;font-weight:600;padding:1px 8px;border-radius:20px;'+(signed?'background:var(--green-bg);color:var(--green)':'background:var(--amber-bg);color:var(--amber-text)')+'">'+(signed?'Signé':'Projet')+'</span>'
+        +(a.pdf&&a.pdf.blobId?'<button class="btn btn-g btn-sm" style="margin-left:auto;padding:3px 8px" onclick="avViewPdf(\''+a.id+'\')"><svg class="ico ico-xs" style="margin-right:3px" aria-hidden="true"><use href="#i-pdf"/></svg>PDF</button>':'')+'</div>'
+        +(a.objet?'<div style="font-weight:600;font-size:12.5px;margin-bottom:3px">'+e(a.objet)+'</div>':'')
+        +(((a.texte||'').trim())?'<div style="font-size:12.5px;color:var(--text2);white-space:pre-wrap">'+e(a.texte)+'</div>':'')+'</div>';
+    });
+    html+='</div>';
+  }
+  html+='</div>';
+  host.innerHTML=html;
+}
+
+/* ══ CO-PILOTE — SANTÉ DU PROJET ══
+   Phase 1 : moteur de règles 100 % local (gratuit, hors-ligne, aucune donnée ne sort).
+   projHealth(p) renvoie {score, signals:[{level,icon,title,detail,view}]} — cette structure
+   est aussi le contexte qui sera passé à un LLM en Phase 2 (toggle « Demander à l'IA »,
+   via une Edge Function Supabase pour garder la clé API côté serveur). */
+function ckParseDate(s){
+  if(!s)return null;
+  var m=/^(\d{2})\/(\d{2})\/(\d{4})$/.exec(s); if(m)return new Date(+m[3],+m[2]-1,+m[1]);
+  var i=/^(\d{4})-(\d{2})-(\d{2})/.exec(s); if(i)return new Date(+i[1],+i[2]-1,+i[3]);
+  var d=new Date(s); return isNaN(d.getTime())?null:d;
+}
+function projHealth(p){
+  var sig=[];
+  function add(level,icon,title,detail,view){sig.push({level:level,icon:icon,title:title,detail:detail,view:view});}
+  if(!p)return {score:100,signals:sig};
+  var today=new Date(); today.setHours(0,0,0,0);
+  // ── Contrat ──
+  var c=p.contrat||{};
+  var hasContrat=(c.articles&&c.articles.length)||c.client||(c.pdf&&c.pdf.blobId);
+  if(hasContrat&&c.statut!=='signe') add('warn','invoice','Contrat non signé','Le contrat d\'architecte est encore au statut « brouillon ».','contrat');
+  var avProj=(c.avenants||[]).filter(function(a){return a.statut!=='signe';});
+  if(avProj.length) add('warn','invoice',avProj.length+' avenant'+(avProj.length>1?'s':'')+' non signé'+(avProj.length>1?'s':''),'Des avenants au contrat sont au statut « projet ».','contrat');
+  // ── Checklists : obligatoires non cochés ──
+  try{
+    var tree=(p.clTree&&p.clTree.length)?p.clTree:(typeof buildCL==='function'?buildCL(p):[]);
+    var items=(typeof allCLN==='function')?allCLN(tree).reduce(function(acc,n){return acc.concat(n.items||[]);},[]):[];
+    var oblig=items.filter(function(it){return it&&!it.arch&&!it.done&&(/oblig/i.test(it.tag||'')||it.tc==='red');});
+    if(oblig.length) add(oblig.length>=3?'alert':'warn','hat',oblig.length+' point'+(oblig.length>1?'s':'')+' obligatoire'+(oblig.length>1?'s':'')+' à traiter','Éléments réglementaires de checkliste non cochés (ex. Cerfa, attestations, réception).','checklists');
+    var st=(typeof clStatsForProj==='function')?clStatsForProj(p):{done:0,total:0};
+    if(st.total>0&&st.done<st.total) add('info','check-list',(st.total-st.done)+' tâche'+((st.total-st.done)>1?'s':'')+' de checkliste restante'+((st.total-st.done)>1?'s':''),'Avancement checklistes : '+st.done+'/'+st.total+'.','checklists');
+  }catch(e){console.warn('[projHealth] checklist',e);}
+  // ── Budget / suivi ──
+  try{
+    var fImp=0,fImpTot=0,devisNS=0;
+    (p.suivi||[]).forEach(function(g){(g.devis||[]).forEach(function(d){
+      if(!d.signe&&suiviNum(d.prixHT)>0)devisNS++;
+      (d.factures||[]).forEach(function(f){if(suiviNum(f.montant)>0&&!f.datePaiement){fImp++;fImpTot+=suiviNum(f.montant);}});
+    });});
+    if(fImp>0) add('warn','receipt',fImp+' facture'+(fImp>1?'s':'')+' impayée'+(fImp>1?'s':''),'Montant en attente de paiement : '+suiviEuro(fImpTot)+'.','suivi');
+    if(devisNS>0) add('info','receipt',devisNS+' devis non signé'+(devisNS>1?'s':''),'Des devis chiffrés ne sont pas encore signés.','suivi');
+    var fin=(typeof projFinance==='function')?projFinance(p):{has:false};
+    if(fin.has&&fin.reste>0) add('info','receipt','Reste à facturer : '+suiviEuro(fin.reste),'Sur un total estimé de '+suiviEuro(fin.ttc)+'.','suivi');
+  }catch(e){console.warn('[projHealth] suivi',e);}
+  // ── Jalons dépassés ──
+  try{
+    var late=(p.milestones||[]).filter(function(m){var d=ckParseDate(m.date);return d&&d<today;});
+    if(late.length) add('warn','helmet',late.length+' jalon'+(late.length>1?'s':'')+' de planning dépassé'+(late.length>1?'s':''),'Échéance(s) de planning chantier passée(s) : '+late.slice(0,3).map(function(m){return m.label||'jalon';}).join(', ')+(late.length>3?'…':'')+'.','timeline');
+  }catch(e){console.warn('[projHealth] milestones',e);}
+  // ── Paliers & modifications facturables ──
+  try{
+    if(typeof palStats==='function'){var ps=palStats(p);
+      if(ps.unbilledN>0) add('warn','git-branch',ps.unbilledN+' modification'+(ps.unbilledN>1?'s':'')+' à facturer','Changements après signature non facturés : '+(ps.unbilledH||0)+' h · '+suiviEuro(ps.unbilledEur)+' — à passer en avenant.','paliers');
+      if(ps.awaiting>0) add('info','git-branch',ps.awaiting+' palier'+(ps.awaiting>1?'s':'')+' en attente de validation','Le livrable en cours doit être signé pour passer au palier suivant.','paliers');
+    }
+  }catch(e){console.warn('[projHealth] paliers',e);}
+  // ── Commandes directes du client (hors responsabilité) ──
+  try{
+    if(typeof hrStats==='function'){var hs=hrStats(p);
+      if(hs.billN>0) add('warn','warning',hs.billN+' intervention'+(hs.billN>1?'s':'')+' (commande client) à facturer','Travail supplémentaire lié à des commandes/contacts directs du client : '+(hs.billH||0)+' h · '+suiviEuro(hs.billEur)+' — hors responsabilité, à passer en avenant.','horsresp');
+    }
+  }catch(e){console.warn('[projHealth] horsResp',e);}
+  // ── CCTP non rédigé ──
+  var cctp=p.cctp||{};
+  if((!cctp.sections||!cctp.sections.length)&&!(cctp.pdf&&cctp.pdf.blobId)) add('info','check-list','CCTP non rédigé','Aucun cahier des clauses techniques n\'a encore été saisi.','cctp');
+  // ── Score ──
+  var pen=0; sig.forEach(function(s){pen+=(s.level==='alert'?16:(s.level==='warn'?9:0));});
+  var score=Math.max(0,Math.min(100,100-pen));
+  return {score:score,signals:sig};
+}
+function copiloteScoreLabel(s){return s>=85?{t:'Bon',c:'#1a7a4a'}:s>=60?{t:'À surveiller',c:'var(--amber-text)'}:{t:'Action requise',c:'#c0392b'};}
+function copiloteBadge(){
+  if(!PROJ)return '';
+  try{var h=projHealth(PROJ);var n=h.signals.filter(function(s){return s.level==='alert'||s.level==='warn';}).length;
+    if(!n)return '';var hasAlert=h.signals.some(function(s){return s.level==='alert';});
+    return '<span class="nb" style="background:'+(hasAlert?'var(--red)':'var(--amber-text)')+';color:#fff">'+n+'</span>';
+  }catch(e){return '';}
+}
+function copiloteGoto(v){nav(v);}
+function renderCopilote(){
+  if(!PROJ)return;
+  var h;
+  try{h=projHealth(PROJ);}catch(e){console.warn('[renderCopilote] projHealth',e);document.getElementById('content').innerHTML='<div class="pad"><div style="text-align:center;color:var(--text3);font-size:13px;padding:30px;border:1px dashed var(--border);border-radius:var(--r2)">Synthèse momentanément indisponible. Rechargez la page.</div></div>';return;}
+  var lab=copiloteScoreLabel(h.score);
+  var LV={alert:{c:'#c0392b',bg:'var(--red-bg)',l:'Action requise'},warn:{c:'var(--amber-text)',bg:'var(--amber-bg)',l:'À surveiller'},info:{c:'#5c3d1e',bg:'var(--blue-bg)',l:'Information'}};
+  var order={alert:0,warn:1,info:2};
+  var sigs=h.signals.slice().sort(function(a,b){return order[a.level]-order[b.level];});
+  var nAlert=h.signals.filter(function(s){return s.level==='alert';}).length;
+  var nWarn=h.signals.filter(function(s){return s.level==='warn';}).length;
+  setTB('sparkles','#5c3d1e','Co-pilote du projet',PROJ.name||'','','');
+  setTabs(null);
+  var html='<div class="pad" style="max-width:760px;margin:0 auto">';
+  // En-tête score
+  html+='<div style="display:flex;align-items:center;gap:18px;border:1px solid var(--border);border-radius:var(--r2);background:var(--panel);padding:18px 20px;margin-bottom:16px">'
+    +'<div style="position:relative;width:72px;height:72px;flex-shrink:0;border-radius:50%;background:conic-gradient('+lab.c+' '+(h.score*3.6)+'deg,var(--bg3) 0);display:flex;align-items:center;justify-content:center">'
+      +'<div style="width:54px;height:54px;border-radius:50%;background:var(--panel);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:19px;color:'+lab.c+'">'+h.score+'</div></div>'
+    +'<div style="flex:1"><div style="font-weight:700;font-size:16px;color:'+lab.c+'">'+lab.t+'</div>'
+      +'<div style="font-size:12.5px;color:var(--text3);margin-top:2px">'+(h.signals.length?((nAlert?nAlert+' action'+(nAlert>1?'s':'')+' requise'+(nAlert>1?'s':''):'')+(nAlert&&nWarn?' · ':'')+(nWarn?nWarn+' point'+(nWarn>1?'s':'')+' à surveiller':'')||(h.signals.length+' point(s) d\'information')):'Aucun point d\'attention détecté. ✓')+'</div></div></div>';
+  // Bandeau IA (Phase 2)
+  html+='<div style="display:flex;align-items:center;gap:10px;border:1px dashed var(--border2);border-radius:var(--r2);background:var(--bg2);padding:11px 14px;margin-bottom:16px">'
+    +'<svg class="ico" style="color:#5c3d1e;flex-shrink:0" aria-hidden="true"><use href="#i-sparkles"/></svg>'
+    +'<div style="flex:1;font-size:12px;color:var(--text2)">Synthèse calculée localement — vos données ne quittent pas l\'appareil. <strong>Assistant IA en langage naturel</strong> (« Demander à l\'IA ») à activer prochainement.</div>'
+    +'<button class="btn btn-g btn-sm" disabled style="opacity:.55;cursor:default">Bientôt</button></div>';
+  // Signaux
+  if(!sigs.length){
+    html+='<div style="text-align:center;color:var(--text3);font-size:13px;padding:30px;border:1px dashed var(--border);border-radius:var(--r2)">Tout est à jour sur ce projet. ✓</div>';
+  } else {
+    sigs.forEach(function(s){var lv=LV[s.level]||LV.info;
+      html+='<div style="display:flex;align-items:flex-start;gap:12px;border:1px solid var(--border);border-left:3px solid '+lv.c+';border-radius:var(--r2);background:var(--panel);padding:12px 14px;margin-bottom:10px">'
+        +'<div style="width:30px;height:30px;border-radius:8px;background:'+lv.bg+';display:flex;align-items:center;justify-content:center;flex-shrink:0"><svg class="ico ico-sm" style="color:'+lv.c+'" aria-hidden="true"><use href="#i-'+s.icon+'"/></svg></div>'
+        +'<div style="flex:1;min-width:0"><div style="font-weight:600;font-size:13px;color:var(--text)">'+e(s.title)+'</div>'
+          +'<div style="font-size:12px;color:var(--text3);margin-top:2px;line-height:1.45">'+e(s.detail)+'</div></div>'
+        +(s.view?'<button class="btn btn-g btn-sm" style="flex-shrink:0;align-self:center" onclick="copiloteGoto(\''+s.view+'\')">Ouvrir</button>':'')+'</div>';
+    });
+  }
+  html+='</div>';
+  document.getElementById('content').innerHTML=html;
+}
+
+/* ══ PALIERS & VALIDATIONS ══
+   Avancement par paliers : on ne passe au palier suivant qu'une fois le livrable
+   (plans, dossier PC…) approuvé et signé. Après validation, toute modification du
+   livrable signé est journalisée comme prestation facturable au temps passé
+   (taux horaire défini au contrat, art. 4.1). */
+var PAL_DEFAULTS=[
+  {nom:'Esquisse (ESQ)',livrable:'Esquisse approuvée'},
+  {nom:'Avant-projet (APS / APD)',livrable:'Plans d\'avant-projet signés'},
+  {nom:'Permis de construire (PC)',livrable:'Dossier PC signé et déposé'},
+  {nom:'Projet & consultation (PRO / DCE)',livrable:'Plans d\'exécution et DCE signés'},
+  {nom:'Chantier (DET)',livrable:'Ordre de service / démarrage des travaux'},
+  {nom:'Réception (AOR)',livrable:'PV de réception signé'}
+];
+function palEnsure(p){
+  if(!p)return;
+  if(!p.paliers||typeof p.paliers!=='object')p.paliers={};
+  if(!Array.isArray(p.paliers.list)||!p.paliers.list.length){
+    p.paliers.list=PAL_DEFAULTS.map(function(d,i){return {id:'plr'+(uid++),nom:d.nom,livrable:d.livrable,statut:i===0?'en_cours':'a_venir',dateValid:'',signe:false,note:'',mods:[]};});
+  }
+  p.paliers.list.forEach(function(pl){if(!Array.isArray(pl.mods))pl.mods=[];if(['a_venir','en_cours','valide'].indexOf(pl.statut)<0)pl.statut='a_venir';pl.mods.forEach(function(m){if(typeof m.statut!=='string')m.statut='a_facturer';});});
+}
+function palFind(id){return (PROJ&&PROJ.paliers)?PROJ.paliers.list.find(function(x){return x.id===id;}):null;}
+function palTaux(){return suiviNum(PROJ&&PROJ.contrat&&PROJ.contrat.tauxHoraire);}
+function modMontant(m){return suiviNum(m.heures)*suiviNum(m.taux);}
+function palValidate(id){
+  if(!can('items'))return denyMsg();palEnsure(PROJ);var L=PROJ.paliers.list,idx=L.findIndex(function(x){return x.id===id;});if(idx<0)return;var pl=L[idx];
+  if(!pl.signe){toastErr('Cochez d\'abord « Livrable signé » pour valider ce palier.');return;}
+  pl.statut='valide';pl.dateValid=new Date().toISOString().slice(0,10);
+  var hasNext=!!L[idx+1];
+  if(L[idx+1]&&L[idx+1].statut==='a_venir')L[idx+1].statut='en_cours';
+  savePROJS();renderPaliers();toast(hasNext?'Palier validé — passage au palier suivant':'Dernier palier validé ✓');
+}
+function palReopen(id){if(!can('items'))return denyMsg();var pl=palFind(id);if(!pl)return;pl.statut='en_cours';pl.dateValid='';savePROJS();renderPaliers();toast('Palier rouvert');}
+function palToggleSigne(id){if(!can('items'))return denyMsg();var pl=palFind(id);if(!pl)return;pl.signe=!pl.signe;savePROJS();renderPaliers();}
+function palSetNote(id,v){if(!can('items'))return;var pl=palFind(id);if(pl){pl.note=v;saveLater();}}
+function palAddMod(id){if(!can('items'))return denyMsg();var pl=palFind(id);if(!pl)return;pl.mods.push({id:'mod'+(uid++),date:new Date().toISOString().slice(0,10),objet:'',heures:'',taux:String(palTaux()||''),statut:'a_facturer'});savePROJS();renderPaliers();}
+function palDelMod(palId,modId){if(!can('items'))return denyMsg();var pl=palFind(palId);if(!pl)return;var i=pl.mods.findIndex(function(x){return x.id===modId;});if(i<0)return;var rm=pl.mods.splice(i,1)[0];savePROJS();renderPaliers();toast('Modification supprimée',{undo:function(){pl.mods.splice(i,0,rm);savePROJS();renderPaliers();}});}
+function palUpdateMod(palId,modId,field,v){if(!can('items'))return;if(['date','objet','heures','taux'].indexOf(field)<0)return;var pl=palFind(palId);if(!pl)return;var m=pl.mods.find(function(x){return x.id===modId;});if(m){m[field]=v;saveLater();if(field==='heures'||field==='taux'){var el=document.getElementById('modtot-'+modId);if(el)el.textContent=suiviEuro(modMontant(m));}}}
+function palSetModStatut(palId,modId,s){if(!can('items'))return denyMsg();var pl=palFind(palId);if(!pl)return;var m=pl.mods.find(function(x){return x.id===modId;});if(m){m.statut=(s==='facture'?'facture':'a_facturer');savePROJS();renderPaliers();}}
+function palStats(p){
+  if(!p||!p.paliers)return {validated:0,total:0,awaiting:0,unbilledN:0,unbilledH:0,unbilledEur:0};
+  var L=p.paliers.list||[],validated=0,awaiting=0,uN=0,uH=0,uE=0;
+  L.forEach(function(pl){
+    if(pl.statut==='valide')validated++;
+    if(pl.statut==='en_cours'&&!pl.signe)awaiting++;
+    (pl.mods||[]).forEach(function(m){if(m.statut!=='facture'){uN++;uH+=suiviNum(m.heures);uE+=modMontant(m);}});
+  });
+  return {validated:validated,total:L.length,awaiting:awaiting,unbilledN:uN,unbilledH:uH,unbilledEur:uE};
+}
+function renderPaliers(){
+  if(!PROJ)return;palEnsure(PROJ);
+  var canEdit=can('items'),L=PROJ.paliers.list,taux=PROJ.contrat&&PROJ.contrat.tauxHoraire;
+  var st=palStats(PROJ);
+  setTB('git-branch','#5c3d1e','Paliers & validations',st.validated+'/'+st.total+' paliers validés','','');
+  setTabs(null);
+  var SC={a_venir:{l:'À venir',c:'var(--text3)',bg:'var(--bg3)'},en_cours:{l:'En cours',c:'var(--amber-text)',bg:'var(--amber-bg)'},valide:{l:'Validé',c:'#1a7a4a',bg:'var(--green-bg)'}};
+  var html='<div class="pad" style="max-width:780px;margin:0 auto">';
+  // Bandeau taux horaire (lié au contrat art. 4.1)
+  html+='<div style="display:flex;align-items:center;gap:12px;border:1px solid var(--border);border-radius:var(--r2);background:var(--panel);padding:12px 15px;margin-bottom:8px;flex-wrap:wrap">'
+    +'<svg class="ico" style="color:#5c3d1e;flex-shrink:0" aria-hidden="true"><use href="#i-invoice"/></svg>'
+    +'<div style="flex:1;min-width:160px"><div style="font-weight:600;font-size:13px">Modifications après signature</div>'
+      +'<div style="font-size:11.5px;color:var(--text3)">Facturées au temps passé (contrat, art. 4.1).</div></div>'
+    +'<div style="display:flex;align-items:center;gap:6px"><label style="font-size:11px;color:var(--text3)">Taux horaire</label>'
+      +(canEdit?'<input aria-label="Taux horaire des modifications (€ HT/h)" value="'+e(taux||'')+'" oninput="ctField(\'tauxHoraire\',this.value)" placeholder="ex. 90" style="width:70px;border:1px solid var(--border2);border-radius:6px;padding:5px 7px;font-size:12.5px;font-family:inherit;background:var(--bg);color:var(--text)">':'<span style="font-weight:600">'+e(taux||'—')+'</span>')
+      +'<span style="font-size:12px;color:var(--text3)">€ HT/h</span></div></div>';
+  if(st.unbilledN>0)html+='<div style="border:1px solid var(--amber);background:var(--amber-bg);border-radius:var(--r2);padding:9px 13px;margin-bottom:16px;font-size:12.5px;color:#8a5800"><strong>'+st.unbilledN+' modification'+(st.unbilledN>1?'s':'')+'</strong> à facturer — '+ (st.unbilledH||0) +' h · '+suiviEuro(st.unbilledEur)+'. <span style="opacity:.8">Pensez à établir l\'avenant correspondant.</span></div>';
+  else html+='<div style="height:8px"></div>';
+  // Paliers
+  L.forEach(function(pl,i){
+    var sc=SC[pl.statut]||SC.a_venir, isVal=pl.statut==='valide';
+    html+='<div style="border:1px solid var(--border);border-left:3px solid '+sc.c+';border-radius:var(--r2);background:var(--panel);margin-bottom:12px;overflow:hidden">'
+      +'<div style="display:flex;align-items:center;gap:10px;padding:11px 14px">'
+        +'<div style="width:26px;height:26px;border-radius:50%;background:'+sc.bg+';color:'+sc.c+';display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0">'+(isVal?'✓':(i+1))+'</div>'
+        +'<div style="flex:1;min-width:0"><div style="font-weight:600;font-size:13.5px">'+e(pl.nom)+'</div>'
+          +'<div style="font-size:11.5px;color:var(--text3)">Livrable : '+e(pl.livrable)+(isVal&&pl.dateValid?(' · validé le '+e(fmtDateFR(pl.dateValid))):'')+'</div></div>'
+        +'<span style="font-size:11px;font-weight:600;padding:2px 9px;border-radius:20px;background:'+sc.bg+';color:'+sc.c+';white-space:nowrap">'+sc.l+'</span>'
+      +'</div>';
+    // Zone d'action / validation
+    if(canEdit&&!isVal){
+      html+='<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:0 14px 11px 50px">'
+        +'<label style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px;cursor:pointer"><input type="checkbox" '+(pl.signe?'checked':'')+' onclick="palToggleSigne(\''+pl.id+'\')" style="width:15px;height:15px;accent-color:#1a7a4a">Livrable signé</label>'
+        +'<button class="btn btn-p btn-sm" onclick="palValidate(\''+pl.id+'\')" '+(pl.signe?'':'disabled title="Cochez « Livrable signé » pour activer ce bouton" style="opacity:.5;cursor:default"')+'>Valider le palier →</button></div>';
+    } else if(canEdit&&isVal){
+      html+='<div style="padding:0 14px 11px 50px"><button class="btn btn-g btn-sm" onclick="palReopen(\''+pl.id+'\')" style="color:var(--text3)">Rouvrir le palier</button></div>';
+    }
+    // Modifications facturables (après validation)
+    if(isVal||pl.mods.length){
+      html+='<div style="border-top:1px solid var(--border);background:var(--bg);padding:10px 14px 12px 50px">'
+        +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px"><div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.04em">Modifications facturables</div>'
+        +(canEdit?'<button class="btn btn-g btn-sm" style="padding:3px 8px" onclick="palAddMod(\''+pl.id+'\')"><svg class="ico ico-xs" style="margin-right:3px" aria-hidden="true"><use href="#i-plus"/></svg>Modification</button>':'')+'</div>';
+      if(!pl.mods.length)html+='<div style="font-size:12px;color:var(--text3)">Aucune modification depuis la signature.</div>';
+      pl.mods.forEach(function(m){
+        var fact=m.statut==='facture';
+        if(canEdit){
+          html+='<div style="border:1px solid var(--border);border-radius:8px;background:var(--panel);padding:8px 10px;margin-bottom:6px">'
+            +'<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:5px">'
+              +'<input type="date" value="'+e(m.date||'')+'" aria-label="Date" oninput="palUpdateMod(\''+pl.id+'\',\''+m.id+'\',\'date\',this.value)" style="border:1px solid var(--border2);border-radius:6px;padding:3px 5px;font-size:11.5px;font-family:inherit;background:var(--bg);color:var(--text)">'
+              +'<input value="'+e(m.heures||'')+'" placeholder="h" aria-label="Heures" oninput="palUpdateMod(\''+pl.id+'\',\''+m.id+'\',\'heures\',this.value)" style="width:46px;border:1px solid var(--border2);border-radius:6px;padding:3px 5px;font-size:11.5px;background:var(--bg);color:var(--text);text-align:center">'
+              +'<span style="font-size:11px;color:var(--text3)">h ×</span>'
+              +'<input value="'+e(m.taux||'')+'" placeholder="€/h" aria-label="Taux" oninput="palUpdateMod(\''+pl.id+'\',\''+m.id+'\',\'taux\',this.value)" style="width:54px;border:1px solid var(--border2);border-radius:6px;padding:3px 5px;font-size:11.5px;background:var(--bg);color:var(--text);text-align:center">'
+              +'<span style="font-size:11px;color:var(--text3)">€/h =</span><span id="modtot-'+m.id+'" style="font-weight:700;font-size:12.5px;color:#5c3d1e">'+suiviEuro(modMontant(m))+'</span>'
+              +'<select aria-label="Statut de facturation" onchange="palSetModStatut(\''+pl.id+'\',\''+m.id+'\',this.value)" style="margin-left:auto;font-size:11px;border:1px solid var(--border2);border-radius:6px;padding:3px 5px;font-family:inherit;background:var(--bg);color:var(--text)"><option value="a_facturer"'+(fact?'':' selected')+'>À facturer</option><option value="facture"'+(fact?' selected':'')+'>Facturé</option></select>'
+              +'<button class="btn btn-g btn-sm" style="padding:3px 5px;color:var(--red)" aria-label="Supprimer" onclick="palDelMod(\''+pl.id+'\',\''+m.id+'\')"><svg class="ico ico-xs" aria-hidden="true"><use href="#i-trash"/></svg></button></div>'
+            +'<input value="'+e(m.objet||'')+'" placeholder="Objet de la modification (ex. déplacement cloison après signature APD)" aria-label="Objet" oninput="palUpdateMod(\''+pl.id+'\',\''+m.id+'\',\'objet\',this.value)" style="width:100%;font-size:12px;border:1px solid var(--border2);border-radius:6px;padding:5px 7px;background:var(--bg);color:var(--text);box-sizing:border-box"></div>';
+        } else {
+          html+='<div style="display:flex;align-items:center;gap:8px;font-size:12px;padding:4px 0;border-bottom:1px solid var(--border)"><span style="color:var(--text3);min-width:74px">'+e(fmtDateFR(m.date))+'</span><span style="flex:1">'+e(m.objet||'(modification)')+'</span><span style="color:var(--text3)">'+e(m.heures||'0')+' h</span><span style="font-weight:600;color:#5c3d1e">'+suiviEuro(modMontant(m))+'</span><span style="font-size:10px;padding:1px 7px;border-radius:20px;'+(fact?'background:var(--green-bg);color:var(--green)':'background:var(--amber-bg);color:var(--amber-text)')+'">'+(fact?'Facturé':'À facturer')+'</span></div>';
+        }
+      });
+      // Sous-total du palier
+      var tH=pl.mods.reduce(function(s,m){return s+suiviNum(m.heures);},0),tE=pl.mods.reduce(function(s,m){return s+modMontant(m);},0);
+      if(pl.mods.length)html+='<div style="text-align:right;font-size:12px;color:var(--text2);margin-top:4px">Sous-total : <strong>'+tH+' h · '+suiviEuro(tE)+'</strong></div>';
+      html+='</div>';
+    }
+    html+='</div>';
+  });
+  html+='</div>';
+  document.getElementById('content').innerHTML=html;
+}
+
+/* ══ COMMANDES & CONTACTS DIRECTS DU CLIENT (hors responsabilité) ══
+   Registre des prestations commandées par le client en direct, ou des contacts
+   directs client↔entreprise. L'architecte n'en est pas responsable (contrat art. 11.3) ;
+   si elles génèrent un travail supplémentaire, celui-ci est facturable au temps passé
+   (taux art. 4.1) — SANS transfert de responsabilité. */
+function hrEnsure(p){
+  if(!p)return;
+  if(!p.horsResp||typeof p.horsResp!=='object')p.horsResp={};
+  if(!Array.isArray(p.horsResp.list))p.horsResp.list=[];
+  p.horsResp.list.forEach(function(x){if(typeof x.statut!=='string')x.statut='a_facturer';if(typeof x.extra!=='boolean')x.extra=!!(suiviNum(x.heures)>0);});
+}
+function hrFind(id){return (PROJ&&PROJ.horsResp)?PROJ.horsResp.list.find(function(x){return x.id===id;}):null;}
+function hrAdd(){if(!can('items'))return denyMsg();hrEnsure(PROJ);PROJ.horsResp.list.unshift({id:'hr'+(uid++),date:new Date().toISOString().slice(0,10),objet:'',entreprise:'',extra:false,heures:'',taux:String(palTaux()||''),statut:'a_facturer',note:''});savePROJS();renderHorsResp();toast('Entrée ajoutée au registre');}
+function hrDel(id){if(!can('items'))return denyMsg();var arr=PROJ.horsResp.list,i=arr.findIndex(function(x){return x.id===id;});if(i<0)return;var rm=arr.splice(i,1)[0];savePROJS();renderHorsResp();toast('Entrée supprimée',{undo:function(){arr.splice(i,0,rm);savePROJS();renderHorsResp();}});}
+function hrUpdate(id,field,v){if(!can('items'))return;if(['date','objet','entreprise','heures','taux','note'].indexOf(field)<0)return;var x=hrFind(id);if(x){x[field]=v;saveLater();if(field==='heures'||field==='taux'){var el=document.getElementById('hrtot-'+id);if(el)el.textContent=suiviEuro(modMontant(x));}}}
+function hrToggleExtra(id){if(!can('items'))return denyMsg();var x=hrFind(id);if(x){x.extra=!x.extra;savePROJS();renderHorsResp();}}
+function hrSetStatut(id,s){if(!can('items'))return denyMsg();var x=hrFind(id);if(x){x.statut=(s==='facture'?'facture':'a_facturer');savePROJS();renderHorsResp();}}
+function hrStats(p){
+  if(!p||!p.horsResp)return {n:0,billN:0,billH:0,billEur:0};
+  var n=0,bN=0,bH=0,bE=0;
+  (p.horsResp.list||[]).forEach(function(x){n++;if(x.extra&&x.statut!=='facture'){bN++;bH+=suiviNum(x.heures);bE+=modMontant(x);}});
+  return {n:n,billN:bN,billH:bH,billEur:bE};
+}
+function renderHorsResp(){
+  if(!PROJ)return;hrEnsure(PROJ);
+  var canEdit=can('items'),L=PROJ.horsResp.list,taux=PROJ.contrat&&PROJ.contrat.tauxHoraire,st=hrStats(PROJ);
+  setTB('warning','#5c3d1e','Commandes directes du client',L.length+(L.length>1?' entrées':' entrée'),(canEdit?'+ Entrée':''),'plus');
+  setTabs(null);
+  var html='<div class="pad" style="max-width:780px;margin:0 auto">';
+  // Bandeau principe
+  html+='<div style="display:flex;gap:11px;border:1px solid var(--border);border-left:3px solid #c47a00;border-radius:var(--r2);background:var(--panel);padding:13px 15px;margin-bottom:14px">'
+    +'<svg class="ico" style="color:#c47a00;flex-shrink:0" aria-hidden="true"><use href="#i-warning"/></svg>'
+    +'<div style="font-size:12.5px;color:var(--text2);line-height:1.5">Les prestations <strong>commandées en direct par le client</strong> ou les <strong>contacts directs client ↔ entreprise</strong> relèvent de la seule responsabilité du client. L\'architecte <strong>n\'en est pas responsable</strong> (contrat, art. 11.3). Le travail supplémentaire éventuel est facturable au temps passé (taux art. 4.1) — <em>sans transfert de responsabilité</em>.</div></div>';
+  if(st.billN>0)html+='<div style="border:1px solid var(--amber);background:var(--amber-bg);border-radius:var(--r2);padding:9px 13px;margin-bottom:14px;font-size:12.5px;color:#8a5800"><strong>'+st.billN+' intervention'+(st.billN>1?'s':'')+'</strong> à facturer — '+(st.billH||0)+' h · '+suiviEuro(st.billEur)+'. <span style="opacity:.8">À passer en avenant.</span></div>';
+  if(!L.length){html+='<div style="color:var(--text3);font-size:13px;padding:26px;text-align:center;border:1px dashed var(--border);border-radius:var(--r2)">Aucune entrée. Consignez ici chaque commande passée par le client en direct ou chaque contact direct avec une entreprise, pour acter qu\'elle est hors de votre responsabilité.</div>';}
+  L.forEach(function(x){
+    var fact=x.statut==='facture';
+    if(canEdit){
+      html+='<div style="border:1px solid var(--border);border-left:3px solid #c47a00;border-radius:var(--r2);background:var(--panel);padding:11px 13px;margin-bottom:11px">'
+        +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:7px">'
+          +'<input type="date" value="'+e(x.date||'')+'" aria-label="Date" oninput="hrUpdate(\''+x.id+'\',\'date\',this.value)" style="border:1px solid var(--border2);border-radius:6px;padding:4px 6px;font-size:11.5px;font-family:inherit;background:var(--bg);color:var(--text)">'
+          +'<input value="'+e(x.entreprise||'')+'" placeholder="Entreprise / fournisseur" aria-label="Entreprise" oninput="hrUpdate(\''+x.id+'\',\'entreprise\',this.value)" style="flex:1;min-width:130px;font-size:12px;border:1px solid var(--border2);border-radius:6px;padding:4px 7px;background:var(--bg);color:var(--text)">'
+          +'<span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;background:var(--amber-bg);color:#8a5800;white-space:nowrap">Hors responsabilité</span>'
+          +'<button class="btn btn-g btn-sm" style="padding:4px 6px;color:var(--red)" aria-label="Supprimer" onclick="hrDel(\''+x.id+'\')"><svg class="ico ico-xs" aria-hidden="true"><use href="#i-trash"/></svg></button>'
+        +'</div>'
+        +'<input value="'+e(x.objet||'')+'" placeholder="Objet (ex. carrelage commandé en direct par le client)" aria-label="Objet" oninput="hrUpdate(\''+x.id+'\',\'objet\',this.value)" style="width:100%;font-size:12.5px;border:1px solid var(--border2);border-radius:6px;padding:6px 8px;margin-bottom:7px;background:var(--bg);color:var(--text);box-sizing:border-box">'
+        +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding-top:7px;border-top:1px dashed var(--border)">'
+          +'<label style="display:inline-flex;align-items:center;gap:6px;font-size:12px;cursor:pointer"><input type="checkbox" '+(x.extra?'checked':'')+' onclick="hrToggleExtra(\''+x.id+'\')" style="width:15px;height:15px;accent-color:#c47a00">A généré un travail supplémentaire</label>';
+      if(x.extra){
+        html+='<span style="margin-left:auto;display:inline-flex;align-items:center;gap:5px">'
+          +'<input value="'+e(x.heures||'')+'" placeholder="h" aria-label="Heures" oninput="hrUpdate(\''+x.id+'\',\'heures\',this.value)" style="width:42px;border:1px solid var(--border2);border-radius:6px;padding:3px 5px;font-size:11.5px;background:var(--bg);color:var(--text);text-align:center">'
+          +'<span style="font-size:11px;color:var(--text3)">h ×</span>'
+          +'<input value="'+e(x.taux||'')+'" placeholder="€/h" aria-label="Taux" oninput="hrUpdate(\''+x.id+'\',\'taux\',this.value)" style="width:50px;border:1px solid var(--border2);border-radius:6px;padding:3px 5px;font-size:11.5px;background:var(--bg);color:var(--text);text-align:center">'
+          +'<span style="font-size:11px;color:var(--text3)">=</span><span id="hrtot-'+x.id+'" style="font-weight:700;font-size:12.5px;color:#5c3d1e">'+suiviEuro(modMontant(x))+'</span>'
+          +'<select aria-label="Statut de facturation" onchange="hrSetStatut(\''+x.id+'\',this.value)" style="font-size:11px;border:1px solid var(--border2);border-radius:6px;padding:3px 5px;font-family:inherit;background:var(--bg);color:var(--text)"><option value="a_facturer"'+(fact?'':' selected')+'>À facturer</option><option value="facture"'+(fact?' selected':'')+'>Facturé</option></select></span>';
+      }
+      html+='</div></div>';
+    } else {
+      html+='<div style="border:1px solid var(--border);border-left:3px solid #c47a00;border-radius:var(--r2);background:var(--panel);padding:11px 13px;margin-bottom:10px">'
+        +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="font-size:11.5px;color:var(--text3)">'+e(fmtDateFR(x.date))+'</span>'
+        +(x.entreprise?'<span style="font-size:12.5px;font-weight:600">'+e(x.entreprise)+'</span>':'')
+        +'<span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;background:var(--amber-bg);color:#8a5800">Hors responsabilité</span>'
+        +(x.extra?'<span style="margin-left:auto;font-weight:600;font-size:12px;color:#5c3d1e">'+suiviEuro(modMontant(x))+' '+(fact?'(facturé)':'(à facturer)')+'</span>':'')+'</div>'
+        +(x.objet?'<div style="font-size:12.5px;color:var(--text2);margin-top:4px">'+e(x.objet)+'</div>':'')+'</div>';
+    }
+  });
+  html+='</div>';
+  document.getElementById('content').innerHTML=html;
 }
 
 function renderSuivi(){
@@ -5369,8 +6159,9 @@ document.addEventListener('keydown',function(ev){
     if(document.body.classList.contains('nav-open')){closeMobileNav();var mb=document.getElementById('mnav-btn');if(mb)try{mb.focus();}catch(e){}ev.preventDefault();return;}
     return;
   }
-  if(ev.key==='Tab'&&(viewerOpen||modalOpen)){
-    var container=viewerOpen?viewerRoot.querySelector('.vw-box'):modalRoot.querySelector('.mo-box');
+  var locPop=document.getElementById('locality-pop');
+  if(ev.key==='Tab'&&(viewerOpen||modalOpen||locPop)){
+    var container=viewerOpen?viewerRoot.querySelector('.vw-box'):(modalOpen?modalRoot.querySelector('.mo-box'):locPop);
     if(!container)return;
     var f=_focusables(container);
     if(!f.length){ev.preventDefault();container.focus();return;}
@@ -5407,6 +6198,10 @@ function renderPV(){
       localStorage.setItem('plansync_host_annuaire',JSON.stringify({pid:PROJ.id||'',list:list}));
     }catch(e){}
   }
+  // Cache-buster : garantit que l'iframe charge toujours la dernière version du PV
+  // (sinon le navigateur sert un PV/index.html en cache) et que la réconciliation
+  // des intervenants depuis l'annuaire se rejoue à chaque ouverture.
+  q += (q?'&':'?')+'_ts='+Date.now();
   document.getElementById('content').innerHTML=
     '<iframe src="PV/index.html'+q+'" title="PV — Comptes-rendus de chantier" '+
     'style="width:100%;height:100%;border:0;display:block;background:var(--bg)"></iframe>';
@@ -6932,6 +7727,12 @@ function projAllBlobIds(p){
     if(dv.devisPdf&&dv.devisPdf.blobId)ids.push(dv.devisPdf.blobId);
     (dv.factures||[]).forEach(function(f){if(f.facturePdf&&f.facturePdf.blobId)ids.push(f.facturePdf.blobId);});
   });});
+  if(p.cctp&&p.cctp.pdf&&p.cctp.pdf.blobId)ids.push(p.cctp.pdf.blobId);
+  if(p.cctp&&Array.isArray(p.cctp.additifs))p.cctp.additifs.forEach(function(a){if(a.pdf&&a.pdf.blobId)ids.push(a.pdf.blobId);});
+  if(p.contrat){
+    if(p.contrat.pdf&&p.contrat.pdf.blobId)ids.push(p.contrat.pdf.blobId);
+    (p.contrat.avenants||[]).forEach(function(a){if(a.pdf&&a.pdf.blobId)ids.push(a.pdf.blobId);});
+  }
   return ids;
 }
 function deleteProj(id){
@@ -6945,6 +7746,10 @@ function deleteProj(id){
     onConfirm:function(){
       const idx=PROJS.findIndex(x=>x.id===id);
       if(idx===-1)return;
+      // Suppression en ligne (si synchronisé) AVANT de retirer localement — sinon le projet
+      // réapparaîtrait à la prochaine connexion. RLS n'autorise que le propriétaire.
+      try{if(p._sbId&&typeof isSignedIn==='function'&&isSignedIn()){var sb=p._sbId;
+        supaClient().then(function(c){return c.from('projects').delete().eq('id',sb);}).catch(function(){});}}catch(e){}
       // Libère les octets (IndexedDB + mémoire) pour ne pas laisser de blobs orphelins.
       projAllBlobIds(p).forEach(function(bid){try{delete BLOBS[bid];BlobDB.del(bid);}catch(e){}});
       try{delete PROJ_PLAN_FOLDERS[p.id];}catch(e){}
@@ -7097,6 +7902,24 @@ function buildDemoProject(idSuffix){
       'Stationnement':'2 places par logement',
       'Risques':'Aléa retrait-gonflement argiles : moyen'
     },notes:'Extension en limite du coefficient d\'emprise au sol — vérifier le calcul avant dépôt. Parcelle non concernée par le PPRif. Raccordement tout-à-l\'égout existant.',sources:[],updatedAt:relISO(20)},
+    // CCTP de démonstration (structure type, abrégée) — éditable côté architecte, publié en lecture.
+    cctp:{
+      intro:'Le présent CCTP définit les spécifications techniques des travaux d\'extension de la Villa Laurens. Les ouvrages seront exécutés conformément aux règles de l\'art, aux DTU en vigueur et aux normes NF applicables. En cas de contradiction, les documents particuliers priment sur les documents généraux.',
+      sections:[
+        {id:'cs1_'+ts,titre:'GÉNÉRALITÉS',items:[
+          {id:'ca1_'+ts,titre:'Objet du marché',texte:'Travaux d\'extension et de rénovation partielle d\'une maison individuelle, comprenant gros œuvre, second œuvre et lots techniques. L\'entreprise est réputée avoir pris connaissance du site et des contraintes d\'accès.'},
+          {id:'ca2_'+ts,titre:'Documents de référence',texte:'DTU applicables, Eurocodes, normes NF, réglementation thermique en vigueur, avis techniques des produits mis en œuvre. L\'entreprise fournira les fiches techniques et PV d\'essais avant approvisionnement.'}
+        ]},
+        {id:'cs2_'+ts,titre:'GROS ŒUVRE',items:[
+          {id:'ca3_'+ts,titre:'Fondations',texte:'Fondations superficielles type semelles filantes en béton armé, dosé à 350 kg/m³, coulé pleine fouille sur béton de propreté. Profondeur hors gel et selon étude de sol. Armatures conformes aux plans BA.'},
+          {id:'ca4_'+ts,titre:'Murs et élévations',texte:'Maçonnerie de blocs béton de 20 cm hourdés au mortier, chaînages verticaux et horizontaux en béton armé. Réservations pour réseaux à coordonner avec les lots techniques avant coulage.'}
+        ]},
+        {id:'cs3_'+ts,titre:'SECOND ŒUVRE',items:[
+          {id:'ca5_'+ts,titre:'Cloisons et doublages',texte:'Cloisons de distribution en plaques de plâtre sur ossature métallique, isolant intérieur selon étude thermique. Renforts prévus pour appareils sanitaires et meubles suspendus.'},
+          {id:'ca6_'+ts,titre:'Revêtements de sol',texte:'Chape de ravoirage, isolation, chape fluide, puis béton ciré au rez-de-chaussée et carrelage en zones humides. Tolérances de planéité conformes au DTU.'}
+        ]}
+      ]
+    },
     // Notes du projet (locales) — fil projet + une note privée, pour montrer la fonction.
     messages:[
       {id:'pm1_'+ts,authorId:'mbr:m1_'+ts,author:'Alex Démo',date:relISO(6,10),text:'Coulage des fondations terminé, on enchaîne sur l\'élévation des murs la semaine prochaine.'},
@@ -7172,6 +7995,18 @@ function buildDemoProject(idSuffix){
       {id:'pv2_'+ts,titre:'PV ancien',date:dStart,folderId:'fgen_pv',archived:true,archivedAt:dDevis,fileName:'pv_ancien.pdf',mimeType:'application/pdf',fileUrl:SAMPLE_PDF,createdAt:new Date().toISOString()}
     ]
   };
+  // CCTP de démonstration : le modèle type complet (8 chapitres, 31 articles).
+  try{demo.cctp=cctpFromTemplate();demo.cctp.additifs=[{id:'cad'+(uid++),num:'1',date:'2026-04-22',objet:'Ajout d\'un lot domotique (volets et éclairage pilotés)',texte:'Ajout, en cours de projet, d\'un lot domotique non prévu au CCTP initial : pilotage des volets roulants et de l\'éclairage des pièces de vie. Prescriptions, marques et compatibilités à préciser avec l\'électricien. Le présent additif complète l\'article « Électricité » sans le remplacer.',statut:'publie',pdf:null}];}catch(e){}
+  try{var _ct=ctFromTemplate('mission_complete');demo.contrat={type:'mission_complete',client:'Famille Laurens',clientAdr:'14 chemin des Oliviers, 13100 Aix-en-Provence',architecte:'Atelier démo — Alex Démo',ordre:'S12345',budget:'320 000',remu:'11 %',remuMode:'pourcentage du coût des travaux',tauxHoraire:'90',dateSign:'2026-02-10',dateDebut:'2026-03-01',statut:'signe',pdf:null,intro:_ct.intro,articles:_ct.articles,avenants:[{id:'av'+(uid++),num:'1',date:'2026-04-15',objet:'Extension de mission — aménagement paysager',montant:'+8 500',texte:'Ajout d\'une mission de conception des abords et terrasses, non prévue au contrat initial. Honoraires complémentaires forfaitaires.',statut:'signe',pdf:null}]};}catch(e){}
+  try{demo.paliers={list:[
+    {id:'plr'+(uid++),nom:'Esquisse (ESQ)',livrable:'Esquisse approuvée',statut:'valide',dateValid:'2026-03-05',signe:true,note:'',mods:[]},
+    {id:'plr'+(uid++),nom:'Avant-projet (APS / APD)',livrable:'Plans d\'avant-projet signés',statut:'valide',dateValid:'2026-04-02',signe:true,note:'',mods:[{id:'mod'+(uid++),date:'2026-04-20',objet:'Déplacement de la cloison cuisine après signature APD (demande client)',heures:'4',taux:'90',statut:'a_facturer'}]},
+    {id:'plr'+(uid++),nom:'Permis de construire (PC)',livrable:'Dossier PC signé et déposé',statut:'en_cours',dateValid:'',signe:false,note:'',mods:[]},
+    {id:'plr'+(uid++),nom:'Projet & consultation (PRO / DCE)',livrable:'Plans d\'exécution et DCE signés',statut:'a_venir',dateValid:'',signe:false,note:'',mods:[]},
+    {id:'plr'+(uid++),nom:'Chantier (DET)',livrable:'Ordre de service / démarrage des travaux',statut:'a_venir',dateValid:'',signe:false,note:'',mods:[]},
+    {id:'plr'+(uid++),nom:'Réception (AOR)',livrable:'PV de réception signé',statut:'a_venir',dateValid:'',signe:false,note:'',mods:[]}
+  ]};}catch(e){}
+  try{demo.horsResp={list:[{id:'hr'+(uid++),date:'2026-05-12',entreprise:'Cuisiniste Azur (hors marché)',objet:'Cuisine commandée en direct par le client — coordination des réservations et reprise du plan élec nécessaires.',extra:true,heures:'3',taux:'90',statut:'a_facturer',note:''}]};}catch(e){}
   // Checklist propre au projet de démo : les éléments « faits » ne vivent plus
   // dans le modèle partagé buildCL (qui démarre désormais à 0 %), mais ici.
   demo.clTree=(function(){
@@ -7583,7 +8418,7 @@ function localityPopHTML(){
     +auto
     +(supaConfigured()?('<div style="margin-top:10px;padding:9px 10px;border:1px dashed var(--border2);border-radius:8px">'
       +'<div style="font-size:12px;font-weight:600;color:var(--text2)">Compte en ligne <span style="font-weight:500;color:var(--text3);font-size:10.5px">(bêta)</span></div>'
-      +'<div id="auth-stamp" style="font-size:11px;color:var(--text3);margin-top:3px">'+(isSignedIn()?('Connecté : '+e(authName())):'Non connecté')+'</div>'
+      +'<div id="auth-stamp" style="font-size:11px;margin-top:3px;color:'+(_supaSdkFailed?'var(--amber)':'var(--text3)')+'">'+(_supaSdkFailed?'Hors ligne — synchronisation indisponible':(isSignedIn()?('Connecté : '+e(authName())):'Non connecté'))+'</div>'
       +'<div class="lp-actions" style="margin-top:7px">'+(isSignedIn()
         ?'<button class="btn btn-sm btn-g" onclick="openAuthModal(\'account\')">Mon compte</button>'
         :'<button class="btn btn-sm btn-p" onclick="openAuthModal(\'login\')"><svg class="ico ico-xs" style="margin-right:3px" aria-hidden="true"><use href="#i-lock"/></svg>Se connecter</button><button class="btn btn-sm btn-g" onclick="openAuthModal(\'code\')">Entreprise (code)</button>')
@@ -7914,6 +8749,14 @@ function remapImportedBlobs(p,blobsSrc){
     if(dv.devisPdf&&dv.devisPdf.blobId)dv.devisPdf.blobId=move(dv.devisPdf.blobId,'sp');
     (dv.factures||[]).forEach(function(f){if(f.facturePdf&&f.facturePdf.blobId)f.facturePdf.blobId=move(f.facturePdf.blobId,'sp');});
   });});
+  // PDF signés du CCTP et du contrat (+ avenants) : sans remap, deux projets importés
+  // partageraient le même blobId et la suppression de l'un effacerait le PDF de l'autre.
+  if(p.cctp&&p.cctp.pdf&&p.cctp.pdf.blobId)p.cctp.pdf.blobId=move(p.cctp.pdf.blobId,'cctppdf');
+  if(p.cctp&&Array.isArray(p.cctp.additifs))p.cctp.additifs.forEach(function(a){if(a.pdf&&a.pdf.blobId)a.pdf.blobId=move(a.pdf.blobId,'cadpdf');});
+  if(p.contrat){
+    if(p.contrat.pdf&&p.contrat.pdf.blobId)p.contrat.pdf.blobId=move(p.contrat.pdf.blobId,'ctpdf');
+    (p.contrat.avenants||[]).forEach(function(a){if(a.pdf&&a.pdf.blobId)a.pdf.blobId=move(a.pdf.blobId,'avpdf');});
+  }
 }
 // ── Garde de sécurité d'import ────────────────────────────────────────────────
 // Tous les identifiants créés par l'app sont alphanumériques (uid++, Date.now,
@@ -7950,7 +8793,7 @@ function applyImport(data,mode){
   // Refuse une sauvegarde dont un identifiant est non conforme (anti-injection onclick).
   if(!importIdsSafe(data.projs,0)){toastErr('Sauvegarde refusée : identifiants non valides (fichier corrompu ou non fiable).');return;}
   if(data.blobs&&typeof data.blobs==='object'){
-    var badBlob=Object.keys(data.blobs).some(function(k){return !SAFE_ID_RE.test(k);});
+    var badBlob=Object.keys(data.blobs).some(function(k){return !idValueSafe(k);});
     if(badBlob){toastErr('Sauvegarde refusée : références de fichiers non valides.');return;}
   }
   // N'accepte que des champs de profil connus.
@@ -8068,7 +8911,7 @@ function finishOnboarding(createProject){
    côté base qui protègent les données, pas le secret de cette clé. */
 const SUPABASE_URL='https://bjmbxcxjkirrpcawaozw.supabase.co';
 const SUPABASE_ANON_KEY='sb_publishable_PUyTXbwEqqXryGEnwCRpng_bjUWnNAX';
-var _supa=null,_supaUser=null,_supaLoad=null;
+var _supa=null,_supaUser=null,_supaLoad=null,_supaSdkFailed=false;
 function supaConfigured(){return !!(SUPABASE_URL&&SUPABASE_ANON_KEY);}
 function supaClient(){
   if(_supa)return Promise.resolve(_supa);
@@ -8082,17 +8925,18 @@ function supaClient(){
 function supaInit(){
   if(!supaConfigured())return;
   supaClient().then(function(c){
-    c.auth.onAuthStateChange(function(_ev,session){
+    c.auth.onAuthStateChange(function(ev,session){
       var was=!!_supaUser; _supaUser=session?session.user:null; updateAuthUI();
-      // À la connexion, charge les projets en ligne (une fois).
-      if(_supaUser&&(!was||!_sbProjectsLoaded)){supaLoadProjects();}
-      if(!_supaUser)_sbProjectsLoaded=false;
+      if(!_supaUser){_sbProjectsLoaded=false;_companyMode=false;return;}
+      // Ignore INITIAL_SESSION (déjà couvert par getSession ci-dessous) ; charge une seule fois.
+      if(ev==='INITIAL_SESSION')return;
+      if(!was||!_sbProjectsLoaded)supaLoadProjects();
     });
     return c.auth.getSession().then(function(r){
       _supaUser=(r&&r.data&&r.data.session)?r.data.session.user:null; updateAuthUI();
       if(_supaUser)return supaLoadProjects();
     });
-  }).catch(function(){/* hors-ligne ou CDN injoignable : on reste en local */});
+  }).catch(function(){_supaSdkFailed=true;try{updateAuthUI();}catch(e){}/* hors-ligne ou CDN injoignable : on reste en local, signalé dans la pastille */});
 }
 function authName(){if(!_supaUser)return'';var md=_supaUser.user_metadata||{};return md.display_name||_supaUser.email||'Compte';}
 function isSignedIn(){return !!_supaUser;}
@@ -8115,7 +8959,12 @@ function supaSignIn(email,pwd){
 }
 function supaSignOut(){
   if(!_supa)return;
-  _supa.auth.signOut().then(function(){toast('Déconnecté');closeModal();}).catch(function(){});
+  try{flushSave();}catch(e){console.warn('[flushSave]',e);} // règle toute écriture locale en attente avant de tout réinitialiser
+  // Annule la synchro en cours pour ne pas pousser après déconnexion.
+  try{Object.keys(_sbSyncTimers).forEach(function(k){clearTimeout(_sbSyncTimers[k]);});}catch(e){}
+  _sbSyncTimers={}; _sbBlobQueue=[]; _companyMode=false; _sbProjectsLoaded=false; _sbLoadFailed=false;
+  _sbBlobsSwept={}; _sbPushRetried={}; _sbBlobUploaded={}; _sbUploadRunning=false; _supaUid=null; _supaLoadInFlight=null;
+  _supa.auth.signOut().then(function(){toast('Déconnecté');closeModal();renderSB();renderMain();}).catch(function(){toast('Déconnexion locale (serveur injoignable)');closeModal();});
 }
 function supaJoinWithCode(){
   var email=(document.getElementById('au-cemail')||{}).value, pwd=(document.getElementById('au-cpwd')||{}).value, code=(document.getElementById('au-code')||{}).value;
@@ -8152,7 +9001,7 @@ function renderAuthModal(){
       +'<div class="mo-foot"><button class="btn" onclick="closeModal()">Fermer</button><button class="btn" style="color:var(--red)" onclick="supaSignOut()">Se déconnecter</button></div>');
     return;
   }
-  var tabBtn=function(id,label){var on=_authTab===id;return '<button onclick="_authTab=\''+id+'\';renderAuthModal()" style="flex:1;padding:8px;border:none;border-radius:8px;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;'+(on?'background:var(--panel);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.12)':'background:transparent;color:var(--text3)')+'">'+label+'</button>';};
+  var tabBtn=function(id,label){var on=_authTab===id;return '<button role="tab" aria-selected="'+(on?'true':'false')+'" onclick="_authTab=\''+id+'\';renderAuthModal()" style="flex:1;padding:8px;border:none;border-radius:8px;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;'+(on?'background:var(--panel);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.12)':'background:transparent;color:var(--text3)')+'">'+label+'</button>';};
   var body='';
   if(_authTab==='login'){
     body=_authField('au-email','E-mail','email','vous@cabinet.fr')+_authField('au-pwd','Mot de passe','password','••••••••')
@@ -8167,7 +9016,7 @@ function renderAuthModal(){
       +'<button class="btn btn-p" style="width:100%;justify-content:center;margin-top:4px" onclick="supaJoinWithCode()">Rejoindre le projet</button>';
   }
   showModal('<h3 style="display:flex;align-items:center;gap:8px"><svg class="ico ico-sm" style="color:var(--blue)" aria-hidden="true"><use href="#i-lock"/></svg>Compte en ligne</h3>'
-    +'<div role="tablist" style="display:flex;gap:3px;padding:3px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin-bottom:14px">'
+    +'<div role="tablist" aria-label="Type de connexion" style="display:flex;gap:3px;padding:3px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;margin-bottom:14px">'
       +tabBtn('login','Connexion')+tabBtn('signup','Architecte')+tabBtn('code','Entreprise (code)')
     +'</div>'+body
     +'<div class="mo-foot" style="margin-top:14px"><button class="btn" onclick="closeModal()">Annuler</button></div>');
@@ -8179,7 +9028,7 @@ function renderAuthModal(){
    (uuid de la ligne). Le local reste le cache hors-ligne ; l'export JSON reste
    une sauvegarde. Le projet de démonstration n'est jamais envoyé. */
 var _supaSuppressSync=false, _sbSyncTimers={}, _sbProjectsLoaded=false, _companyMode=false, _supaUid=null;
-function projectCloudData(p){var c=JSON.parse(JSON.stringify(p));delete c._sbId;delete c._sbUpdated;return c;}
+function projectCloudData(p){var c=JSON.parse(JSON.stringify(p));delete c._sbId;delete c._sbUpdated;delete c.myAccessRole;return c;}
 // Back-fill des champs attendus par l'UI : un projet venu du cloud (ou minimal) ne
 // doit jamais faire planter le rendu sur un champ manquant.
 function normalizeProject(p){
@@ -8191,7 +9040,14 @@ function normalizeProject(p){
   if(!Array.isArray(p.suivi))p.suivi=[];
   if(!Array.isArray(p.ints))p.ints=[];
   if(!Array.isArray(p.milestones))p.milestones=[];
+  if(!Array.isArray(p.chantier))p.chantier=[];
   if(!p.opts||typeof p.opts!=='object')p.opts={};
+  if(!p.cctp||typeof p.cctp!=='object')p.cctp={intro:'',sections:[]};
+  try{if(typeof ctEnsure==='function')ctEnsure(p);}catch(e){console.warn('[normalizeProject] ctEnsure',e);}
+  try{if(typeof palEnsure==='function')palEnsure(p);}catch(e){console.warn('[normalizeProject] palEnsure',e);}
+  try{if(typeof hrEnsure==='function')hrEnsure(p);}catch(e){console.warn('[normalizeProject] hrEnsure',e);}
+  // Couleurs issues du cloud : neutralise toute valeur CSS non conforme (anti-injection style).
+  try{if(p.color)p.color=sanitizeColor(p.color);if(p.bg)p.bg=sanitizeColor(p.bg);}catch(e){}
   if(!p.docs_data||typeof p.docs_data!=='object')p.docs_data={};
   ['plans','contrats','factures','photos','admin'].forEach(function(k){if(!Array.isArray(p.docs_data[k]))p.docs_data[k]=[];});
   if(!p.name)p.name='Projet';
@@ -8199,15 +9055,33 @@ function normalizeProject(p){
   if(!p.type)p.type='maison';
   if(!p.color)p.color='#5c3d1e';
   if(!p.bg)p.bg='#f5ede6';
-  try{(p.membres||[]).forEach(function(m){normalizeMbr(m);});}catch(e){}
+  (p.membres||[]).forEach(function(m){try{normalizeMbr(m);}catch(e){try{console.warn('[normalizeProject] membre ignoré',m&&m.id,e);}catch(_){}}});
   // avs (initiales pour la pile d'avatars) dérivées des membres si absentes.
   if(!p.avs.length&&p.membres.length)p.avs=p.membres.slice(0,3).map(function(m){return m.ini||((m.name||'?')[0]||'?').toUpperCase();});
+  // Migration : harmonise les couleurs des groupes de checkliste sur la palette terre (brun de marque).
+  try{migrateCLColors(p.clTree);}catch(e){console.warn('[migrateCLColors]',e);}
   return p;
 }
+// Couleurs des phases de checkliste : dégradé terre cohérent avec le brun de marque (#5c3d1e).
+// Vérifié WCAG AA (texte ≥4.5:1 sur blanc). Clé = id de groupe (les ids sont stables).
+var CL_GROUP_COLORS={depot:'#5c3d1e',exe:'#7c5230',chantier:'#9c5e27',finition:'#8c601f',therm:'#7a6040',geo:'#6b5035'};
+function migrateCLColors(tree){
+  if(!Array.isArray(tree))return;
+  tree.forEach(function(n){
+    if(n&&n.id&&CL_GROUP_COLORS[n.id])n.color=CL_GROUP_COLORS[n.id];
+    if(n&&n.children)migrateCLColors(n.children);
+  });
+}
+var _supaLoadInFlight=null, _sbLoadFailed=false;
 function supaLoadProjects(){
   if(!isSignedIn())return Promise.resolve();
+  if(_supaLoadInFlight)return _supaLoadInFlight; // collapse les appels concurrents
+  // Persiste toute édition en attente AVANT d'écraser les slots PROJS avec les données
+  // du cloud. Si l'enregistrement échoue (stockage saturé — savePROJS a déjà prévenu),
+  // on annule le chargement pour ne pas perdre la saisie non sauvegardée en mémoire.
+  try{ if(flushSave()===false) return Promise.resolve(); }catch(e){}
   var C=null,roleByPid={};
-  return supaClient().then(function(c){C=c; _supaUid=_supaUser?_supaUser.id:null;
+  _supaLoadInFlight=supaClient().then(function(c){C=c; _supaUid=_supaUser?_supaUser.id:null;
     // Profil (mode entreprise) + rôles d'accès par projet, en parallèle des projets.
     return Promise.all([
       c.from('projects').select('id,name,data,updated_at,owner'),
@@ -8221,6 +9095,9 @@ function supaLoadProjects(){
      _companyMode = !!(prof.data&&prof.data[0]&&prof.data[0].account_type==='company');
      (pr.data||[]).forEach(function(row){
        var data=row.data||{}; if(!data.id)data.id=row.id; data._sbId=row.id; data._sbUpdated=row.updated_at;
+       // Sécurité : un projet cloud avec des identifiants non conformes (injection possible
+       // dans les gestionnaires onclick) est ignoré — mêmes règles que l'import de fichier.
+       if(typeof importIdsSafe==='function' && !importIdsSafe(data,0)){ try{toastErr('Un projet en ligne a été ignoré (identifiants non valides).');}catch(e){} return; }
        // Rôle effectif : propriétaire => admin ; sinon rôle d'adhésion (défaut lecture).
        data.myAccessRole = (row.owner===_supaUid) ? 'admin' : (roleByPid[row.id] || 'lecture');
        normalizeProject(data);
@@ -8230,24 +9107,38 @@ function supaLoadProjects(){
      });
      // En mode entreprise : on retire le projet de démonstration (l'entreprise ne voit que son projet).
      if(_companyMode){ for(var k=PROJS.length-1;k>=0;k--){ if(isDemoProj(PROJS[k]))PROJS.splice(k,1); } }
-     _sbProjectsLoaded=true;
+     // Re-pointe le projet ouvert vers son nouvel objet (le slot PROJS a été remplacé) pour
+     // éviter un PROJ orphelin dont les éditions ne seraient plus sérialisées par savePROJS().
+     if(PROJ){var _np=PROJS.find(function(p){return (PROJ._sbId&&p._sbId===PROJ._sbId)||(p.id&&p.id===PROJ.id);});if(_np)PROJ=_np;}
+     _sbProjectsLoaded=true; _sbLoadFailed=false;
      _supaSuppressSync=true; try{savePROJS();}finally{_supaSuppressSync=false;}
      renderSB();renderMain();updateAuthUI();
      return (pr.data||[]).length;
-   }).catch(function(e){toastErr('Chargement en ligne impossible : '+(e&&e.message?e.message:'erreur'));});
+   }).catch(function(e){_sbLoadFailed=true;toastErr('Chargement en ligne impossible : '+(e&&e.message?e.message:'erreur')+' — synchronisation suspendue.');})
+   .then(function(r){_supaLoadInFlight=null;return r;});
 }
-function supaPushProject(p){
+var _sbBlobsSwept={}, _sbPushRetried={};
+function supaPushProject(p,isRetry){
   if(!isSignedIn()||!p||isDemoProj(p))return Promise.resolve(false);
+  var wasNew=!p._sbId;
   return supaClient().then(function(c){return c.rpc('save_project',{p_id:p._sbId||null,p_name:p.name||'Projet',p_data:projectCloudData(p)});})
    .then(function(r){
      if(r.error)throw r.error;
      if(r.data){p._sbId=r.data.id;p._sbUpdated=r.data.updated_at;_supaSuppressSync=true;try{savePROJS();}finally{_supaSuppressSync=false;}}
-     try{supaUploadProjectBlobs(p);}catch(e){} // synchronise aussi les octets des fichiers
-     _supaSetSyncState('ok');return true;
-   }).catch(function(e){_supaSetSyncState('err');return false;});
+     // Balaye les octets une seule fois par projet (les nouveaux fichiers sont déjà gérés par setBlob).
+     if((wasNew||!_sbBlobsSwept[p._sbId])&&p._sbId){_sbBlobsSwept[p._sbId]=true;try{supaUploadProjectBlobs(p);}catch(e){}}
+     _sbPushRetried[p.id]=false; _supaSetSyncState('ok');return true;
+   }).catch(function(e){
+     _supaSetSyncState('err');
+     // Signale clairement (le local est sauvé, mais PAS en ligne) — évite un faux sentiment de synchro.
+     if(!isRetry){try{toastErr('Synchronisation en ligne échouée — réessai automatique. Vos données restent locales.');}catch(_){}
+       if(!_sbPushRetried[p.id]){_sbPushRetried[p.id]=true;setTimeout(function(){if(isSignedIn())supaPushProject(p,true);},30000);}}
+     return false;
+   });
 }
 function supaQueueSync(p){
   if(!isSignedIn()||!p||isDemoProj(p))return;
+  if(!_sbProjectsLoaded||_sbLoadFailed)return; // ne pas pousser le local par-dessus le cloud tant qu'on n'a pas chargé
   var key=p.id; if(_sbSyncTimers[key])clearTimeout(_sbSyncTimers[key]);
   _supaSetSyncState('pending');
   _sbSyncTimers[key]=setTimeout(function(){delete _sbSyncTimers[key];supaPushProject(p);},2500);
@@ -8280,6 +9171,7 @@ function supaCreateAccessCode(role){
    .catch(function(e){toastErr('Création du code impossible : '+(e&&e.message?e.message:'erreur'));});
 }
 function supaRevokeAccessCode(code){
+  if(!isSignedIn()||!can('manageAccess'))return;
   supaClient().then(function(c){return c.from('access_codes').delete().eq('code',code);})
    .then(function(r){if(r.error)throw r.error;toast('Code révoqué');_renderAccessCodes();})
    .catch(function(){toastErr('Révocation impossible.');});
@@ -8301,8 +9193,8 @@ function _renderAccessCodes(){
       return '<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px">'
         +'<div style="flex:1;min-width:0"><div style="font-family:ui-monospace,monospace;font-weight:700;font-size:15px;letter-spacing:1.5px">'+e(c.code)+'</div>'
         +'<div style="font-size:11px;color:var(--text3)">'+e((ACCESS_RL&&ACCESS_RL[c.access_role])||c.access_role)+' · '+(used?'<span style="color:var(--green)">utilisé</span>':'non utilisé')+'</div></div>'
-        +'<button class="btn btn-g btn-sm" onclick="(navigator.clipboard&&navigator.clipboard.writeText(\''+e(jsq(c.code))+'\'));toast(\'Code copié\')">Copier</button>'
-        +'<button class="btn btn-g btn-sm" style="color:var(--red)" onclick="supaRevokeAccessCode(\''+e(jsq(c.code))+'\')" title="Révoquer">'+ico('trash','ico-xs')+'</button>'
+        +'<button class="btn btn-g btn-sm" aria-label="Copier le code '+e(c.code)+'" onclick="(navigator.clipboard&&navigator.clipboard.writeText(\''+e(jsq(c.code))+'\'));toast(\'Code copié\')">Copier</button>'
+        +'<button class="btn btn-g btn-sm" style="color:var(--red)" aria-label="Révoquer le code '+e(c.code)+'" onclick="supaRevokeAccessCode(\''+e(jsq(c.code))+'\')" title="Révoquer">'+ico('trash','ico-xs')+'</button>'
       +'</div>';
     }).join(''):'<div style="font-size:12px;color:var(--text3);padding:6px 0 10px">Aucun code pour l\'instant.</div>';
     host.innerHTML='<div style="font-size:11.5px;color:var(--text3);line-height:1.5;margin-bottom:10px">Donnez un code à une entreprise. Elle créera un compte via l\'onglet « Entreprise (code) » et accédera à <strong>ce projet uniquement, en lecture seule</strong>.</div>'
@@ -8319,12 +9211,8 @@ function _renderAccessCodes(){
 var _sbBlobUploaded={}, _sbBlobQueue=[], _sbUploadRunning=false, _supaSuppressBlobUp=false;
 // Résout l'_sbId du projet propriétaire d'un blob (doc / pv / pdf de suivi).
 function _blobProjectSbId(blobId){
-  for(var i=0;i<PROJS.length;i++){var p=PROJS[i];if(!p)continue;
-    var d=p.docs_data||{},areas=['plans','contrats','factures','photos','admin'];
-    for(var a=0;a<areas.length;a++){var arr=d[areas[a]]||[];for(var j=0;j<arr.length;j++){if(arr[j]&&arr[j].id===blobId)return p._sbId||null;}}
-    var pv=p.pv||[];for(var k=0;k<pv.length;k++){if(pv[k]&&pv[k].id===blobId)return p._sbId||null;}
-    var sv=p.suivi||[];for(var s=0;s<sv.length;s++){var dv=sv[s].devis||[];for(var t=0;t<dv.length;t++){if(dv[t].devisPdf&&dv[t].devisPdf.blobId===blobId)return p._sbId||null;var fa=dv[t].factures||[];for(var u=0;u<fa.length;u++){if(fa[u].facturePdf&&fa[u].facturePdf.blobId===blobId)return p._sbId||null;}}}
-  }
+  // Source unique : projAllBlobIds couvre docs_data + pv + PDF de suivi + CCTP signé.
+  for(var i=0;i<PROJS.length;i++){var p=PROJS[i];if(!p)continue;if(projAllBlobIds(p).indexOf(blobId)>=0)return p._sbId||null;}
   return null;
 }
 function supaQueueBlobUpload(blobId){
@@ -8346,8 +9234,14 @@ function supaUploadBlob(blobId){
     return fetch(dataUrl).then(function(r){return r.blob();}).then(function(blob){
       return supaClient().then(function(c){return c.storage.from('project-files').upload(sbId+'/'+blobId,blob,{upsert:true,contentType:blob.type||'application/octet-stream'});});
     }).then(function(r){if(r.error)throw r.error;_sbBlobUploaded[blobId]=true;return true;});
-  }).catch(function(){return false;});
+  }).catch(function(){
+    // Échec d'envoi d'un fichier : ne pas laisser croire qu'il est en ligne (il reste local).
+    _supaSetSyncState('err');
+    if(!_sbBlobUpWarned){_sbBlobUpWarned=true;try{toastErr('Certains fichiers n\'ont pas pu être envoyés en ligne — réessai automatique.');}catch(e){}}
+    return false;
+  });
 }
+var _sbBlobUpWarned=false;
 function supaDownloadBlob(blobId){
   var sbId=_blobProjectSbId(blobId); if(!sbId)return Promise.resolve(null);
   return supaClient().then(function(c){return c.storage.from('project-files').download(sbId+'/'+blobId);})
@@ -8356,22 +9250,36 @@ function supaDownloadBlob(blobId){
    }).then(function(dataUrl){
      if(dataUrl){_supaSuppressBlobUp=true;BLOBS[blobId]=dataUrl;try{BlobDB.put(blobId,dataUrl);}catch(e){}_supaSuppressBlobUp=false;_sbBlobUploaded[blobId]=true;}
      return dataUrl;
-   }).catch(function(){return null;});
+   }).catch(function(e){console.warn('[supaDownloadBlob] échec',blobId,e);return null;});
 }
 // Envoie en arrière-plan tous les octets d'un projet (après import/synchro).
 function supaUploadProjectBlobs(p){
   if(!isSignedIn()||!p||!p._sbId||isDemoProj(p))return;
-  var ids=[],d=p.docs_data||{};
-  ['plans','contrats','factures','photos','admin'].forEach(function(a){(d[a]||[]).forEach(function(it){if(it&&it.id)ids.push(it.id);});});
-  (p.pv||[]).forEach(function(it){if(it&&it.id)ids.push(it.id);});
-  (p.suivi||[]).forEach(function(g){(g.devis||[]).forEach(function(dv){if(dv.devisPdf&&dv.devisPdf.blobId)ids.push(dv.devisPdf.blobId);(dv.factures||[]).forEach(function(f){if(f.facturePdf&&f.facturePdf.blobId)ids.push(f.facturePdf.blobId);});});});
-  ids.forEach(supaQueueBlobUpload);
+  projAllBlobIds(p).forEach(supaQueueBlobUpload);
 }
 
 /* ══ INIT ══ */
 loadRoles();
 loadUSER();
 loadPROJS();
+// Réamorce le compteur d'ids au-delà des ids déjà persistés (format prefixe+chiffres,
+// ex. "cs1042") pour éviter toute collision d'identifiants après rechargement.
+(function seedUid(){
+  try{
+    var max=uid;
+    var scan=function(o,d){
+      if(d>40||o==null)return;
+      if(Array.isArray(o)){for(var i=0;i<o.length;i++)scan(o[i],d+1);return;}
+      if(typeof o!=='object')return;
+      for(var k in o){ if(!Object.prototype.hasOwnProperty.call(o,k))continue; var v=o[k];
+        if((k==='id'||/Id$/.test(k))&&typeof v==='string'){var m=v.match(/^[A-Za-z]+(\d{3,})$/);if(m){var n=parseInt(m[1],10);if(n>=1000&&n<1e9&&n>max)max=n;}}
+        if(v&&typeof v==='object')scan(v,d+1);
+      }
+    };
+    scan(PROJS,0);
+    if(max>=uid)uid=max+1;
+  }catch(e){}
+})();
 renderBanner();
 renderSB();renderMain();
 renderUserFooter();
