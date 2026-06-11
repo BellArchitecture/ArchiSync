@@ -4366,7 +4366,33 @@ function palEnsure(p){
   if(!Array.isArray(p.paliers.list)||!p.paliers.list.length){
     p.paliers.list=PAL_DEFAULTS.map(function(d,i){return {id:'plr'+(uid++),nom:d.nom,livrable:d.livrable,statut:i===0?'en_cours':'a_venir',dateValid:'',signe:false,note:'',mods:[]};});
   }
-  p.paliers.list.forEach(function(pl){if(!Array.isArray(pl.mods))pl.mods=[];if(['a_venir','en_cours','valide'].indexOf(pl.statut)<0)pl.statut='a_venir';pl.mods.forEach(function(m){if(typeof m.statut!=='string')m.statut='a_facturer';});});
+  p.paliers.list.forEach(function(pl){if(!Array.isArray(pl.mods))pl.mods=[];if(!Array.isArray(pl.annexes))pl.annexes=[];if(['a_venir','en_cours','valide'].indexOf(pl.statut)<0)pl.statut='a_venir';pl.mods.forEach(function(m){if(typeof m.statut!=='string')m.statut='a_facturer';});});
+}
+/* ── Annexes signées (PDF) attachées à un palier : plans / dossier signés qui le valident. ── */
+function palAddAnnexe(palId,ev){
+  if(!can('items'))return denyMsg();
+  var proj=PROJ,plId=palId; var f=ev.target.files&&ev.target.files[0]; if(ev.target)ev.target.value='';
+  if(!f)return;
+  if(!(f.type==='application/pdf'||/\.pdf$/i.test(f.name))){toastErr('Veuillez sélectionner un fichier PDF.');return;}
+  var rd=new FileReader();
+  rd.onload=function(){if(!proj)return;var bid='plxpdf'+(uid++);setBlob(bid,rd.result).then(function(ok){if(!ok){toastErr('Fichier non stocké (stockage plein).');return;}var pl=(proj.paliers.list||[]).find(function(x){return x.id===plId;});if(pl){if(!Array.isArray(pl.annexes))pl.annexes=[];pl.annexes.push({id:'anx'+(uid++),blobId:bid,fileName:f.name});savePROJS();if(PROJ===proj)renderPaliers();toast('Annexe signée attachée');}}).catch(function(er){console.warn('[palAddAnnexe]',er);toastErr('Erreur lors de l\'enregistrement du fichier.');});};
+  rd.onerror=function(){toastErr('Erreur de lecture du fichier.');};
+  rd.readAsDataURL(f);
+}
+function palDelAnnexe(palId,annId){if(!can('items'))return denyMsg();var pl=palFind(palId);if(!pl||!Array.isArray(pl.annexes))return;var i=pl.annexes.findIndex(function(x){return x.id===annId;});if(i<0)return;pl.annexes.splice(i,1);savePROJS();renderPaliers();toast('Annexe retirée');}
+function palViewAnnexe(palId,annId){var pl=palFind(palId);if(!pl)return;var a=(pl.annexes||[]).find(function(x){return x.id===annId;});if(a&&a.blobId)viewDoc({id:a.blobId,fileName:a.fileName,title:a.fileName||'Annexe signée',mimeType:'application/pdf',type:'pdf'});}
+function palAnnexesHTML(pl){
+  var canEdit=can('items'),anx=pl.annexes||[];
+  if(!anx.length&&!canEdit)return '';
+  var chips=anx.map(function(a){
+    return '<span style="display:inline-flex;align-items:center;gap:2px;border:1px solid var(--border2);border-radius:7px;padding:2px 4px 2px 8px;background:var(--bg)">'
+      +'<button class="btn-g" style="background:none;border:none;padding:2px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;font-family:inherit;font-size:11.5px;color:var(--text)" onclick="palViewAnnexe(\''+pl.id+'\',\''+a.id+'\')" title="'+e(a.fileName||'Annexe signée')+'"><svg class="ico ico-xs" style="color:#5c3d1e" aria-hidden="true"><use href="#i-pdf"/></svg>'+e((a.fileName||'Annexe').replace(/\.pdf$/i,'').slice(0,24))+'</button>'
+      +(canEdit?'<button class="btn-g" style="background:none;border:none;padding:2px 3px;cursor:pointer;color:var(--text3)" aria-label="Retirer l\'annexe" onclick="palDelAnnexe(\''+pl.id+'\',\''+a.id+'\')" title="Retirer"><svg class="ico ico-xs" aria-hidden="true"><use href="#i-x"/></svg></button>':'')+'</span>';
+  }).join('');
+  var add=canEdit?'<label class="btn btn-g btn-sm" style="cursor:pointer;padding:4px 9px"><svg class="ico ico-xs" style="margin-right:3px" aria-hidden="true"><use href="#i-upload"/></svg>Annexe signée (PDF)<input type="file" accept=".pdf,application/pdf" style="display:none" onchange="palAddAnnexe(\''+pl.id+'\',event)"></label>':'';
+  return '<div style="padding:0 14px 11px 50px"><div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">'
+    +'<span style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.04em">Annexes signées</span>'
+    +(anx.length?chips:(canEdit?'':'<span style="font-size:12px;color:var(--text3)">Aucune</span>'))+add+'</div></div>';
 }
 function palFind(id){return (PROJ&&PROJ.paliers)?PROJ.paliers.list.find(function(x){return x.id===id;}):null;}
 function palTaux(){return suiviNum(PROJ&&PROJ.contrat&&PROJ.contrat.tauxHoraire);}
@@ -4432,6 +4458,8 @@ function renderPaliers(){
     } else if(canEdit&&isVal){
       html+='<div style="padding:0 14px 11px 50px"><button class="btn btn-g btn-sm" onclick="palReopen(\''+pl.id+'\')" style="color:var(--text3)">Rouvrir le palier</button></div>';
     }
+    // Annexes signées (PDF) attachées à ce palier
+    html+=palAnnexesHTML(pl);
     // Modifications facturables (après validation)
     if(isVal||pl.mods.length){
       html+='<div style="border-top:1px solid var(--border);background:var(--bg);padding:10px 14px 12px 50px">'
@@ -6181,7 +6209,7 @@ document.addEventListener('keydown',function(ev){
 function renderPV(){
   setTB('file-check','var(--blue)','PV — Comptes-rendus de chantier',(PROJ?PROJ.name:''),''); // btnL vide => bouton « + » masqué
   setTabs(null);
-  let q='';
+  let q='', annuaire=null;
   if(PROJ){
     q='?'+new URLSearchParams({pid:PROJ.id||'',projet:PROJ.name||'',adresse:PROJ.address||''}).toString();
     // Annuaire du projet → intervenants PV (saisi une fois, propagé partout).
@@ -6195,16 +6223,29 @@ function renderPV(){
           color: m.color||''
         };
       });
-      localStorage.setItem('plansync_host_annuaire',JSON.stringify({pid:PROJ.id||'',list:list}));
-    }catch(e){}
+      annuaire={pid:PROJ.id||'',list:list};
+      localStorage.setItem('plansync_host_annuaire',JSON.stringify(annuaire));
+    }catch(e){console.warn('[renderPV] annuaire',e);}
   }
   // Cache-buster : garantit que l'iframe charge toujours la dernière version du PV
   // (sinon le navigateur sert un PV/index.html en cache) et que la réconciliation
   // des intervenants depuis l'annuaire se rejoue à chaque ouverture.
-  q += (q?'&':'?')+'_ts='+Date.now();
+  // IMPORTANT : seulement en http(s). En file:// un paramètre de requête sur l'URL
+  // de l'iframe empêche le chargement du fichier dans certains navigateurs (Safari)
+  // → la sous-app PV reste blanche. On ne l'ajoute donc pas en ouverture locale.
+  if(location.protocol==='http:'||location.protocol==='https:') q += (q?'&':'?')+'_ts='+Date.now();
   document.getElementById('content').innerHTML=
-    '<iframe src="PV/index.html'+q+'" title="PV — Comptes-rendus de chantier" '+
+    '<iframe id="pv-frame" src="PV/index.html'+q+'" title="PV — Comptes-rendus de chantier" '+
     'style="width:100%;height:100%;border:0;display:block;background:var(--bg)"></iframe>';
+  // En ouverture locale (file://), la sous-app PV n'a PAS accès au même localStorage
+  // que le shell → l'annuaire écrit ci-dessus est invisible. On le transmet donc aussi
+  // par postMessage (fonctionne en file:// ET http) pour que les intervenants s'affichent.
+  if(annuaire){
+    var _fr=document.getElementById('pv-frame');
+    var _send=function(){try{if(_fr&&_fr.contentWindow)_fr.contentWindow.postMessage({type:'archisync-annuaire',pid:annuaire.pid,list:annuaire.list},'*');}catch(e){}};
+    if(_fr){_fr.addEventListener('load',function(){_send();setTimeout(_send,250);});}
+    setTimeout(_send,600); // filet de sécurité si l'événement load a déjà eu lieu
+  }
 }
 
 /* ══ GESTION DES ACCÈS ══ */
@@ -7733,6 +7774,7 @@ function projAllBlobIds(p){
     if(p.contrat.pdf&&p.contrat.pdf.blobId)ids.push(p.contrat.pdf.blobId);
     (p.contrat.avenants||[]).forEach(function(a){if(a.pdf&&a.pdf.blobId)ids.push(a.pdf.blobId);});
   }
+  if(p.paliers&&Array.isArray(p.paliers.list))p.paliers.list.forEach(function(pl){(pl.annexes||[]).forEach(function(a){if(a.blobId)ids.push(a.blobId);});});
   return ids;
 }
 function deleteProj(id){
@@ -8420,7 +8462,7 @@ function localityPopHTML(){
       +'<div style="font-size:12px;font-weight:600;color:var(--text2)">Compte en ligne <span style="font-weight:500;color:var(--text3);font-size:10.5px">(bêta)</span></div>'
       +'<div id="auth-stamp" style="font-size:11px;margin-top:3px;color:'+(_supaSdkFailed?'var(--amber)':'var(--text3)')+'">'+(_supaSdkFailed?'Hors ligne — synchronisation indisponible':(isSignedIn()?('Connecté : '+e(authName())):'Non connecté'))+'</div>'
       +'<div class="lp-actions" style="margin-top:7px">'+(isSignedIn()
-        ?'<button class="btn btn-sm btn-g" onclick="openAuthModal(\'account\')">Mon compte</button>'
+        ?'<button class="btn btn-sm btn-g" onclick="openAuthModal(\'account\')">Mon compte</button><button class="btn btn-sm btn-g" style="color:var(--red)" onclick="closeLocalityInfo();supaSignOut()">Se déconnecter</button>'
         :'<button class="btn btn-sm btn-p" onclick="openAuthModal(\'login\')"><svg class="ico ico-xs" style="margin-right:3px" aria-hidden="true"><use href="#i-lock"/></svg>Se connecter</button><button class="btn btn-sm btn-g" onclick="openAuthModal(\'code\')">Entreprise (code)</button>')
       +'</div></div>'):'')
     +'<div class="lp-actions" style="margin-top:10px">'
@@ -8757,6 +8799,7 @@ function remapImportedBlobs(p,blobsSrc){
     if(p.contrat.pdf&&p.contrat.pdf.blobId)p.contrat.pdf.blobId=move(p.contrat.pdf.blobId,'ctpdf');
     (p.contrat.avenants||[]).forEach(function(a){if(a.pdf&&a.pdf.blobId)a.pdf.blobId=move(a.pdf.blobId,'avpdf');});
   }
+  if(p.paliers&&Array.isArray(p.paliers.list))p.paliers.list.forEach(function(pl){(pl.annexes||[]).forEach(function(a){if(a.blobId)a.blobId=move(a.blobId,'plxpdf');});});
 }
 // ── Garde de sécurité d'import ────────────────────────────────────────────────
 // Tous les identifiants créés par l'app sont alphanumériques (uid++, Date.now,
