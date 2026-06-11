@@ -3845,7 +3845,7 @@ function cctpPinAdditifPdf(id,ev){
   if(!f)return;
   if(!(f.type==='application/pdf'||/\.pdf$/i.test(f.name))){toastErr('Veuillez sélectionner un fichier PDF.');return;}
   var rd=new FileReader();
-  rd.onload=function(){if(!proj)return;var bid='cadpdf'+(uid++);setBlob(bid,rd.result).then(function(ok){if(!ok){toastErr('Fichier non stocké (stockage plein).');return;}var a=(proj.cctp.additifs||[]).find(function(x){return x.id===aId;});if(a){a.pdf={blobId:bid,fileName:f.name};savePROJS();if(PROJ===proj)renderCctp();toast('Additif signé attaché');}}).catch(function(er){console.warn('[cctpPinAdditifPdf]',er);toastErr('Erreur lors de l\'enregistrement du fichier.');});};
+  rd.onload=function(){if(!proj)return;var bid='cadpdf'+(uid++);setBlob(bid,rd.result).then(function(ok){if(!ok){toastErr('Fichier non stocké (stockage plein).');return;}var a=(proj.cctp.additifs||[]).find(function(x){return x.id===aId;});if(a){a.pdf={blobId:bid,fileName:f.name};savePROJS();if(PROJ===proj)renderCctp();toast('Additif signé attaché');}else{try{delete BLOBS[bid];BlobDB.del(bid);}catch(e){}toastErr('Additif introuvable — fichier non attaché.');}}).catch(function(er){console.warn('[cctpPinAdditifPdf]',er);toastErr('Erreur lors de l\'enregistrement du fichier.');});};
   rd.onerror=function(){toastErr('Erreur de lecture du fichier.');};
   rd.readAsDataURL(f);
 }
@@ -4375,7 +4375,7 @@ function palAddAnnexe(palId,ev){
   if(!f)return;
   if(!(f.type==='application/pdf'||/\.pdf$/i.test(f.name))){toastErr('Veuillez sélectionner un fichier PDF.');return;}
   var rd=new FileReader();
-  rd.onload=function(){if(!proj)return;var bid='plxpdf'+(uid++);setBlob(bid,rd.result).then(function(ok){if(!ok){toastErr('Fichier non stocké (stockage plein).');return;}var pl=(proj.paliers.list||[]).find(function(x){return x.id===plId;});if(pl){if(!Array.isArray(pl.annexes))pl.annexes=[];pl.annexes.push({id:'anx'+(uid++),blobId:bid,fileName:f.name});savePROJS();if(PROJ===proj)renderPaliers();toast('Annexe signée attachée');}}).catch(function(er){console.warn('[palAddAnnexe]',er);toastErr('Erreur lors de l\'enregistrement du fichier.');});};
+  rd.onload=function(){if(!proj)return;var bid='plxpdf'+(uid++);setBlob(bid,rd.result).then(function(ok){if(!ok){toastErr('Fichier non stocké (stockage plein).');return;}var pl=(proj.paliers.list||[]).find(function(x){return x.id===plId;});if(pl){if(!Array.isArray(pl.annexes))pl.annexes=[];pl.annexes.push({id:'anx'+(uid++),blobId:bid,fileName:f.name});savePROJS();if(PROJ===proj)renderPaliers();toast('Annexe signée attachée');}else{try{delete BLOBS[bid];BlobDB.del(bid);}catch(e){}toastErr('Palier introuvable — fichier non attaché.');}}).catch(function(er){console.warn('[palAddAnnexe]',er);toastErr('Erreur lors de l\'enregistrement du fichier.');});};
   rd.onerror=function(){toastErr('Erreur de lecture du fichier.');};
   rd.readAsDataURL(f);
 }
@@ -6206,6 +6206,35 @@ document.addEventListener('keydown',function(ev){
    phase (pv retiré de PHASE_VIEWS). On transmet l'identité du projet (id stable
    + nom + adresse) via l'URL, et l'annuaire du projet via localStorage, pour
    que les CR héritent des « Informations projet » / « Annuaire » d'Archisync. */
+// Construit l'annuaire {pid,list} transmis à la sous-app PV depuis le projet courant.
+function pvBuildAnnuaire(p){
+  if(!p)return null;
+  var list=getMembresForProj(p).map(function(m){
+    return {
+      srcId: m.id||'',                 // id stable de l'annuaire → lien 1:1 avec l'intervenant PV
+      entreprise: m.ent||'',
+      lot: m.metier||roleLabel(m.role)||'Intervenant',
+      contacts: [m.name,m.tel].filter(Boolean).join(' — '),
+      color: m.color||''
+    };
+  });
+  return {pid:p.id||'',list:list};
+}
+// Envoie l'annuaire à l'iframe PV (postMessage : fonctionne en file:// ET http).
+function pvPostAnnuaire(annuaire){
+  if(!annuaire)return;
+  var fr=document.getElementById('pv-frame');
+  if(!fr||!fr.contentWindow)return;
+  var origin=(location.protocol==='http:'||location.protocol==='https:')?location.origin:'*';
+  try{fr.contentWindow.postMessage({type:'archisync-annuaire',pid:annuaire.pid,list:annuaire.list},origin);}catch(e){console.warn('[pvPostAnnuaire]',e);}
+}
+// La sous-app PV peut redemander l'annuaire (bouton « Synchroniser », utile en file://).
+if(typeof window!=='undefined'&&!window._pvAnnuaireReqWired){
+  window._pvAnnuaireReqWired=true;
+  window.addEventListener('message',function(ev){
+    try{ if(ev.data&&ev.data.type==='archisync-request-annuaire'&&PROJ) pvPostAnnuaire(pvBuildAnnuaire(PROJ)); }catch(e){console.warn('[shell] req annuaire',e);}
+  });
+}
 function renderPV(){
   setTB('file-check','var(--blue)','PV — Comptes-rendus de chantier',(PROJ?PROJ.name:''),''); // btnL vide => bouton « + » masqué
   setTabs(null);
@@ -6214,16 +6243,7 @@ function renderPV(){
     q='?'+new URLSearchParams({pid:PROJ.id||'',projet:PROJ.name||'',adresse:PROJ.address||''}).toString();
     // Annuaire du projet → intervenants PV (saisi une fois, propagé partout).
     try{
-      const list=getMembresForProj(PROJ).map(function(m){
-        return {
-          srcId: m.id||'',                 // id stable de l'annuaire → lien 1:1 avec l'intervenant PV
-          entreprise: m.ent||'',
-          lot: m.metier||roleLabel(m.role)||'Intervenant',
-          contacts: [m.name,m.tel].filter(Boolean).join(' — '),
-          color: m.color||''
-        };
-      });
-      annuaire={pid:PROJ.id||'',list:list};
+      annuaire=pvBuildAnnuaire(PROJ);
       localStorage.setItem('plansync_host_annuaire',JSON.stringify(annuaire));
     }catch(e){console.warn('[renderPV] annuaire',e);}
   }
@@ -6242,7 +6262,7 @@ function renderPV(){
   // par postMessage (fonctionne en file:// ET http) pour que les intervenants s'affichent.
   if(annuaire){
     var _fr=document.getElementById('pv-frame');
-    var _send=function(){try{if(_fr&&_fr.contentWindow)_fr.contentWindow.postMessage({type:'archisync-annuaire',pid:annuaire.pid,list:annuaire.list},'*');}catch(e){}};
+    var _send=function(){pvPostAnnuaire(annuaire);};
     if(_fr){_fr.addEventListener('load',function(){_send();setTimeout(_send,250);});}
     setTimeout(_send,600); // filet de sécurité si l'événement load a déjà eu lieu
   }
@@ -9086,6 +9106,7 @@ function normalizeProject(p){
   if(!Array.isArray(p.chantier))p.chantier=[];
   if(!p.opts||typeof p.opts!=='object')p.opts={};
   if(!p.cctp||typeof p.cctp!=='object')p.cctp={intro:'',sections:[]};
+  try{if(typeof cctpEnsure==='function')cctpEnsure(p);}catch(e){console.warn('[normalizeProject] cctpEnsure',e);}
   try{if(typeof ctEnsure==='function')ctEnsure(p);}catch(e){console.warn('[normalizeProject] ctEnsure',e);}
   try{if(typeof palEnsure==='function')palEnsure(p);}catch(e){console.warn('[normalizeProject] palEnsure',e);}
   try{if(typeof hrEnsure==='function')hrEnsure(p);}catch(e){console.warn('[normalizeProject] hrEnsure',e);}
