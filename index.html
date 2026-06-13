@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Archisync — dernière modification : 13/06/2026 14:44 -->
+<!-- Archisync — dernière modification : 13/06/2026 16:09 -->
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
@@ -1346,27 +1346,36 @@ function renderSB(){
 
       <div class="nl">Documents du projet</div>
       ${navItem('plans','pdf','Plans')}
-      ${navItem('contrats','invoice','Contrats & Devis')}
       ${navItem('photos','camera','Photos chantier')}
       ${navItem('admin','folder','Documents admin')}
-      ${navItem('pv','file-check','PV')}
+
+      <div class="nl" style="margin-top:4px">Contrat &amp; devis</div>
+      ${navItem('contrats','invoice','Contrats & Devis')}
       ${navItem('cctp','check-list','CCTP')}
       ${navItem('dpgf','receipt','DPGF')}
-      ${navItem('chantier','helmet','Planning chantier')}
+
+      <div class="nl" style="margin-top:4px">Suivi chantier</div>
+      ${navItem('pv','file-check','PV')}
+      ${navItem('chantier','helmet','Planning')}
+
+      <div class="nl" style="margin-top:4px">Équipe &amp; contacts</div>
       ${navItem('membres','users','Équipe & contacts')}
       ${navItem('messagerie','message','Notes','',messagerieBadge())}
 
-      <div class="nl" style="color:#854d0e;margin-top:4px">Pilotage &amp; conformité</div>
-      ${navItem('copilote','sparkles','Co-pilote',' ',copiloteBadge())}
-      ${navItem('contrat','invoice','Contrat')}
-      ${navItem('paliers','git-branch','Paliers & validations')}
-      ${navItem('horsresp','warning','Commandes client')}
+      <div style="border-top:1.5px solid #e6d6bf;margin:14px 4px 0"></div>
+      <div class="nl" style="color:#854d0e;margin-top:9px;font-size:10.5px;letter-spacing:.07em">Pilotage &amp; conformité</div>
+
+      <div class="nl" style="color:#a06a1a;margin-top:5px;padding:3px 6px 2px;font-size:9px">Finances</div>
+      ${navItem('contrat','invoice','Contrat & honoraires')}
       ${navItem('suivi','receipt','Suivi des dépenses')}
-      ${navItem('timeline','check-list','Chronologie')}
-      ${navItem('diffusion','file-check','Diffusion des plans')}
+
+      <div class="nl" style="color:#a06a1a;margin-top:5px;padding:3px 6px 2px;font-size:9px">Conformité</div>
       ${navItem('checklists','hat','Checklistes','',`<span class="nb ${dCL===tCL&&tCL>0?'ok':''}">${dCL}/${tCL}</span>`)}
-      ${navItem('audit','check-list','Journal d\'audit')}
       ${navItem('plu','arch','Pré-étude PLU')}
+
+      <div class="nl" style="color:#a06a1a;margin-top:5px;padding:3px 6px 2px;font-size:9px">Pilotage</div>
+      ${navItem('copilote','sparkles','Co-pilote',' ',copiloteBadge())}
+      ${navItem('timeline','check-list','Historique')}
 
 
       <div class="nl" style="margin-top:4px">Projet</div>
@@ -1385,7 +1394,8 @@ function renderSB(){
 }
 
 function navItem(v,icon,label,extra='',badge=''){
-  return`<button class="ni ${VIEW===v?'active':''}" onclick="nav('${v}')">
+  var _act=VIEW===v||(NAV_GROUP_OF[VIEW]&&NAV_GROUP_OF[v]===NAV_GROUP_OF[VIEW]);
+  return`<button class="ni ${_act?'active':''}" onclick="nav('${v}')">
     <span class="ni-ico">${ico(icon,'ico-sm')}</span> ${label} ${badge} ${extra}
   </button>`;
 }
@@ -1515,7 +1525,16 @@ function setTabs(tabs,activeId){
     <svg class="ico ico-sm" style="vertical-align:-2px;margin-right:4px" aria-hidden="true"><use href="#i-${t.ico}"/></svg>${t.label}
   </button>`).join('');
 }
+// ── Regroupement de navigation : plusieurs écrans réunis sous une entrée, via les onglets du bandeau ──
+var NAV_GROUPS={
+  contrat:{color:'#5c3d1e',members:[{id:'contrat',label:'Contrat',ico:'invoice'},{id:'paliers',label:'Paliers',ico:'git-branch'},{id:'horsresp',label:'Commandes client',ico:'warning'}]},
+  chantier:{color:'',members:[{id:'chantier',label:'Planning',ico:'helmet'},{id:'diffusion',label:'Diffusion des plans',ico:'file-check'}]},
+  histo:{color:'var(--text2)',members:[{id:'timeline',label:'Chronologie',ico:'check-list'},{id:'audit',label:'Journal d\'audit',ico:'file-check'}]}
+};
+var NAV_GROUP_OF={contrat:'contrat',paliers:'contrat',horsresp:'contrat',chantier:'chantier',diffusion:'chantier',timeline:'histo',audit:'histo'};
+function groupTabs(activeId){var g=NAV_GROUP_OF[activeId];if(!g){setTabs(null);return;}var grp=NAV_GROUPS[g];setTabs(grp.members.map(function(m){return {id:m.id,label:m.label,ico:m.ico,color:grp.color||((PROJ&&PROJ.color)||'')};}),activeId);}
 function switchTab(id,btn){
+  if(NAV_GROUP_OF[id]){nav(id);return;}
   document.querySelectorAll('.tabbar .tab').forEach(t=>{t.classList.remove('active');t.style.color='';t.style.borderBottomColor='';t.setAttribute('aria-selected','false');});
   btn.classList.add('active');btn.setAttribute('aria-selected','true');
   if(id==='pt-docs'||id==='pt-info'||id==='pt-liste'){renderPlansContent(id);return;}
@@ -2992,7 +3011,7 @@ function recordRemoteDistribution(planId,versionId,memberId,event){
 function renderDiffusion(){
   if(!PROJ)return;var p=PROJ;var now=new Date();
   setTB('file-check',p.color,'Diffusion des plans',p.name,'','');
-  setTabs(null);
+  groupTabs('diffusion');
   var plans=(getDocsForProj(p).plans||[]).filter(function(d){return !d.archived;});
   var recips=planRecipients(p);
   var N=projStaleDays(p);
@@ -3076,7 +3095,7 @@ function chantierTaskBlocked(p,task){
 function renderChantier(){
   if(!PROJ)return;var p=PROJ;chantierEnsure(p);
   setTB('helmet',p.color,'Planning chantier',p.name,'','');
-  setTabs(null);
+  groupTabs('chantier');
   var tasks=p.chantier||[];
   function tBtn(v,lab){var on=_chantierView===v;return '<button class="btn btn-sm '+(on?'btn-p':'btn-g')+'" onclick="setChantierView(\''+v+'\')" style="font-size:11.5px">'+lab+'</button>';}
   var addBtn=permBtn('items','<svg class="ico ico-xs" style="margin-right:4px"><use href="#i-plus"/></svg>Ajouter une tâche','openChantierTask()','btn-g btn-sm');
@@ -3217,7 +3236,7 @@ function deleteChantierTask(id){
 function renderTimeline(){
   if(!PROJ)return;const p=PROJ;
   setTB('check-list',p.color,'Chronologie',p.name,'','');
-  setTabs(null);
+  groupTabs('timeline');
   var now=new Date();now.setHours(0,0,0,0);
   var ev=[],skipped=0;
   function add(dateStr,label,sub,col){var d=parseAnyDate(dateStr);if(!d){if(dateStr)skipped++;return;}ev.push({d:d,label:label,sub:sub||'',col:col||'var(--blue)'});}
@@ -3337,7 +3356,7 @@ function renderAudit(){
   // Réinitialise les filtres au changement de projet.
   if(!PROJ||_audProjId!==PROJ.id){_audProjId=PROJ?PROJ.id:null;_audFType='';_audFUser='';_audFDoc='';}
   setTB('check-list','var(--text2)','Journal d\'audit',all.length+' événement'+(all.length>1?'s':''),'','download');
-  setTabs(null);
+  groupTabs('audit');
   if(!all.length){
     document.getElementById('content').innerHTML='<div class="pad">'
       +'<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 16px;color:var(--text3)">'
@@ -4168,7 +4187,7 @@ function renderContrat(){
   var c=PROJ.contrat, nav=(CONTRAT_TEMPLATES[c.type]||{}).label||'Contrat';
   var sub=nav+' · '+c.articles.length+' article'+(c.articles.length>1?'s':'')+(c.avenants.length?(' · '+c.avenants.length+' avenant'+(c.avenants.length>1?'s':'')):'');
   setTB('invoice','#5c3d1e','Contrat d\'architecte',sub,'','');
-  setTabs(null);
+  groupTabs('contrat');
   document.getElementById('content').innerHTML='<div class="pad">'+ctTabBar()+'<div id="ct-body"></div></div>';
   if(canEdit&&ctTab==='edit')renderContratEdit();else renderContratView();
 }
@@ -4481,7 +4500,7 @@ function renderPaliers(){
   var canEdit=can('items'),L=PROJ.paliers.list,taux=PROJ.contrat&&PROJ.contrat.tauxHoraire;
   var st=palStats(PROJ);
   setTB('git-branch','#5c3d1e','Paliers & validations',st.validated+'/'+st.total+' paliers validés','','');
-  setTabs(null);
+  groupTabs('paliers');
   var SC={a_venir:{l:'À venir',c:'var(--text3)',bg:'var(--bg3)'},en_cours:{l:'En cours',c:'var(--amber-text)',bg:'var(--amber-bg)'},valide:{l:'Validé',c:'#1a7a4a',bg:'var(--green-bg)'}};
   var html='<div class="pad" style="max-width:780px;margin:0 auto">';
   // Bandeau taux horaire (lié au contrat art. 4.1)
@@ -4575,7 +4594,7 @@ function renderHorsResp(){
   if(!PROJ)return;hrEnsure(PROJ);
   var canEdit=can('items'),L=PROJ.horsResp.list,taux=PROJ.contrat&&PROJ.contrat.tauxHoraire,st=hrStats(PROJ);
   setTB('warning','#5c3d1e','Commandes directes du client',L.length+(L.length>1?' entrées':' entrée'),(canEdit?'+ Entrée':''),'plus');
-  setTabs(null);
+  groupTabs('horsresp');
   var html='<div class="pad" style="max-width:780px;margin:0 auto">';
   // Bandeau principe
   html+='<div style="display:flex;gap:11px;border:1px solid var(--border);border-left:3px solid #c47a00;border-radius:var(--r2);background:var(--panel);padding:13px 15px;margin-bottom:14px">'
@@ -4664,7 +4683,12 @@ function dpgfEnsure(p){
     dpgfEnsureNode(lot,d.tvaDefault);
   });
 }
-function dgLeaf(l){var pu=suiviNum(l.pu),tva=suiviNum(l.tva),qa=suiviNum(l.qte),qe=suiviNum(l.qteEnt),aht=pu*qa,eht=pu*qe;return{aht:aht,attc:aht*(1+tva/100),eht:eht,ettc:eht*(1+tva/100)};}
+function dgLeaf(l){var pu=suiviNum(l.pu),tva=suiviNum(l.tva),qa=suiviNum(l.qte);var hasEnt=String(l.qteEnt||'').trim()!=='';var qe=hasEnt?suiviNum(l.qteEnt):qa;var aht=pu*qa,eht=pu*qe;return{aht:aht,attc:aht*(1+tva/100),eht:eht,ettc:eht*(1+tva/100),hasEnt:hasEnt,ecart:eht-aht};}
+// Écart entreprise (différence quantitative en €) : rouge si l'entreprise chiffre plus, vert si moins.
+function dgEcartTxt(v,zeroLabel){if(Math.abs(v)<0.5)return zeroLabel?'<span style="color:var(--text3)">aucun écart</span>':'';var pos=v>0;return '<span style="color:'+(pos?'var(--red)':'#2f9e44')+';font-weight:700">'+(pos?'+':'−')+suiviEuro(Math.abs(v))+'</span>';}
+// Lot DPGF assigné à un intervenant : remplissage local de la « Qté entreprise » réservé à l'entreprise affectée (via « Aperçu en tant que »).
+function dpgfLotOfNode(id){var lots=(PROJ&&PROJ.dpgf&&PROJ.dpgf.lots)||[];for(var i=0;i<lots.length;i++){var found=false;(function rec(n){if(n.id===id){found=true;return;}if(dgIsSection(n))(n.children||[]).forEach(rec);})(lots[i]);if(found)return lots[i];}return null;}
+function dpgfFillQteEnt(id,val){var acting=(typeof viewer==='function')?viewer():null;if(!acting)return;var lot=dpgfLotOfNode(id);if(!lot||lot.intId!==acting.id){toastErr('Vous ne pouvez remplir que les lots qui vous sont attribués.');return;}var r=dpgfFind(id);if(!r)return;r.node.qteEnt=val;saveLater();renderDpgf();}
 function dgTotals(n){if(dgIsSection(n)){var a=0,at=0,e=0,et=0;(n.children||[]).forEach(function(c){var t=dgTotals(c);a+=t.aht;at+=t.attc;e+=t.eht;et+=t.ettc;});return{aht:a,attc:at,eht:e,ettc:et};}return dgLeaf(n);}
 function dpgfTotals(p){var a=0,at=0,e=0,et=0;((p&&p.dpgf&&p.dpgf.lots)||[]).forEach(function(lot){var t=dgTotals(lot);a+=t.aht;at+=t.attc;e+=t.eht;et+=t.ettc;});return{aht:a,attc:at,eht:e,ettc:et};}
 function dpgfWalkLeaves(p,cb){function rec(n){if(dgIsSection(n))(n.children||[]).forEach(rec);else cb(n);}((p&&p.dpgf&&p.dpgf.lots)||[]).forEach(rec);}
@@ -4689,7 +4713,7 @@ function dpgfSetIntFilter(v){dpgfIntFilter=v;renderDpgf();}
 function dpgfTradesPresent(){var set={};((PROJ&&PROJ.dpgf&&PROJ.dpgf.lots)||[]).forEach(function(lot){var m=(lot.metier||'').trim();if(m)set[m]=true;});return Object.keys(set).sort(function(a,b){return a.localeCompare(b,'fr');});}
 function dpgfIntOptions(sel){var opts='<option value="">— Intervenant —</option>';getMembresForProj(PROJ).forEach(function(m){var label=(m.name||m.ent||'?')+(m.metier?(' — '+m.metier):(m.role?(' — '+roleLabel(m.role)):''));opts+='<option value="'+e(m.id)+'"'+(sel===m.id?' selected':'')+'>'+e(label)+'</option>';});return opts;}
 function dpgfSetLotIntervenant(lotId,memberId){if(!can('items'))return denyMsg();var r=dpgfFind(lotId);if(!r)return;if(memberId){var m=getMembresForProj(PROJ).find(function(x){return x.id===memberId;});if(m){r.node.intId=m.id;r.node.metier=m.metier||roleLabel(m.role)||'';r.node.entreprise=m.ent||'';}else{toastErr('Intervenant introuvable.');return;}}else{r.node.intId='';r.node.metier='';r.node.entreprise='';}savePROJS();renderDpgf();}
-function dpgfRefreshTotals(){if(!PROJ||!PROJ.dpgf||dpgfTab!=='edit')return;var set=function(idc,v){var el=document.getElementById(idc);if(el)el.textContent=v;};(PROJ.dpgf.lots||[]).forEach(function(lot){(function rec(n){var t=dgTotals(n);set('dg-ah-'+n.id,suiviEuro(t.aht));set('dg-eh-'+n.id,suiviEuro(t.eht)+' ent.');if(dgIsSection(n))(n.children||[]).forEach(rec);})(lot);});var T=dpgfTotals(PROJ);set('dg-tah',suiviEuro(T.aht));set('dg-tat',suiviEuro(T.attc));set('dg-teh',suiviEuro(T.eht));set('dg-tet',suiviEuro(T.ettc));}
+function dpgfRefreshTotals(){if(!PROJ||!PROJ.dpgf||dpgfTab!=='edit')return;var set=function(idc,v){var el=document.getElementById(idc);if(el)el.textContent=v;};var setH=function(idc,v){var el=document.getElementById(idc);if(el)el.innerHTML=v;};(PROJ.dpgf.lots||[]).forEach(function(lot){(function rec(n){var t=dgTotals(n);set('dg-ah-'+n.id,suiviEuro(t.aht));setH('dg-ec-'+n.id,dgEcartTxt(t.eht-t.aht));if(dgIsSection(n))(n.children||[]).forEach(rec);})(lot);});var T=dpgfTotals(PROJ);set('dg-tah',suiviEuro(T.aht));set('dg-tat',suiviEuro(T.attc));set('dg-teh',suiviEuro(T.eht));set('dg-tet',suiviEuro(T.ettc));setH('dg-tec',dgEcartTxt(T.eht-T.aht,true));}
 function dpgfSetTab(t){dpgfTab=t;renderDpgf();}
 function dpgfUpdateIntro(v){if(!can('items'))return;dpgfEnsure(PROJ);PROJ.dpgf.intro=v;saveLater();}
 function dpgfSetTvaDefault(v){if(!can('items'))return;dpgfEnsure(PROJ);PROJ.dpgf.tvaDefault=suiviNum(v);saveLater();}
@@ -4758,7 +4782,7 @@ function renderDpgfEdit(){
       return '<div data-id="'+n.id+'" ondragover="dpgfDragOver(event,this)" ondragleave="dpgfDragLeave(this)" ondrop="dpgfDrop(event,\''+n.id+'\')" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:7px 12px;padding-left:'+(12+indent)+'px;background:var(--bg2);border-bottom:1px solid var(--border)">'
         +leadCluster(n,num)
         +'<input value="'+e(dgName(n))+'" placeholder="Sous-section (ex. Fondations)" aria-label="Sous-section '+num+'" oninput="dpgfUpdateNode(\''+n.id+'\',\'designation\',this.value)" style="flex:1;min-width:130px;font-weight:600;font-size:12.5px;border:1px solid var(--border2);border-radius:6px;padding:5px 7px;background:var(--bg);color:var(--text)">'
-        +'<span style="text-align:right;white-space:nowrap;line-height:1.1"><span id="dg-ah-'+n.id+'" style="display:block;font-weight:700;font-size:12px;color:#5c3d1e">'+suiviEuro(ts.aht)+'</span><span id="dg-eh-'+n.id+'" style="display:block;font-size:10px;color:var(--text3)">'+suiviEuro(ts.eht)+' ent.</span></span>'
+        +'<span style="text-align:right;white-space:nowrap;line-height:1.1"><span id="dg-ah-'+n.id+'" style="display:block;font-weight:700;font-size:12px;color:#5c3d1e">'+suiviEuro(ts.aht)+'</span><span id="dg-ec-'+n.id+'" style="display:block;font-size:10px">'+dgEcartTxt(ts.eht-ts.aht)+'</span></span>'
         +addBtns(n.id,num)+delBtn(n.id,'la section '+num)
         +'</div>'+dgEditChildren(n,path);
     }
@@ -4773,7 +4797,7 @@ function renderDpgfEdit(){
       +'<input value="'+e(n.pu||'')+'" placeholder="PU HT" aria-label="Prix unitaire HT" oninput="dpgfUpdateNode(\''+n.id+'\',\'pu\',this.value)" style="width:68px;font-size:12px;border:1px solid var(--border2);border-radius:6px;padding:5px;text-align:right;background:var(--bg);color:var(--text)">'
       +'<span style="font-size:11px;color:var(--text3)">€</span>'
       +'<input value="'+e(String(n.tva))+'" placeholder="TVA" aria-label="TVA de la ligne en pourcentage" oninput="dpgfUpdateNode(\''+n.id+'\',\'tva\',this.value)" style="width:42px;font-size:12px;border:1px solid var(--border2);border-radius:6px;padding:5px;text-align:center;background:var(--bg);color:var(--text)"><span style="font-size:11px;color:var(--text3)">% =</span>'
-      +'<span style="text-align:right;white-space:nowrap;line-height:1.1"><span id="dg-ah-'+n.id+'" style="display:block;font-weight:600;font-size:12px;color:#5c3d1e">'+suiviEuro(c.aht)+'</span><span id="dg-eh-'+n.id+'" style="display:block;font-size:10px;color:var(--text3)" title="Total entreprise">'+suiviEuro(c.eht)+' ent.</span></span>'
+      +'<span style="text-align:right;white-space:nowrap;line-height:1.1"><span id="dg-ah-'+n.id+'" style="display:block;font-weight:600;font-size:12px;color:#5c3d1e">'+suiviEuro(c.aht)+'</span><span id="dg-ec-'+n.id+'" style="display:block;font-size:10px" title="Écart entreprise">'+dgEcartTxt(c.ecart)+'</span></span>'
       +delBtn(n.id,'la ligne '+num)
       +'</div>';
   }
@@ -4793,7 +4817,7 @@ function renderDpgfEdit(){
         +'<input value="'+e(dgName(lot))+'" placeholder="Intitulé du lot (ex. Gros œuvre)" aria-label="Lot '+(li+1)+'" oninput="dpgfUpdateNode(\''+lot.id+'\',\'designation\',this.value)" style="flex:1;min-width:120px;font-weight:700;font-size:13px;border:1px solid var(--border2);border-radius:6px;padding:5px 7px;background:var(--bg);color:var(--text)">'
         +'<select onchange="dpgfSetLotIntervenant(\''+lot.id+'\',this.value)" aria-label="Intervenant du lot '+(li+1)+'" title="Affecter un intervenant" style="max-width:160px;font-size:11.5px;border:1px solid var(--border2);border-radius:6px;padding:4px 6px;background:var(--bg);color:var(--text)">'+dpgfIntOptions(lot.intId)+'</select>'
         +'<span style="display:inline-flex;align-items:center;gap:3px;white-space:nowrap;border-left:1px solid var(--border);padding-left:8px"><span style="font-size:11px;color:var(--text3)">TVA</span><input value="'+e(String(dpgfLotTva(lot)))+'" placeholder="mixte" onchange="dpgfSetLotTva(\''+lot.id+'\',this.value)" aria-label="TVA du lot '+(li+1)+'" title="Appliquer ce taux à toutes les lignes du lot" style="width:46px;border:1px solid var(--border2);border-radius:6px;padding:4px 5px;font-size:12px;background:var(--bg);color:var(--text);text-align:center"><span style="font-size:11px;color:var(--text3)">%</span></span>'
-        +'<span style="text-align:right;white-space:nowrap;line-height:1.1"><span id="dg-ah-'+lot.id+'" style="display:block;font-weight:700;font-size:12.5px;color:#5c3d1e">'+suiviEuro(tl.aht)+'</span><span id="dg-eh-'+lot.id+'" style="display:block;font-size:10px;color:var(--text3)">'+suiviEuro(tl.eht)+' ent.</span></span>'
+        +'<span style="text-align:right;white-space:nowrap;line-height:1.1"><span id="dg-ah-'+lot.id+'" style="display:block;font-weight:700;font-size:12.5px;color:#5c3d1e">'+suiviEuro(tl.aht)+'</span><span id="dg-ec-'+lot.id+'" style="display:block;font-size:10px">'+dgEcartTxt(tl.eht-tl.aht)+'</span></span>'
         +addBtns(lot.id,(li+1)+'')+delBtn(lot.id,'le lot '+(li+1))
       +'</div>'
       +dgEditChildren(lot,[li])
@@ -4802,6 +4826,7 @@ function renderDpgfEdit(){
   var T=dpgfTotals(PROJ);
   html+='<div style="border-top:2px solid var(--border);margin-top:6px;padding:12px 6px 4px;display:flex;flex-direction:column;align-items:flex-end;gap:4px;font-size:13px">'
     +'<div style="display:flex;gap:16px;align-items:baseline"><span style="color:var(--text3)">Total marché (architecte)</span><span><strong id="dg-tah" style="color:#5c3d1e;font-size:15px">'+suiviEuro(T.aht)+'</strong> HT</span><span style="color:var(--text3)">·</span><span><strong id="dg-tat">'+suiviEuro(T.attc)+'</strong> TTC</span></div>'
+    +'<div style="display:flex;gap:16px;align-items:baseline"><span style="color:var(--text3)">Écart quantités entreprise</span><span id="dg-tec">'+dgEcartTxt(T.eht-T.aht,true)+'</span></div>'
     +'<div style="display:flex;gap:16px;align-items:baseline;color:var(--text2)"><span style="color:var(--text3)">Total offre entreprise</span><span><strong id="dg-teh" style="font-size:14px">'+suiviEuro(T.eht)+'</strong> HT</span><span style="color:var(--text3)">·</span><span><strong id="dg-tet">'+suiviEuro(T.ettc)+'</strong> TTC</span></div></div>';
   host.innerHTML=html;
 }
@@ -4815,7 +4840,9 @@ function renderDpgfView(){
   var lots=(d.lots||[]).filter(function(lot){return !dpgfIntFilter||(lot.metier||'')===dpgfIntFilter;});
   var T={aht:0,attc:0,eht:0,ettc:0};lots.forEach(function(lot){var t=dgTotals(lot);T.aht+=t.aht;T.attc+=t.attc;T.eht+=t.eht;T.ettc+=t.ettc;});
   var th='padding:4px 6px;font-weight:600;border-bottom:1px solid var(--border)';
-  function viewRows(n,path){
+  var acting=(typeof viewer==='function')?viewer():null;
+  var fillLots=acting?(d.lots||[]).filter(function(l){return l.intId===acting.id;}):[];
+  function viewRows(n,path,fillable){
     var num=path.map(function(x){return x+1;}).join('.'),depth=path.length;
     if(dgIsSection(n)){
       var ts=dgTotals(n),isLot=depth===1,out='';
@@ -4823,9 +4850,9 @@ function renderDpgfView(){
         +'<td style="padding:5px 6px;color:#5c3d1e;font-weight:700;white-space:nowrap;vertical-align:top">'+num+'</td>'
         +'<td colspan="5" style="padding:5px 6px;font-weight:700;color:#5c3d1e;vertical-align:top;padding-left:'+(6+(depth-1)*14)+'px">'+e(dgName(n)||'(sans titre)')+'</td>'
         +'<td style="padding:5px 6px;text-align:right;font-weight:700;white-space:nowrap;vertical-align:top">'+suiviEuro(ts.aht)+'</td>'
-        +'<td style="padding:5px 6px;text-align:right;font-weight:700;color:var(--text2);white-space:nowrap;vertical-align:top">'+suiviEuro(ts.eht)+'</td>'
+        +'<td style="padding:5px 6px;text-align:right;font-weight:700;white-space:nowrap;vertical-align:top">'+(dgEcartTxt(ts.eht-ts.aht)||'<span style="color:var(--text3)">—</span>')+'</td>'
       +'</tr>';
-      (n.children||[]).forEach(function(c,i){out+=viewRows(c,path.concat(i));});
+      (n.children||[]).forEach(function(c,i){out+=viewRows(c,path.concat(i),fillable);});
       return out;
     }
     var c=dgLeaf(n);
@@ -4834,22 +4861,24 @@ function renderDpgfView(){
       +'<td style="padding:4px 6px;vertical-align:top;padding-left:'+(6+(depth-1)*14)+'px">'+e(n.designation||'—')+'</td>'
       +'<td style="padding:4px 6px;text-align:center;color:var(--text3);vertical-align:top;white-space:nowrap">'+e(n.unite||'')+'</td>'
       +'<td style="padding:4px 6px;text-align:right;vertical-align:top;white-space:nowrap">'+e(n.qte||'')+'</td>'
-      +'<td style="padding:4px 6px;text-align:right;vertical-align:top;white-space:nowrap">'+(String(n.qteEnt||'').trim()?e(n.qteEnt):'<span style="display:inline-block;min-width:36px;border-bottom:1px dotted var(--text3)">&nbsp;</span>')+'</td>'
+      +'<td style="padding:4px 6px;text-align:right;vertical-align:top;white-space:nowrap">'+(fillable?'<input value="'+e(n.qteEnt||'')+'" inputmode="decimal" aria-label="Quantité entreprise — '+e(n.designation||'')+'" onchange="dpgfFillQteEnt(\''+n.id+'\',this.value)" style="width:54px;font-size:11px;border:1px solid #c47a00;border-radius:5px;padding:3px 4px;text-align:right;background:#fff;color:var(--text)">':(String(n.qteEnt||'').trim()?e(n.qteEnt):'<span style="display:inline-block;min-width:36px;border-bottom:1px dotted var(--text3)">&nbsp;</span>'))+'</td>'
       +'<td style="padding:4px 6px;text-align:right;vertical-align:top;white-space:nowrap">'+suiviEuro(suiviNum(n.pu))+'</td>'
       +'<td style="padding:4px 6px;text-align:center;color:var(--text3);vertical-align:top;white-space:nowrap">'+suiviNum(n.tva)+' %</td>'
       +'<td style="padding:4px 6px;text-align:right;font-weight:600;white-space:nowrap;vertical-align:top">'+suiviEuro(c.aht)+'</td>'
-      +'<td style="padding:4px 6px;text-align:right;color:var(--text2);white-space:nowrap;vertical-align:top">'+(suiviNum(n.qteEnt)>0?suiviEuro(c.eht):'<span style="color:var(--text3)">—</span>')+'</td>'
+      +'<td style="padding:4px 6px;text-align:right;white-space:nowrap;vertical-align:top">'+(dgEcartTxt(c.ecart)||(c.hasEnt?'<span style="color:var(--text3)">=</span>':''))+'</td>'
     +'</tr>';
   }
   var html='<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:10px">'+(filterSel?('<div>'+filterSel+'</div>'):'<div></div>')+'<div style="display:flex;gap:6px;flex-wrap:wrap">'+dpgfPdfBtn()+'<button class="btn btn-g btn-sm" onclick="window.print()"><svg class="ico ico-xs" style="margin-right:4px" aria-hidden="true"><use href="#i-download"/></svg>Imprimer / PDF</button></div></div>'
+    +(fillLots.length?'<div style="max-width:980px;margin:0 auto 10px;padding:9px 12px;border:1px solid #c47a00;background:#fff7ed;border-radius:var(--r2);font-size:12px;color:#7a4a00"><svg class="ico ico-xs" style="vertical-align:-2px;margin-right:4px" aria-hidden="true"><use href="#i-pencil-check"/></svg><strong>Remplissage entreprise — '+e(acting.name||acting.ent||'votre lot')+'</strong> · seules les lignes de '+(fillLots.length>1?'vos lots':'votre lot')+' ('+fillLots.map(function(l){return e(dgName(l));}).join(', ')+') sont modifiables (colonne « Qté&nbsp;entr. »).</div>':'')
     +'<div style="border:1px solid var(--border);border-radius:var(--r2);background:var(--panel);padding:22px 26px;max-width:980px;margin:0 auto;line-height:1.5">'
     +'<div style="text-align:center;margin-bottom:16px"><h2 style="font-size:18px;font-weight:700;margin:0">Décomposition du Prix Global et Forfaitaire</h2><div style="font-size:12.5px;color:var(--text3);margin-top:3px">'+e(PROJ.name||'')+(PROJ.address?(' — '+e(PROJ.address)):'')+'</div></div>';
   if((d.intro||'').trim())html+='<div style="font-size:12.5px;white-space:pre-wrap;color:var(--text2);border-bottom:1px solid var(--border);padding-bottom:12px;margin-bottom:14px">'+e(d.intro)+'</div>';
   lots.forEach(function(lot){
     var origIdx=d.lots.indexOf(lot);
+    var lt=dgTotals(lot), lotEc=dgEcartTxt(lt.eht-lt.aht);
     var intLabel=(lot.metier||lot.entreprise)?((lot.metier||'')+(lot.entreprise?(' — '+lot.entreprise):'')):'';
     html+='<div style="margin-bottom:18px">'
-      +'<div style="display:flex;justify-content:space-between;align-items:baseline;border-bottom:1.5px solid var(--blue-lt);padding-bottom:4px;margin-bottom:6px"><h3 style="font-size:14px;font-weight:700;color:#5c3d1e;margin:0">Lot '+(origIdx+1)+' — '+e(dgName(lot)||'(sans titre)')+(intLabel?(' <span style="font-size:11px;font-weight:600;color:var(--text3)">· '+e(intLabel)+'</span>'):'')+'</h3><span style="font-weight:700;color:#5c3d1e;font-size:13px">'+suiviEuro(dgTotals(lot).aht)+' HT</span></div>'
+      +'<div style="display:flex;justify-content:space-between;align-items:baseline;border-bottom:1.5px solid var(--blue-lt);padding-bottom:4px;margin-bottom:6px"><h3 style="font-size:14px;font-weight:700;color:#5c3d1e;margin:0">Lot '+(origIdx+1)+' — '+e(dgName(lot)||'(sans titre)')+(intLabel?(' <span style="font-size:11px;font-weight:600;color:var(--text3)">· '+e(intLabel)+'</span>'):'')+'</h3><span style="font-weight:700;color:#5c3d1e;font-size:13px">'+suiviEuro(lt.aht)+' HT'+(lotEc?' <span style="font-size:11px">'+lotEc+'</span>':'')+'</span></div>'
       +'<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:11.5px"><thead><tr style="color:var(--text3)">'
         +'<th scope="col" style="'+th+';text-align:left">N°</th>'
         +'<th scope="col" style="'+th+';text-align:left">Désignation</th>'
@@ -4858,10 +4887,11 @@ function renderDpgfView(){
         +'<th scope="col" style="'+th+';text-align:right">Qté entr.</th>'
         +'<th scope="col" style="'+th+';text-align:right">PU HT</th>'
         +'<th scope="col" style="'+th+';text-align:center">TVA</th>'
-        +'<th scope="col" style="'+th+';text-align:right">Total archi</th>'
-        +'<th scope="col" style="'+th+';text-align:right">Total entr.</th>'
+        +'<th scope="col" style="'+th+';text-align:right">Total HT</th>'
+        +'<th scope="col" style="'+th+';text-align:right">Écart entr.</th>'
       +'</tr></thead><tbody>';
-    (lot.children||[]).forEach(function(c,i){html+=viewRows(c,[origIdx,i]);});
+    var lotFill=!!(acting&&lot.intId===acting.id);
+    (lot.children||[]).forEach(function(c,i){html+=viewRows(c,[origIdx,i],lotFill);});
     html+='</tbody></table></div></div>';
   });
   var bd=dpgfTvaBreakdown(PROJ);
@@ -4869,7 +4899,8 @@ function renderDpgfView(){
     +'<div style="display:flex;gap:14px;min-width:300px;justify-content:space-between"><span style="color:var(--text3)">Total architecte HT</span><strong style="color:#5c3d1e">'+suiviEuro(T.aht)+'</strong></div>';
   if(!dpgfIntFilter)bd.forEach(function(b){html+='<div style="display:flex;gap:14px;min-width:300px;justify-content:space-between;color:var(--text2)"><span>TVA '+b.rate+' % <span style="color:var(--text3)">(sur '+suiviEuro(b.ht)+' HT)</span></span><span>'+suiviEuro(b.tva)+'</span></div>';});
   html+='<div style="display:flex;gap:14px;min-width:300px;justify-content:space-between;border-top:1px solid var(--border);padding-top:6px;margin-top:4px;font-size:14px"><span style="color:var(--text3)">Total marché architecte TTC</span><strong style="font-size:16px">'+suiviEuro(T.attc)+'</strong></div>'
-    +'<div style="display:flex;gap:14px;min-width:300px;justify-content:space-between;margin-top:8px;padding-top:6px;border-top:1px dashed var(--border)"><span style="color:var(--text3)">Total offre entreprise HT</span><strong style="color:var(--text2)">'+suiviEuro(T.eht)+'</strong></div>'
+    +'<div style="display:flex;gap:14px;min-width:300px;justify-content:space-between;margin-top:8px;padding-top:6px;border-top:1px dashed var(--border)"><span style="color:var(--text3)">Écart quantités entreprise</span><span style="font-size:13px">'+dgEcartTxt(T.eht-T.aht,true)+'</span></div>'
+    +'<div style="display:flex;gap:14px;min-width:300px;justify-content:space-between"><span style="color:var(--text3)">Total offre entreprise HT</span><strong style="color:var(--text2)">'+suiviEuro(T.eht)+'</strong></div>'
     +'<div style="display:flex;gap:14px;min-width:300px;justify-content:space-between;font-size:13px"><span style="color:var(--text3)">Total offre entreprise TTC</span><strong>'+suiviEuro(T.ettc)+'</strong></div></div>';
   html+='</div>';
   host.innerHTML=html;
