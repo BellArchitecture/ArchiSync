@@ -418,7 +418,7 @@ function lotColor(lot){
 // Centralized color resolver: lot→intervenant→derived
 // Couleur sûre : empêche l'injection CSS via une couleur importée (les couleurs
 // alimentent des attributs style=). On n'autorise que hex / rgb / var(--…).
-function _safeColor(c){c=String(c==null?'':c);return /^(#[0-9a-fA-F]{3,8}|rgb\(|rgba\(|var\(--)/.test(c)?c:LOT_COLORS.DEFAULT;}
+function _safeColor(c){c=String(c==null?'':c).trim();if(/^#[0-9a-fA-F]{3,8}$/.test(c))return c;if(/^rgba?\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}(\s*,\s*(0|1|0?\.\d+))?\s*\)$/.test(c))return c;if(/^var\(--[\w-]+\)$/.test(c))return c;return LOT_COLORS.DEFAULT;}
 function getColor(obj, cr){ return _safeColor(_rawColor(obj,cr)); }
 function _rawColor(obj, cr){
   if(!cr) return LOT_COLORS.DEFAULT;
@@ -487,6 +487,23 @@ let CRS = [];
       {id:'am1',texte:'Transmettre le plan de coffrage mis à jour.',responsable:'Entreprise GO',intId:'im2',echeance:'',done:false},
     ],
   }];
+})();
+
+// Repositionne le compteur d'ids au-delà du plus grand suffixe numérique déjà présent,
+// pour éviter les collisions d'ids entre sessions (uid repart de 100 à chaque chargement).
+(function bumpUid(){
+  var max=uid-1;
+  function scan(o){
+    if(!o||typeof o!=='object')return;
+    if(Array.isArray(o)){o.forEach(scan);return;}
+    Object.keys(o).forEach(function(k){
+      var v=o[k];
+      if(k==='id'&&typeof v==='string'){var m=v.match(/(\d+)$/);if(m){var n=parseInt(m[1],10);if(!isNaN(n)&&n>max)max=n;}}
+      else if(v&&typeof v==='object')scan(v);
+    });
+  }
+  try{scan(CRS);}catch(e){console.warn('[PV bumpUid]',e);}
+  uid=max+1;
 })();
 
 loadCROrder();
@@ -1037,6 +1054,8 @@ window.addEventListener('message',function(e){
   try{
     // n'accepter que les messages du shell parent (rejette aussi e.source null)
     if(!e.source || e.source!==window.parent) return;
+    // Défense en profondeur en http(s) : exiger la même origine (en file:// l'origine vaut "null").
+    if(location.protocol!=='file:' && e.origin!==location.origin) return;
     var d=e.data;
     if(!d || d.type!=='archisync-annuaire' || !Array.isArray(d.list)) return;
     _applyHostAnnuaire(d.list, d.pid);
@@ -1871,7 +1890,7 @@ function syncIntervenantsFromAnnuaire(crId){
   // En file:// le localStorage du shell est inaccessible ici : on DEMANDE au shell
   // parent de renvoyer l'annuaire par postMessage. La réponse (message archisync-annuaire)
   // sera appliquée par le listener. On tente aussi le localStorage (cas http).
-  try{ if(window.parent && window.parent!==window) window.parent.postMessage({type:'archisync-request-annuaire'},'*'); }catch(e){}
+  try{ if(window.parent && window.parent!==window){ var _to=(location.protocol==='file:')?'*':location.origin; window.parent.postMessage({type:'archisync-request-annuaire'},_to); } }catch(e){}
   _reloadHostAnnuaire();
   if(!hostAnnuaire.length){ toast('Synchronisation demandée… si rien n\'apparaît, vérifiez « Équipe & contacts » côté Archisync.','info'); return; }
   const changed=_mergeAnnuaireIntoCR(cr);
