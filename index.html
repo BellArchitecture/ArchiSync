@@ -741,7 +741,7 @@ function loadUSER(){
   try{
     var s=Store.get('plansync_user');
     if(s){var u=JSON.parse(s);if(u&&typeof u==='object')Object.assign(USER,u);}
-  }catch(e){}
+  }catch(e){console.warn('[loadUSER] profil illisible, valeurs par défaut',e);}
 }
 function saveUSER(){var ok=Store.set('plansync_user',JSON.stringify(USER));if(!ok){try{toastErr('Profil non sauvegardé — stockage saturé. Exportez une sauvegarde puis libérez de l\'espace.');}catch(e){}}return ok;}
 function userDisplayName(){
@@ -840,7 +840,7 @@ try{
   window.addEventListener('beforeunload',flushSave);
   window.addEventListener('pagehide',flushSave);
   document.addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden')flushSave();});
-}catch(e){}
+}catch(e){console.warn('[flushSave hooks] non installés',e);}
 function showSaveFailureModal(){
   try{
     showModal('<h3 style="color:var(--red);display:flex;align-items:center;gap:8px"><svg class="ico ico-sm" style="color:var(--red)"><use href="#i-alert"/></svg>Enregistrement impossible</h3>'
@@ -1146,7 +1146,7 @@ function getMembresForProj(p){return(p&&p.membres)?p.membres:[];}
 // et à chaque invitation — évite les TypeError sur m.perms[k] / m.dossiers[f].
 // Couleur sûre : empêche l'injection CSS via un champ couleur importé (JSON).
 // On n'autorise que les formes attendues (hex / rgb / var(--…)) ; sinon repli neutre.
-function sanitizeColor(c){c=String(c==null?'':c);return /^(#[0-9a-fA-F]{3,8}|rgb\(|rgba\(|var\(--)/.test(c)?c:'#8a877e';}
+function sanitizeColor(c){c=String(c==null?'':c).trim();if(/^#[0-9a-fA-F]{3,8}$/.test(c))return c;if(/^rgba?\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}(\s*,\s*(0|1|0?\.\d+))?\s*\)$/.test(c))return c;if(/^var\(--[\w-]+\)$/.test(c))return c;return '#8a877e';}
 function normalizeMbr(m){
   if(!m)return;
   if(m.color!==undefined)m.color=sanitizeColor(m.color); // anti-injection CSS
@@ -1350,6 +1350,7 @@ function renderSB(){
       ${navItem('admin','folder','Documents admin')}
       ${navItem('pv','file-check','PV')}
       ${navItem('cctp','check-list','CCTP')}
+      ${navItem('dpgf','receipt','DPGF')}
       ${navItem('chantier','helmet','Planning chantier')}
       ${navItem('membres','users','Équipe & contacts')}
       ${navItem('messagerie','message','Notes','',messagerieBadge())}
@@ -1446,10 +1447,10 @@ function nav(v){
   if(v==='membres'&&VIEW!=='membres'&&!curMbrPending)curMbr=null;
   curMbrPending=false;
   VIEW=v;closeDP();if(v!=='plans'){activePlanFolder=null;planListPath=[];planColPath=[];}if(v!=='entreprises'){activeEntMembre=null;activeEntFolder=null;}if(v!=='pv'&&v!=='pv_arch'){pvFolder=null;pvArch=false;}areaFolderId=null;areaArch=false;areaPath=[];renderSB();renderMain();}
-function backGlobal(){closeMobileNav();try{flushSave();}catch(e){console.warn('[flushSave]',e);}viewAsMemberId=null;plansTradeFilter='';suiviIntFilter='';suiviTab='reel';cctpTab='apercu';activeConvId='__project__';if(!infoNavGuard(backGlobal))return;PROJ=null;VIEW='projets';closeDP();renderSB();renderMain();}
+function backGlobal(){closeMobileNav();try{flushSave();}catch(e){console.warn('[flushSave]',e);}viewAsMemberId=null;plansTradeFilter='';suiviIntFilter='';dpgfIntFilter='';dpgfTab='apercu';suiviTab='reel';cctpTab='apercu';activeConvId='__project__';if(!infoNavGuard(backGlobal))return;PROJ=null;VIEW='projets';closeDP();renderSB();renderMain();}
 // Annulation explicite : on jette les modifications sans redemander.
 function discardInfo(){_infoDirty=false;_navGuardBypass=true;nav('plans');_navGuardBypass=false;}
-function openProj(id){closeMobileNav();try{flushSave();}catch(e){console.warn('[flushSave]',e);}viewAsMemberId=null;plansTradeFilter='';suiviIntFilter='';suiviQ='';suiviTab='reel';activeConvId='__project__';PROJ=PROJS.find(p=>p.id===id);loadRoles();VIEW='plans';clTree=PROJ&&PROJ.clTree?PROJ.clTree:buildCL(PROJ);clTab='depot';pvFolder=null;pvArch=false;areaFolderId=null;areaArch=false;areaPath=[];currentAccessRole=(PROJ&&PROJ.myAccessRole)||'admin';closeDP();renderSB();renderMain();}
+function openProj(id){closeMobileNav();try{flushSave();}catch(e){console.warn('[flushSave]',e);}viewAsMemberId=null;plansTradeFilter='';suiviIntFilter='';dpgfIntFilter='';dpgfTab='apercu';suiviQ='';suiviTab='reel';activeConvId='__project__';PROJ=PROJS.find(p=>p.id===id);loadRoles();VIEW='plans';clTree=PROJ&&PROJ.clTree?PROJ.clTree:buildCL(PROJ);clTab='depot';pvFolder=null;pvArch=false;areaFolderId=null;areaArch=false;areaPath=[];currentAccessRole=(PROJ&&PROJ.myAccessRole)||'admin';closeDP();renderSB();renderMain();}
 
 /* ══ TOPBAR ══ */
 function setTB(iconId,col,title,sub,btnL,btnIco='plus'){
@@ -1516,7 +1517,7 @@ function setTabs(tabs,activeId){
 function switchTab(id,btn){
   document.querySelectorAll('.tabbar .tab').forEach(t=>{t.classList.remove('active');t.style.color='';t.style.borderBottomColor='';t.setAttribute('aria-selected','false');});
   btn.classList.add('active');btn.setAttribute('aria-selected','true');
-  if(id==='pt-docs'||id==='pt-info'){renderPlansContent(id);return;}
+  if(id==='pt-docs'||id==='pt-info'||id==='pt-liste'){renderPlansContent(id);return;}
   clTab=id;
   const node=findCLN(id);if(node){btn.style.color=node.color;btn.style.borderBottomColor=node.color;}
   renderCLContent();
@@ -1525,6 +1526,7 @@ function mainAction(){
   if(VIEW==='projets'){openNewProj();return;}
   else if(VIEW==='suivi'){if(suiviTab==='prechiffrage')pcAddLot();else suiviAddGroup();return;}
   else if(VIEW==='cctp'){cctpAddSection();return;}
+  else if(VIEW==='dpgf'){dpgfAddLot();return;}
   else if(VIEW==='horsresp'){hrAdd();return;}
   else if(VIEW==='membres'){focusInviteForm();return;}
   else if(VIEW==='plu'){savePLU();return;}
@@ -1556,6 +1558,7 @@ function renderMain(){
   else if(v==='checklists')renderCL();
   else if(v==='suivi')renderSuivi();
   else if(v==='cctp')renderCctp();
+  else if(v==='dpgf')renderDpgf();
   else if(v==='contrat')renderContrat();
   else if(v==='copilote')renderCopilote();
   else if(v==='paliers')renderPaliers();
@@ -1687,13 +1690,63 @@ function renderPlans(){
   setTB('pdf','var(--blue)','Plans',PROJ.name,'Importer','upload');
   setTabs([
     {id:'pt-docs',label:'Documents',ico:'pdf',color:'var(--blue)'},
+    {id:'pt-liste',label:'Liste des plans',ico:'check-list',color:'var(--blue)'},
     {id:'pt-info',label:'Informations projet',ico:'settings',color:'var(--blue)'},
   ],'pt-docs');
   renderPlansContent('pt-docs');
 }
+// Vue « liste » : tous les plans regroupés par dossier, chaque dossier repliable
+// (même esprit que « Suivi des dépenses »). Accès par sous-dossier respecté.
+var _planListOpen={};
+function planListToggle(fid){ _planListOpen[fid]=(_planListOpen[fid]===false); renderPlansFlatList(); }
+function planListSetAll(open){ try{var roots=getPlanFolders(PROJ.id);flatPlanFolders(roots).forEach(function(x){_planListOpen[x.node.id]=open;});_planListOpen['__none__']=open;}catch(e){} renderPlansFlatList(); }
+function renderPlansFlatList(){
+  if(!PROJ)return;
+  var roots=getPlanFolders(PROJ.id);
+  var docsAll=(getDocsForProj(PROJ).plans||[]).filter(function(d){return !d.archived && canSeeFolderNow('plans',d.folder);});
+  var flat=flatPlanFolders(roots).filter(function(x){return !x.node.archived && canSeeFolderNow('plans',x.node.id);});
+  function plansIn(fid){return docsAll.filter(function(d){return d.folder===fid;});}
+  setTB('pdf','var(--blue)','Plans','Liste — '+docsAll.length+(docsAll.length>1?' plans':' plan'),'','');
+  var known={}; flat.forEach(function(x){known[x.node.id]=1;});
+  var groups=flat.map(function(x){return {id:x.node.id,name:x.path,docs:plansIn(x.node.id)};});
+  var orphan=docsAll.filter(function(d){return !d.folder||!known[d.folder];});
+  if(orphan.length)groups.push({id:'__none__',name:'Non classés',docs:orphan});
+  var html='<div class="pad" style="max-width:880px;margin:0 auto">'
+    +'<div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:10px">'
+    +'<button class="btn btn-g btn-sm" onclick="planListSetAll(true)">Tout déplier</button>'
+    +'<button class="btn btn-g btn-sm" onclick="planListSetAll(false)">Tout replier</button></div>';
+  var any=false;
+  groups.forEach(function(g){
+    if(!g.docs.length)return;
+    any=true;
+    var open=_planListOpen[g.id]!==false;
+    html+='<div style="border:1px solid var(--border);border-radius:var(--r2);background:var(--panel);margin-bottom:10px;overflow:hidden">'
+      +'<button onclick="planListToggle(\''+g.id+'\')" aria-expanded="'+(open?'true':'false')+'" style="width:100%;display:flex;align-items:center;gap:9px;padding:11px 14px;background:var(--bg2);border:none;'+(open?'border-bottom:1px solid var(--border);':'')+'cursor:pointer;font-family:inherit;text-align:left;color:var(--text)">'
+        +'<svg class="ico ico-sm" style="color:var(--text3);flex-shrink:0" aria-hidden="true"><use href="#i-chevron-'+(open?'down':'right')+'"/></svg>'
+        +'<svg class="ico ico-sm" style="color:var(--blue);flex-shrink:0" aria-hidden="true"><use href="#i-folder"/></svg>'
+        +'<span style="flex:1;font-weight:600;font-size:13px;min-width:0">'+e(g.name)+'</span>'
+        +'<span style="font-size:11.5px;color:var(--text3);white-space:nowrap">'+g.docs.length+(g.docs.length>1?' plans':' plan')+'</span>'
+      +'</button>';
+    if(open){
+      g.docs.forEach(function(d){
+        html+='<div style="display:flex;align-items:center;gap:10px;padding:10px 14px 10px 40px;border-bottom:1px solid var(--border);cursor:pointer" onclick="viewPlanDoc(\''+d.id+'\')">'
+          +'<svg class="ico ico-sm" style="color:var(--blue);flex-shrink:0" aria-hidden="true"><use href="#i-pdf"/></svg>'
+          +'<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="'+e(d.title||'')+'">'+e(d.title||'(sans titre)')+'</div>'
+            +'<div style="font-size:11px;color:var(--text3);margin-top:1px">'+(d.v?('v'+e(String(d.v))+' · '):'')+e(d.date||'')+(d.size?(' · '+e(d.size)):'')+'</div></div>'
+          +'<button class="btn btn-sm btn-g" onclick="event.stopPropagation();viewPlanDoc(\''+d.id+'\')" title="Aperçu"><svg class="ico ico-xs" style="margin-right:3px" aria-hidden="true"><use href="#i-eye"/></svg>Voir</button>'
+        +'</div>';
+      });
+    }
+    html+='</div>';
+  });
+  if(!any)html+='<div style="text-align:center;color:var(--text3);font-size:13px;padding:30px;border:1px dashed var(--border);border-radius:var(--r2)">Aucun plan. Importez-les depuis l\'onglet « Documents ».</div>';
+  html+='</div>';
+  document.getElementById('content').innerHTML=html;
+}
 
 function renderPlansContent(tab){
   if(tab==='pt-info'){renderProjInfoPanel();return;}
+  if(tab==='pt-liste'){renderPlansFlatList();return;}
   if(planArch){renderPlansArchives();return;}
   if(planView==='colonnes'){renderPlansColumns();return;}
   const projId=PROJ.id;
@@ -2429,15 +2482,15 @@ function renderEntreprises(){
             +'</div>'
             +folders.map(function(f){
               var isAct=activeEntFolder&&activeEntFolder.id===f.id;
-              return '<div style="display:flex;align-items:center;gap:6px;padding:6px 8px;border-radius:7px;cursor:pointer;font-size:12px;'+(isAct?'background:var(--blue-bg);color:var(--blue);font-weight:500':'color:var(--text2)')+'" onclick="activeEntFolder={id:\''+f.id+'\',name:\''+e(f.name)+'\'};renderEntreprises()">'
-                +'<svg class="ico ico-xs"><use href="#i-folder"/></svg><span>'+f.name+'</span>'
+              return '<div style="display:flex;align-items:center;gap:6px;padding:6px 8px;border-radius:7px;cursor:pointer;font-size:12px;'+(isAct?'background:var(--blue-bg);color:var(--blue);font-weight:500':'color:var(--text2)')+'" onclick="activeEntFolder={id:\''+f.id+'\',name:\''+e(jsq(f.name))+'\'};renderEntreprises()">'
+                +'<svg class="ico ico-xs"><use href="#i-folder"/></svg><span>'+e(f.name)+'</span>'
               +'</div>';
             }).join('')
           +'</div>'
           // Docs in folder
           +'<div style="flex:1;overflow-y:auto;padding:14px 16px">'
             +(activeEntFolder
-              ?'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px"><span style="font-size:13px;font-weight:500">'+activeEntFolder.name+'</span></div>'
+              ?'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px"><span style="font-size:13px;font-weight:500">'+e(activeEntFolder.name)+'</span></div>'
                 +'<div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px;font-size:11.5px;color:var(--text3);margin-bottom:12px;line-height:1.45">Les fichiers (devis, contrats, factures, plans, photos) s\'importent depuis les sections dédiées (Contrats &amp; Devis, Plans, Photos, Admin) pour rester classés et sauvegardés.</div>'
               :'<div style="font-size:12px;color:var(--text3)">Sélectionnez un dossier</div>'
             )
@@ -2548,7 +2601,7 @@ function openDP(folder,id){
       +'<span class="vpill">v'+ver.v+'</span>'
       +'<span style="flex:1;font-size:12px">'+e(ver.fileName||'version')+(ver.date?' · '+e(ver.date):'')+'</span>'
       +'<span class="badge bgray" style="font-size:9px">Archivée</span>'
-      +'<button class="btn btn-sm btn-g" style="padding:2px 7px" title="Télécharger" onclick="dpDownloadVersion(\''+ver.blobId+'\',\''+e(ver.fileName||'version')+'\')"><svg class="ico ico-xs"><use href="#i-download"/></svg></button>'
+      +'<button class="btn btn-sm btn-g" style="padding:2px 7px" title="Télécharger" onclick="dpDownloadVersion(\''+ver.blobId+'\',\''+e(jsq(ver.fileName||'version'))+'\')"><svg class="ico ico-xs"><use href="#i-download"/></svg></button>'
       +permBtn('items','<svg class="ico ico-xs"><use href="#i-trash"/></svg>','dpDeleteVersion('+ver.v+')','btn-sm btn-g','padding:2px 7px;color:var(--red)','Supprimer cette version')
     +'</div>';
   });
@@ -2643,9 +2696,9 @@ function saveDP(){
   savePROJS();renderDocs(detFolder);toast('Modifications enregistrées ✓');
 }
 function closeDP(){document.getElementById('dp').classList.remove('open');detDoc=null;detFolder=null;}
-function fi(label,type,id,val,ph=''){return`<div class="fi"><label>${label}</label><input type="${type}" id="${id}" value="${e(val)}" placeholder="${ph}"></div>`;}
-function fiS(label,id,opts,val,labels={}){return`<div class="fi"><label>${label}</label><select id="${id}">${opts.map(o=>`<option value="${o}" ${o===val?'selected':''}>${labels[o]||o||'—'}</option>`).join('')}</select></div>`;}
-function fiTA(label,id,val,ph=''){return`<div class="fi"><label>${label}</label><textarea id="${id}" placeholder="${ph}">${e(val)}</textarea></div>`;}
+function fi(label,type,id,val,ph=''){return`<div class="fi"><label for="${id}">${label}</label><input type="${type}" id="${id}" value="${e(val)}" placeholder="${ph}"></div>`;}
+function fiS(label,id,opts,val,labels={}){return`<div class="fi"><label for="${id}">${label}</label><select id="${id}">${opts.map(o=>`<option value="${o}" ${o===val?'selected':''}>${labels[o]||o||'—'}</option>`).join('')}</select></div>`;}
+function fiTA(label,id,val,ph=''){return`<div class="fi"><label for="${id}">${label}</label><textarea id="${id}" placeholder="${ph}">${e(val)}</textarea></div>`;}
 function toISO(fr){if(!fr||fr.includes('-'))return fr;const p=fr.split('/');return p.length===3?`${p[2]}-${p[1]}-${p[0]}`:fr;}
 // Validation légère du champ date : accepte jj/mm/aaaa ou mm/aaaa (vide autorisé).
 function validateDateField(el){
@@ -2736,17 +2789,17 @@ function clGH(node,addRow){
   let h=`<div class="cl-group">`;
   vis.forEach(it=>{
     const archBtn=`<button class="btn btn-g btn-sm" onclick="archCL('${it.id}')" aria-label="${it.arch?'Restaurer':'Archiver'} : ${e(it.l)}" title="${it.arch?'Restaurer':'Archiver'}"><svg class="ico ico-xs" aria-hidden="true"><use href="#i-${it.arch?'check-list':'archive'}"/></svg></button>`;
-    const editBtn=permBtn('items',`<svg class="ico ico-xs" aria-hidden="true"><use href="#i-edit"/></svg>`  ,`editCL('${it.id}')` ,'btn-g btn-sm','','Modifier : '+it.l);
-    const delBtn =permBtn('items',`<svg class="ico ico-xs" style="color:var(--red)" aria-hidden="true"><use href="#i-trash"/></svg>`,`deleteCL('${it.id}')` ,'btn-g btn-sm','','Supprimer : '+it.l);
+    const editBtn=permBtn('items',`<svg class="ico ico-xs" aria-hidden="true"><use href="#i-edit"/></svg>`  ,`editCL('${it.id}')` ,'btn-g btn-sm','','Modifier : '+e(it.l));
+    const delBtn =permBtn('items',`<svg class="ico ico-xs" style="color:var(--red)" aria-hidden="true"><use href="#i-trash"/></svg>`,`deleteCL('${it.id}')` ,'btn-g btn-sm','','Supprimer : '+e(it.l));
     h+=`<div class="cl-item" style="${it.arch?'opacity:.4':''}">
       <div class="cl-chk ${it.done&&!it.arch?'done':it.arch?'arch':''}" role="checkbox" tabindex="0" aria-checked="${it.done&&!it.arch?'true':'false'}" aria-label="${e(it.l)}" onclick="toggleCL('${it.id}')">
         ${it.done&&!it.arch?`<svg class="ico" style="width:10px;height:10px;color:#fff" aria-hidden="true"><use href="#i-check"/></svg>`:''}
       </div>
       <div style="flex:1;min-width:0">
         <div style="font-size:13px;color:${it.done&&!it.arch?'var(--text3)':'var(--text)'};text-decoration:${it.done&&!it.arch?'line-through':'none'}">
-          ${it.l}${it.tag?`<span class="tag ${TCL[it.tc]||'tgray'}">${it.tag}</span>`:''}
+          ${e(it.l)}${it.tag?`<span class="tag ${TCL[it.tc]||'tgray'}">${e(it.tag)}</span>`:''}
         </div>
-        ${it.n?`<div style="font-size:11px;color:var(--text3);margin-top:2px">${it.n}</div>`:''}
+        ${it.n?`<div style="font-size:11px;color:var(--text3);margin-top:2px">${e(it.n)}</div>`:''}
       </div>
       <div class="cl-act">
         ${archBtn}${editBtn}${delBtn}
@@ -3440,9 +3493,9 @@ function suiviFmtDate(iso){ if(!iso)return ''; var p=String(iso).split('-'); ret
 function suiviClientCell(f){
   var sent=f.envoiClient, val=f.valideClient;
   var status = val
-    ? '<span class="bgreen" style="display:inline-block;padding:1px 7px;border-radius:20px;font-size:10px;font-weight:600">✓ Validée le '+suiviFmtDate(val)+'</span>'
+    ? '<span class="bgreen" style="display:inline-block;padding:1px 7px;border-radius:20px;font-size:10px;font-weight:600">✓ Validée le '+e(suiviFmtDate(val))+'</span>'
     : (sent
-        ? '<span style="display:inline-block;padding:1px 7px;border-radius:20px;font-size:10px;font-weight:600;background:var(--amber-bg);color:var(--amber)">Envoyée le '+suiviFmtDate(sent)+'</span>'
+        ? '<span style="display:inline-block;padding:1px 7px;border-radius:20px;font-size:10px;font-weight:600;background:var(--amber-bg);color:var(--amber)">Envoyée le '+e(suiviFmtDate(sent))+'</span>'
         : '<span style="font-size:10px;color:var(--text3)">Non envoyée</span>');
   var btn='<button class="btn btn-g btn-sm" style="padding:3px 7px;white-space:nowrap;font-size:11px" onclick="suiviFactureSendClient(\''+f.id+'\')" title="Préparer un e-mail de validation au client">✉ '+(sent?'Renvoyer':'Envoyer au client')+'</button>';
   // Date d'accord du client : éditable dès que la facture a été envoyée.
@@ -4075,7 +4128,7 @@ function avPinPdf(id,ev){
   if(!f)return;
   if(!(f.type==='application/pdf'||/\.pdf$/i.test(f.name))){toastErr('Veuillez sélectionner un fichier PDF.');return;}
   var rd=new FileReader();
-  rd.onload=function(){if(!proj)return;var bid='avpdf'+(uid++);setBlob(bid,rd.result).then(function(ok){if(!ok){toastErr('Fichier non stocké (stockage plein).');return;}var a=(proj.contrat.avenants||[]).find(function(x){return x.id===avId;});if(a){a.pdf={blobId:bid,fileName:f.name};savePROJS();if(PROJ===proj)renderContrat();toast('Avenant signé attaché');}}).catch(function(er){console.warn('[avPinPdf]',er);toastErr('Erreur lors de l\'enregistrement du fichier.');});};
+  rd.onload=function(){if(!proj)return;var bid='avpdf'+(uid++);setBlob(bid,rd.result).then(function(ok){if(!ok){toastErr('Fichier non stocké (stockage plein).');return;}var a=(proj.contrat.avenants||[]).find(function(x){return x.id===avId;});if(a){a.pdf={blobId:bid,fileName:f.name};savePROJS();if(PROJ===proj)renderContrat();toast('Avenant signé attaché');}else{try{delete BLOBS[bid];BlobDB.del(bid);}catch(_){}toastErr('Avenant introuvable — fichier non attaché.');}}).catch(function(er){console.warn('[avPinPdf]',er);toastErr('Erreur lors de l\'enregistrement du fichier.');});};
   rd.onerror=function(){toastErr('Erreur de lecture du fichier.');};
   rd.readAsDataURL(f);
 }
@@ -4562,6 +4615,263 @@ function renderHorsResp(){
   });
   html+='</div>';
   document.getElementById('content').innerHTML=html;
+}
+
+/* ══ DPGF — Décomposition du Prix Global et Forfaitaire ══
+   Pendant chiffré du CCTP : lots → lignes (désignation, unité, quantité, PU HT).
+   Deux onglets : Rédaction (architecte) + DPGF publié (lecture, entreprises).
+   Reprise possible du pré-chiffrage. PDF signé joignable. */
+/* ══ DPGF — Décomposition du Prix Global et Forfaitaire (arborescence multi-niveaux) ══
+   Onglets : Rédaction (architecte) + DPGF publié (entreprises).
+   Modèle : p.dpgf = {intro, tvaDefault, pdf, lots:[node]}
+     node = {id, designation, children?:[node], unite,qte,qteEnt,pu,tva, intId,metier,entreprise}
+     - section : possède un tableau children (total = somme des enfants)
+     - ligne   : pas de children (chiffrée). Total archi = qte×pu ; Total entreprise = qteEnt×pu. */
+var dpgfTab='apercu';
+var dpgfIntFilter='';
+var _dpgfDrag=null;
+function dgIsSection(n){return !!(n&&Array.isArray(n.children));}
+function dgName(n){return (n&&(n.designation||n.nom))||'';}
+function dpgfEnsureNode(n,tvaDef){
+  if(!n||typeof n!=='object')return;
+  if(typeof n.designation!=='string')n.designation=(typeof n.nom==='string'?n.nom:'');
+  if(Array.isArray(n.lignes)&&!Array.isArray(n.children))n.children=n.lignes;
+  if(Array.isArray(n.lignes))delete n.lignes;
+  if(Array.isArray(n.children)){n.children.forEach(function(c){dpgfEnsureNode(c,tvaDef);});}
+  else{
+    if(typeof n.unite!=='string')n.unite='';
+    if(typeof n.qte==='undefined'||n.qte===null)n.qte='';
+    if(typeof n.qteEnt==='undefined'||n.qteEnt===null)n.qteEnt='';
+    if(typeof n.pu==='undefined'||n.pu===null)n.pu='';
+    if(typeof n.tva==='undefined'||n.tva===null)n.tva=tvaDef;
+  }
+}
+function dpgfEnsure(p){
+  if(!p)return;
+  if(!p.dpgf||typeof p.dpgf!=='object')p.dpgf={};
+  var d=p.dpgf;
+  if(typeof d.intro!=='string')d.intro='';
+  if(typeof d.tvaDefault==='undefined'||d.tvaDefault===null)d.tvaDefault=10;
+  if(!Array.isArray(d.lots))d.lots=[];
+  d.lots.forEach(function(lot){
+    if(!Array.isArray(lot.children)){lot.children=Array.isArray(lot.lignes)?lot.lignes:[];}
+    if(Array.isArray(lot.lignes))delete lot.lignes;
+    if(typeof lot.designation!=='string')lot.designation=(typeof lot.nom==='string'?lot.nom:'');
+    if(typeof lot.intId!=='string')lot.intId='';
+    if(typeof lot.metier!=='string')lot.metier='';
+    if(typeof lot.entreprise!=='string')lot.entreprise='';
+    dpgfEnsureNode(lot,d.tvaDefault);
+  });
+}
+function dgLeaf(l){var pu=suiviNum(l.pu),tva=suiviNum(l.tva),qa=suiviNum(l.qte),qe=suiviNum(l.qteEnt),aht=pu*qa,eht=pu*qe;return{aht:aht,attc:aht*(1+tva/100),eht:eht,ettc:eht*(1+tva/100)};}
+function dgTotals(n){if(dgIsSection(n)){var a=0,at=0,e=0,et=0;(n.children||[]).forEach(function(c){var t=dgTotals(c);a+=t.aht;at+=t.attc;e+=t.eht;et+=t.ettc;});return{aht:a,attc:at,eht:e,ettc:et};}return dgLeaf(n);}
+function dpgfTotals(p){var a=0,at=0,e=0,et=0;((p&&p.dpgf&&p.dpgf.lots)||[]).forEach(function(lot){var t=dgTotals(lot);a+=t.aht;at+=t.attc;e+=t.eht;et+=t.ettc;});return{aht:a,attc:at,eht:e,ettc:et};}
+function dpgfWalkLeaves(p,cb){function rec(n){if(dgIsSection(n))(n.children||[]).forEach(rec);else cb(n);}((p&&p.dpgf&&p.dpgf.lots)||[]).forEach(rec);}
+function dpgfTvaBreakdown(p){var map={};dpgfWalkLeaves(p,function(l){var r=suiviNum(l.tva),ht=suiviNum(l.pu)*suiviNum(l.qte);map[r]=(map[r]||0)+ht;});return Object.keys(map).map(function(k){var rate=suiviNum(k);return{rate:rate,ht:map[k],tva:map[k]*rate/100};}).sort(function(a,b){return a.rate-b.rate;});}
+function dpgfFind(id){var res=null;function rec(arr){for(var i=0;i<arr.length;i++){var n=arr[i];if(n.id===id){res={node:n,parent:arr,index:i};return true;}if(dgIsSection(n)&&rec(n.children))return true;}return false;}if(PROJ&&PROJ.dpgf)rec(PROJ.dpgf.lots||[]);return res;}
+function dgNewLeaf(tva){return{id:'dgg'+(uid++),designation:'',unite:'u',qte:'',qteEnt:'',pu:'',tva:tva};}
+function dgNewSection(){return{id:'dgs'+(uid++),designation:'',children:[]};}
+function dpgfAddLot(){if(!can('items'))return denyMsg();dpgfEnsure(PROJ);PROJ.dpgf.lots.push({id:'dgl'+(uid++),designation:'',children:[],intId:'',metier:'',entreprise:''});savePROJS();renderDpgf();toast('Lot ajouté');}
+function dpgfAddSection(parentId){if(!can('items'))return denyMsg();var r=dpgfFind(parentId);if(!r||!dgIsSection(r.node))return;r.node.children.push(dgNewSection());savePROJS();renderDpgf();}
+function dpgfAddLigne(parentId){if(!can('items'))return denyMsg();var r=dpgfFind(parentId);if(!r||!dgIsSection(r.node))return;r.node.children.push(dgNewLeaf(PROJ.dpgf.tvaDefault));savePROJS();renderDpgf();}
+function dpgfDelNode(id){if(!can('items'))return denyMsg();var r=dpgfFind(id);if(!r)return;var arr=r.parent,idx=r.index,rm=arr.splice(idx,1)[0];savePROJS();renderDpgf();toast('Supprimé',{undo:function(){arr.splice(idx,0,rm);savePROJS();renderDpgf();}});}
+function dpgfUpdateNode(id,field,val){if(!can('items'))return;if(['designation','unite','qte','qteEnt','pu','tva'].indexOf(field)<0)return;var r=dpgfFind(id);if(r){r.node[field]=val;saveLater();if(field==='qte'||field==='qteEnt'||field==='pu'||field==='tva')dpgfRefreshTotals();}else console.warn('[dpgfUpdateNode] nœud introuvable',id);}
+function dpgfSetLotTva(id,val){if(!can('items'))return denyMsg();var r=dpgfFind(id);if(!r)return;var rate=suiviNum(val);(function rec(n){if(dgIsSection(n))(n.children||[]).forEach(rec);else n.tva=rate;})(r.node);savePROJS();renderDpgf();}
+function dpgfLotTva(n){var rates=[];(function rec(x){if(dgIsSection(x))(x.children||[]).forEach(rec);else rates.push(suiviNum(x.tva));})(n);if(!rates.length)return '';var f=rates[0];for(var i=1;i<rates.length;i++)if(rates[i]!==f)return '';return f;}
+function dpgfMoveNode(id,dir){if(!can('items'))return denyMsg();var r=dpgfFind(id);if(!r)return;var j=r.index+dir;if(j<0||j>=r.parent.length)return;r.parent.splice(j,0,r.parent.splice(r.index,1)[0]);savePROJS();renderDpgf();}
+function dpgfDragStart(ev,id){_dpgfDrag=id;try{ev.dataTransfer.effectAllowed='move';ev.dataTransfer.setData('text/plain',id);}catch(_){}if(ev.stopPropagation)ev.stopPropagation();}
+function dpgfDragEnd(){_dpgfDrag=null;}
+function dpgfDragOver(ev,el){if(!_dpgfDrag||_dpgfDrag===el.getAttribute('data-id'))return;ev.preventDefault();try{ev.dataTransfer.dropEffect='move';}catch(_){}el.style.boxShadow='inset 0 2px 0 #5c3d1e';if(ev.stopPropagation)ev.stopPropagation();}
+function dpgfDragLeave(el){if(el)el.style.boxShadow='';}
+function dpgfDrop(ev,targetId){ev.preventDefault();if(ev.stopPropagation)ev.stopPropagation();var src=_dpgfDrag;_dpgfDrag=null;if(!src||src===targetId)return;if(!can('items'))return denyMsg();var rs=dpgfFind(src),rt=dpgfFind(targetId);if(!rs||!rt)return;if(rs.parent!==rt.parent){renderDpgf();return;}var moved=rs.parent.splice(rs.index,1)[0];var to=rt.parent.indexOf(rt.node);if(to<0)to=rt.parent.length;rt.parent.splice(to,0,moved);savePROJS();renderDpgf();}
+function dpgfSetIntFilter(v){dpgfIntFilter=v;renderDpgf();}
+function dpgfTradesPresent(){var set={};((PROJ&&PROJ.dpgf&&PROJ.dpgf.lots)||[]).forEach(function(lot){var m=(lot.metier||'').trim();if(m)set[m]=true;});return Object.keys(set).sort(function(a,b){return a.localeCompare(b,'fr');});}
+function dpgfIntOptions(sel){var opts='<option value="">— Intervenant —</option>';getMembresForProj(PROJ).forEach(function(m){var label=(m.name||m.ent||'?')+(m.metier?(' — '+m.metier):(m.role?(' — '+roleLabel(m.role)):''));opts+='<option value="'+e(m.id)+'"'+(sel===m.id?' selected':'')+'>'+e(label)+'</option>';});return opts;}
+function dpgfSetLotIntervenant(lotId,memberId){if(!can('items'))return denyMsg();var r=dpgfFind(lotId);if(!r)return;if(memberId){var m=getMembresForProj(PROJ).find(function(x){return x.id===memberId;});if(m){r.node.intId=m.id;r.node.metier=m.metier||roleLabel(m.role)||'';r.node.entreprise=m.ent||'';}else{toastErr('Intervenant introuvable.');return;}}else{r.node.intId='';r.node.metier='';r.node.entreprise='';}savePROJS();renderDpgf();}
+function dpgfRefreshTotals(){if(!PROJ||!PROJ.dpgf||dpgfTab!=='edit')return;var set=function(idc,v){var el=document.getElementById(idc);if(el)el.textContent=v;};(PROJ.dpgf.lots||[]).forEach(function(lot){(function rec(n){var t=dgTotals(n);set('dg-ah-'+n.id,suiviEuro(t.aht));set('dg-eh-'+n.id,suiviEuro(t.eht)+' ent.');if(dgIsSection(n))(n.children||[]).forEach(rec);})(lot);});var T=dpgfTotals(PROJ);set('dg-tah',suiviEuro(T.aht));set('dg-tat',suiviEuro(T.attc));set('dg-teh',suiviEuro(T.eht));set('dg-tet',suiviEuro(T.ettc));}
+function dpgfSetTab(t){dpgfTab=t;renderDpgf();}
+function dpgfUpdateIntro(v){if(!can('items'))return;dpgfEnsure(PROJ);PROJ.dpgf.intro=v;saveLater();}
+function dpgfSetTvaDefault(v){if(!can('items'))return;dpgfEnsure(PROJ);PROJ.dpgf.tvaDefault=suiviNum(v);saveLater();}
+function dpgfFromPrechiffrage(){
+  if(!can('items'))return denyMsg();dpgfEnsure(PROJ);var proj=PROJ;
+  if(!proj.prechiffrage||!(proj.prechiffrage.lots||[]).length){toastErr('Aucun pré-chiffrage à reprendre (Suivi des dépenses → Pré-chiffrage).');return;}
+  var apply=function(){if(!proj)return;dpgfEnsure(proj);if(proj.prechiffrage.tvaDefault!=null)proj.dpgf.tvaDefault=proj.prechiffrage.tvaDefault;proj.dpgf.lots=(proj.prechiffrage.lots||[]).map(function(lot){return {id:'dgl'+(uid++),designation:lot.nom||'',intId:'',metier:'',entreprise:'',children:(lot.lignes||[]).map(function(l){return {id:'dgg'+(uid++),designation:l.designation||'',unite:l.unite||'u',qte:l.qte||'',qteEnt:'',pu:l.pu||'',tva:(typeof l.tva!=='undefined'?l.tva:proj.prechiffrage.tvaDefault)};})};});savePROJS();if(PROJ===proj){dpgfTab='edit';renderDpgf();}toast('Pré-chiffrage repris dans le DPGF');};
+  if((PROJ.dpgf.lots||[]).length)confirmModal({title:'Reprendre le pré-chiffrage ?',danger:true,body:'Le DPGF actuel sera <strong>remplacé</strong> par les lots du pré-chiffrage (Suivi).',confirmLabel:'Remplacer',onConfirm:apply});
+  else apply();
+}
+function dpgfPinPdf(ev){
+  if(!can('items'))return denyMsg();
+  var proj=PROJ; var f=ev.target.files&&ev.target.files[0]; if(ev.target)ev.target.value='';
+  if(!f)return;
+  if(!(f.type==='application/pdf'||/\.pdf$/i.test(f.name))){toastErr('Veuillez sélectionner un fichier PDF.');return;}
+  var rd=new FileReader();
+  rd.onload=function(){if(!proj)return;var bid='dgpdf'+(uid++);setBlob(bid,rd.result).then(function(ok){if(!ok){toastErr('Fichier non stocké (stockage plein) — DPGF signé non attaché.');return;}dpgfEnsure(proj);proj.dpgf.pdf={blobId:bid,fileName:f.name};savePROJS();if(PROJ===proj)renderDpgf();toast('DPGF signé attaché');}).catch(function(er){console.warn('[dpgfPinPdf]',er);toastErr('Erreur lors de l\'enregistrement du fichier.');});};
+  rd.onerror=function(){toastErr('Erreur de lecture du fichier.');};
+  rd.readAsDataURL(f);
+}
+function dpgfUnpinPdf(){if(!can('items'))return denyMsg();dpgfEnsure(PROJ);PROJ.dpgf.pdf=null;savePROJS();renderDpgf();toast('PDF retiré');}
+function dpgfViewPdf(){var pdf=PROJ&&PROJ.dpgf&&PROJ.dpgf.pdf;if(pdf&&pdf.blobId)viewDoc({id:pdf.blobId,fileName:pdf.fileName,title:pdf.fileName||'DPGF signé',mimeType:'application/pdf',type:'pdf'});}
+function dpgfPdfBtn(){
+  var pdf=PROJ&&PROJ.dpgf&&PROJ.dpgf.pdf, can_=can('items');
+  if(pdf&&pdf.blobId){return '<span style="display:inline-flex;align-items:center;gap:4px">'
+    +'<button class="btn btn-g btn-sm" onclick="dpgfViewPdf()" aria-label="Voir le DPGF signé" title="'+e(pdf.fileName||'DPGF signé')+'"><svg class="ico ico-xs" style="margin-right:3px" aria-hidden="true"><use href="#i-pdf"/></svg>DPGF signé</button>'
+    +(can_?'<button class="btn btn-g btn-sm" style="padding:4px 6px;color:var(--text3)" onclick="dpgfUnpinPdf()" aria-label="Retirer le DPGF signé" title="Retirer le PDF"><svg class="ico ico-xs" aria-hidden="true"><use href="#i-x"/></svg></button>':'')+'</span>';}
+  return can_?'<label class="btn btn-g btn-sm" style="cursor:pointer"><svg class="ico ico-xs" style="margin-right:3px" aria-hidden="true"><use href="#i-upload"/></svg>Joindre le DPGF signé (PDF)<input type="file" accept=".pdf,application/pdf" style="display:none" onchange="dpgfPinPdf(event)"></label>':'';
+}
+function dpgfTabBar(){
+  var canEdit=can('items');
+  function tab(id,ico,label){var on=dpgfTab===id;return '<button role="tab" aria-selected="'+(on?'true':'false')+'" onclick="dpgfSetTab(\''+id+'\')" style="display:inline-flex;align-items:center;gap:6px;padding:7px 15px;border:none;border-radius:8px;font-family:inherit;font-size:12.5px;font-weight:600;cursor:pointer;'+(on?'background:var(--panel);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.14)':'background:transparent;color:var(--text3)')+'"><svg class="ico ico-sm" aria-hidden="true"><use href="#i-'+ico+'"/></svg>'+label+'</button>';}
+  return '<div role="tablist" aria-label="Vue du DPGF" style="display:inline-flex;gap:3px;padding:3px;background:var(--bg2);border:1px solid var(--border);border-radius:11px;margin-bottom:16px">'
+    +(canEdit?tab('edit','edit','Rédaction'):'')+tab('apercu','file-check','DPGF publié')+'</div>';
+}
+function renderDpgf(){
+  dpgfEnsure(PROJ);
+  var canEdit=can('items');
+  if(!canEdit&&dpgfTab==='edit')dpgfTab='apercu';
+  var T=dpgfTotals(PROJ),nLots=PROJ.dpgf.lots.length;
+  setTB('receipt','#5c3d1e','DPGF',nLots+(nLots>1?' lots':' lot')+' · '+suiviEuro(T.aht)+' HT',(canEdit&&dpgfTab==='edit'?'+ Lot':''),'plus');
+  setTabs(null);
+  document.getElementById('content').innerHTML='<div class="pad">'+dpgfTabBar()+'<div id="dpgf-body"></div></div>';
+  if(canEdit&&dpgfTab==='edit')renderDpgfEdit();else renderDpgfView();
+}
+function renderDpgfEdit(){
+  var host=document.getElementById('dpgf-body');if(!host||!PROJ)return;var d=PROJ.dpgf;
+  function leadCluster(n,num){return '<span style="display:inline-flex;align-items:center;gap:1px;flex-shrink:0">'
+    +'<span style="font-size:10.5px;font-weight:700;color:#5c3d1e;min-width:34px;text-align:right">'+num+'</span>'
+    +'<span draggable="true" ondragstart="dpgfDragStart(event,\''+n.id+'\')" ondragend="dpgfDragEnd()" title="Glisser pour déplacer" aria-hidden="true" style="cursor:grab;display:inline-flex;color:var(--text3);padding:2px"><svg class="ico ico-xs"><use href="#i-move"/></svg></span>'
+    +'<span style="display:inline-flex;flex-direction:column">'
+      +'<button onclick="dpgfMoveNode(\''+n.id+'\',-1)" aria-label="Monter '+num+'" style="border:none;background:none;cursor:pointer;color:var(--text3);padding:1px 4px;line-height:0"><svg class="ico" style="width:12px;height:12px" aria-hidden="true"><use href="#i-chevron-up"/></svg></button>'
+      +'<button onclick="dpgfMoveNode(\''+n.id+'\',1)" aria-label="Descendre '+num+'" style="border:none;background:none;cursor:pointer;color:var(--text3);padding:1px 4px;line-height:0"><svg class="ico" style="width:12px;height:12px" aria-hidden="true"><use href="#i-chevron-down"/></svg></button>'
+    +'</span></span>';}
+  function addBtns(id,num){return '<button class="btn btn-g btn-sm" style="padding:4px 7px" onclick="dpgfAddLigne(\''+id+'\')" aria-label="Ajouter une ligne à '+num+'" title="Ajouter une ligne"><svg class="ico ico-xs" style="margin-right:2px" aria-hidden="true"><use href="#i-plus"/></svg>Ligne</button>'
+    +'<button class="btn btn-g btn-sm" style="padding:4px 7px" onclick="dpgfAddSection(\''+id+'\')" aria-label="Ajouter une sous-section à '+num+'" title="Ajouter une sous-section"><svg class="ico ico-xs" style="margin-right:2px" aria-hidden="true"><use href="#i-folder"/></svg>Sous-sect.</button>';}
+  function delBtn(id,label){return '<button class="btn btn-g btn-sm" style="padding:4px 5px;color:var(--red)" aria-label="Supprimer '+(label||'')+'" onclick="dpgfDelNode(\''+id+'\')"><svg class="ico ico-xs" aria-hidden="true"><use href="#i-trash"/></svg></button>';}
+  function dgEditChildren(parent,parentPath){
+    if(!parent.children||!parent.children.length)return '<div style="padding:7px 12px;padding-left:'+(12+parentPath.length*16)+'px;color:var(--text3);font-size:11.5px">Vide — ajoutez une ligne ou une sous-section.</div>';
+    var out='';parent.children.forEach(function(c,i){out+=dgEditNode(c,parentPath.concat(i));});return out;
+  }
+  function dgEditNode(n,path){
+    var level=path.length,num=path.map(function(x){return x+1;}).join('.'),indent=(level-1)*16;
+    if(dgIsSection(n)){
+      var ts=dgTotals(n);
+      return '<div data-id="'+n.id+'" ondragover="dpgfDragOver(event,this)" ondragleave="dpgfDragLeave(this)" ondrop="dpgfDrop(event,\''+n.id+'\')" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:7px 12px;padding-left:'+(12+indent)+'px;background:var(--bg2);border-bottom:1px solid var(--border)">'
+        +leadCluster(n,num)
+        +'<input value="'+e(dgName(n))+'" placeholder="Sous-section (ex. Fondations)" aria-label="Sous-section '+num+'" oninput="dpgfUpdateNode(\''+n.id+'\',\'designation\',this.value)" style="flex:1;min-width:130px;font-weight:600;font-size:12.5px;border:1px solid var(--border2);border-radius:6px;padding:5px 7px;background:var(--bg);color:var(--text)">'
+        +'<span style="text-align:right;white-space:nowrap;line-height:1.1"><span id="dg-ah-'+n.id+'" style="display:block;font-weight:700;font-size:12px;color:#5c3d1e">'+suiviEuro(ts.aht)+'</span><span id="dg-eh-'+n.id+'" style="display:block;font-size:10px;color:var(--text3)">'+suiviEuro(ts.eht)+' ent.</span></span>'
+        +addBtns(n.id,num)+delBtn(n.id,'la section '+num)
+        +'</div>'+dgEditChildren(n,path);
+    }
+    var c=dgLeaf(n);
+    return '<div data-id="'+n.id+'" ondragover="dpgfDragOver(event,this)" ondragleave="dpgfDragLeave(this)" ondrop="dpgfDrop(event,\''+n.id+'\')" style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;padding:7px 12px;padding-left:'+(12+indent)+'px;border-bottom:1px solid var(--border)">'
+      +leadCluster(n,num)
+      +'<input value="'+e(n.designation||'')+'" placeholder="Désignation de l\'ouvrage" aria-label="Désignation" oninput="dpgfUpdateNode(\''+n.id+'\',\'designation\',this.value)" style="flex:1;min-width:140px;font-size:12.5px;border:1px solid var(--border2);border-radius:6px;padding:5px 7px;background:var(--bg);color:var(--text)">'
+      +'<input value="'+e(n.unite||'')+'" placeholder="u" aria-label="Unité" oninput="dpgfUpdateNode(\''+n.id+'\',\'unite\',this.value)" style="width:44px;font-size:12px;border:1px solid var(--border2);border-radius:6px;padding:5px;text-align:center;background:var(--bg);color:var(--text)">'
+      +'<input value="'+e(n.qte||'')+'" placeholder="Qté" aria-label="Quantité estimée" oninput="dpgfUpdateNode(\''+n.id+'\',\'qte\',this.value)" style="width:52px;font-size:12px;border:1px solid var(--border2);border-radius:6px;padding:5px;text-align:right;background:var(--bg);color:var(--text)">'
+      +'<input value="'+e(n.qteEnt||'')+'" placeholder="Qté ent." aria-label="Quantité entreprise" title="Quantité à compléter par l\'entreprise" oninput="dpgfUpdateNode(\''+n.id+'\',\'qteEnt\',this.value)" style="width:56px;font-size:12px;border:1px dashed var(--border2);border-radius:6px;padding:5px;text-align:right;background:var(--bg2);color:var(--text)">'
+      +'<span style="font-size:11px;color:var(--text3)">×</span>'
+      +'<input value="'+e(n.pu||'')+'" placeholder="PU HT" aria-label="Prix unitaire HT" oninput="dpgfUpdateNode(\''+n.id+'\',\'pu\',this.value)" style="width:68px;font-size:12px;border:1px solid var(--border2);border-radius:6px;padding:5px;text-align:right;background:var(--bg);color:var(--text)">'
+      +'<span style="font-size:11px;color:var(--text3)">€</span>'
+      +'<input value="'+e(String(n.tva))+'" placeholder="TVA" aria-label="TVA de la ligne en pourcentage" oninput="dpgfUpdateNode(\''+n.id+'\',\'tva\',this.value)" style="width:42px;font-size:12px;border:1px solid var(--border2);border-radius:6px;padding:5px;text-align:center;background:var(--bg);color:var(--text)"><span style="font-size:11px;color:var(--text3)">% =</span>'
+      +'<span style="text-align:right;white-space:nowrap;line-height:1.1"><span id="dg-ah-'+n.id+'" style="display:block;font-weight:600;font-size:12px;color:#5c3d1e">'+suiviEuro(c.aht)+'</span><span id="dg-eh-'+n.id+'" style="display:block;font-size:10px;color:var(--text3)" title="Total entreprise">'+suiviEuro(c.eht)+' ent.</span></span>'
+      +delBtn(n.id,'la ligne '+num)
+      +'</div>';
+  }
+  var html='<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end;margin-bottom:10px">'
+    +'<label for="dpgf-tva-def" style="font-size:11px;color:var(--text3)">TVA par défaut</label><input id="dpgf-tva-def" aria-label="TVA par défaut en pourcentage" value="'+e(String(d.tvaDefault))+'" oninput="dpgfSetTvaDefault(this.value)" style="width:54px;border:1px solid var(--border2);border-radius:6px;padding:4px 6px;font-size:12px;background:var(--bg);color:var(--text);text-align:center"><span style="font-size:12px;color:var(--text3)">%</span>'
+    +dpgfPdfBtn()
+    +'<button class="btn btn-g btn-sm" onclick="dpgfFromPrechiffrage()" title="Reprendre les lots du pré-chiffrage (Suivi)"><svg class="ico ico-xs" style="margin-right:4px"><use href="#i-receipt"/></svg>Reprendre le pré-chiffrage</button></div>'
+    +'<div style="border:1px solid var(--border);border-radius:var(--r2);background:var(--panel);padding:11px 13px;margin-bottom:14px"><label for="dpgf-intro" style="display:block;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px">Objet / observations</label>'
+    +'<textarea id="dpgf-intro" oninput="dpgfUpdateIntro(this.value)" placeholder="Décomposition du prix global et forfaitaire — observations, conditions…" style="width:100%;min-height:50px;resize:vertical;border:1px solid var(--border2);border-radius:8px;padding:8px 10px;font-size:12.5px;font-family:inherit;background:var(--bg);color:var(--text);box-sizing:border-box">'+e(d.intro||'')+'</textarea></div>';
+  if(d.lots.length)html+='<div style="font-size:10.5px;color:var(--text3);margin:-4px 2px 8px;display:flex;gap:14px;flex-wrap:wrap"><span><svg class="ico ico-xs" style="vertical-align:-2px"><use href="#i-move"/></svg> Glisser ou flèches pour réordonner — numérotation auto</span><span><svg class="ico ico-xs" style="vertical-align:-2px"><use href="#i-folder"/></svg> « Sous-sect. » crée des niveaux (1.1, 1.1.1…)</span><span><span style="display:inline-block;width:11px;height:11px;border:1px dashed var(--border2);background:var(--bg2);border-radius:3px;vertical-align:-1px"></span> Qté entreprise — à compléter par le candidat</span></div>';
+  if(!d.lots.length)html+='<div style="color:var(--text3);font-size:13px;padding:24px;text-align:center;border:1px dashed var(--border);border-radius:var(--r2)">Aucun lot. Cliquez sur « + Lot » en haut à droite, ou « Reprendre le pré-chiffrage ».</div>';
+  d.lots.forEach(function(lot,li){
+    var tl=dgTotals(lot);
+    html+='<div style="border:1px solid var(--border);border-radius:var(--r2);background:var(--panel);margin-bottom:12px;overflow:hidden">'
+      +'<div data-id="'+lot.id+'" ondragover="dpgfDragOver(event,this)" ondragleave="dpgfDragLeave(this)" ondrop="dpgfDrop(event,\''+lot.id+'\')" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:9px 12px;background:var(--bg2);border-bottom:1px solid var(--border)">'
+        +leadCluster(lot,(li+1)+'')
+        +'<input value="'+e(dgName(lot))+'" placeholder="Intitulé du lot (ex. Gros œuvre)" aria-label="Lot '+(li+1)+'" oninput="dpgfUpdateNode(\''+lot.id+'\',\'designation\',this.value)" style="flex:1;min-width:120px;font-weight:700;font-size:13px;border:1px solid var(--border2);border-radius:6px;padding:5px 7px;background:var(--bg);color:var(--text)">'
+        +'<select onchange="dpgfSetLotIntervenant(\''+lot.id+'\',this.value)" aria-label="Intervenant du lot '+(li+1)+'" title="Affecter un intervenant" style="max-width:160px;font-size:11.5px;border:1px solid var(--border2);border-radius:6px;padding:4px 6px;background:var(--bg);color:var(--text)">'+dpgfIntOptions(lot.intId)+'</select>'
+        +'<span style="display:inline-flex;align-items:center;gap:3px;white-space:nowrap;border-left:1px solid var(--border);padding-left:8px"><span style="font-size:11px;color:var(--text3)">TVA</span><input value="'+e(String(dpgfLotTva(lot)))+'" placeholder="mixte" onchange="dpgfSetLotTva(\''+lot.id+'\',this.value)" aria-label="TVA du lot '+(li+1)+'" title="Appliquer ce taux à toutes les lignes du lot" style="width:46px;border:1px solid var(--border2);border-radius:6px;padding:4px 5px;font-size:12px;background:var(--bg);color:var(--text);text-align:center"><span style="font-size:11px;color:var(--text3)">%</span></span>'
+        +'<span style="text-align:right;white-space:nowrap;line-height:1.1"><span id="dg-ah-'+lot.id+'" style="display:block;font-weight:700;font-size:12.5px;color:#5c3d1e">'+suiviEuro(tl.aht)+'</span><span id="dg-eh-'+lot.id+'" style="display:block;font-size:10px;color:var(--text3)">'+suiviEuro(tl.eht)+' ent.</span></span>'
+        +addBtns(lot.id,(li+1)+'')+delBtn(lot.id,'le lot '+(li+1))
+      +'</div>'
+      +dgEditChildren(lot,[li])
+    +'</div>';
+  });
+  var T=dpgfTotals(PROJ);
+  html+='<div style="border-top:2px solid var(--border);margin-top:6px;padding:12px 6px 4px;display:flex;flex-direction:column;align-items:flex-end;gap:4px;font-size:13px">'
+    +'<div style="display:flex;gap:16px;align-items:baseline"><span style="color:var(--text3)">Total marché (architecte)</span><span><strong id="dg-tah" style="color:#5c3d1e;font-size:15px">'+suiviEuro(T.aht)+'</strong> HT</span><span style="color:var(--text3)">·</span><span><strong id="dg-tat">'+suiviEuro(T.attc)+'</strong> TTC</span></div>'
+    +'<div style="display:flex;gap:16px;align-items:baseline;color:var(--text2)"><span style="color:var(--text3)">Total offre entreprise</span><span><strong id="dg-teh" style="font-size:14px">'+suiviEuro(T.eht)+'</strong> HT</span><span style="color:var(--text3)">·</span><span><strong id="dg-tet">'+suiviEuro(T.ettc)+'</strong> TTC</span></div></div>';
+  host.innerHTML=html;
+}
+function renderDpgfView(){
+  var host=document.getElementById('dpgf-body');if(!host||!PROJ)return;var d=PROJ.dpgf;
+  var empty=!d.lots.length&&!(d.intro||'').trim()&&!(d.pdf&&d.pdf.blobId);
+  if(empty){host.innerHTML='<div style="color:var(--text3);font-size:13px;padding:24px;text-align:center;border:1px dashed var(--border);border-radius:var(--r2)">Le DPGF n\'a pas encore été établi.</div>';return;}
+  var trades=dpgfTradesPresent();
+  var filterSel='';
+  if(trades.length)filterSel='<select onchange="dpgfSetIntFilter(this.value)" aria-label="Filtrer par intervenant" style="font-size:12px;border:1px solid var(--border2);border-radius:6px;padding:4px 6px;background:var(--bg);color:var(--text)"><option value="">Tous les intervenants</option>'+trades.map(function(m){return '<option value="'+e(m)+'"'+(dpgfIntFilter===m?' selected':'')+'>'+e(m)+'</option>';}).join('')+'</select>';
+  var lots=(d.lots||[]).filter(function(lot){return !dpgfIntFilter||(lot.metier||'')===dpgfIntFilter;});
+  var T={aht:0,attc:0,eht:0,ettc:0};lots.forEach(function(lot){var t=dgTotals(lot);T.aht+=t.aht;T.attc+=t.attc;T.eht+=t.eht;T.ettc+=t.ettc;});
+  var th='padding:4px 6px;font-weight:600;border-bottom:1px solid var(--border)';
+  function viewRows(n,path){
+    var num=path.map(function(x){return x+1;}).join('.'),depth=path.length;
+    if(dgIsSection(n)){
+      var ts=dgTotals(n),isLot=depth===1,out='';
+      out+='<tr style="background:'+(isLot?'var(--bg2)':'transparent')+';border-bottom:1px solid var(--border)">'
+        +'<td style="padding:5px 6px;color:#5c3d1e;font-weight:700;white-space:nowrap;vertical-align:top">'+num+'</td>'
+        +'<td colspan="5" style="padding:5px 6px;font-weight:700;color:#5c3d1e;vertical-align:top;padding-left:'+(6+(depth-1)*14)+'px">'+e(dgName(n)||'(sans titre)')+'</td>'
+        +'<td style="padding:5px 6px;text-align:right;font-weight:700;white-space:nowrap;vertical-align:top">'+suiviEuro(ts.aht)+'</td>'
+        +'<td style="padding:5px 6px;text-align:right;font-weight:700;color:var(--text2);white-space:nowrap;vertical-align:top">'+suiviEuro(ts.eht)+'</td>'
+      +'</tr>';
+      (n.children||[]).forEach(function(c,i){out+=viewRows(c,path.concat(i));});
+      return out;
+    }
+    var c=dgLeaf(n);
+    return '<tr style="border-bottom:1px solid var(--border)">'
+      +'<td style="padding:4px 6px;color:var(--text3);white-space:nowrap;vertical-align:top">'+num+'</td>'
+      +'<td style="padding:4px 6px;vertical-align:top;padding-left:'+(6+(depth-1)*14)+'px">'+e(n.designation||'—')+'</td>'
+      +'<td style="padding:4px 6px;text-align:center;color:var(--text3);vertical-align:top;white-space:nowrap">'+e(n.unite||'')+'</td>'
+      +'<td style="padding:4px 6px;text-align:right;vertical-align:top;white-space:nowrap">'+e(n.qte||'')+'</td>'
+      +'<td style="padding:4px 6px;text-align:right;vertical-align:top;white-space:nowrap">'+(String(n.qteEnt||'').trim()?e(n.qteEnt):'<span style="display:inline-block;min-width:36px;border-bottom:1px dotted var(--text3)">&nbsp;</span>')+'</td>'
+      +'<td style="padding:4px 6px;text-align:right;vertical-align:top;white-space:nowrap">'+suiviEuro(suiviNum(n.pu))+'</td>'
+      +'<td style="padding:4px 6px;text-align:center;color:var(--text3);vertical-align:top;white-space:nowrap">'+suiviNum(n.tva)+' %</td>'
+      +'<td style="padding:4px 6px;text-align:right;font-weight:600;white-space:nowrap;vertical-align:top">'+suiviEuro(c.aht)+'</td>'
+      +'<td style="padding:4px 6px;text-align:right;color:var(--text2);white-space:nowrap;vertical-align:top">'+(suiviNum(n.qteEnt)>0?suiviEuro(c.eht):'<span style="color:var(--text3)">—</span>')+'</td>'
+    +'</tr>';
+  }
+  var html='<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:10px">'+(filterSel?('<div>'+filterSel+'</div>'):'<div></div>')+'<div style="display:flex;gap:6px;flex-wrap:wrap">'+dpgfPdfBtn()+'<button class="btn btn-g btn-sm" onclick="window.print()"><svg class="ico ico-xs" style="margin-right:4px" aria-hidden="true"><use href="#i-download"/></svg>Imprimer / PDF</button></div></div>'
+    +'<div style="border:1px solid var(--border);border-radius:var(--r2);background:var(--panel);padding:22px 26px;max-width:980px;margin:0 auto;line-height:1.5">'
+    +'<div style="text-align:center;margin-bottom:16px"><h2 style="font-size:18px;font-weight:700;margin:0">Décomposition du Prix Global et Forfaitaire</h2><div style="font-size:12.5px;color:var(--text3);margin-top:3px">'+e(PROJ.name||'')+(PROJ.address?(' — '+e(PROJ.address)):'')+'</div></div>';
+  if((d.intro||'').trim())html+='<div style="font-size:12.5px;white-space:pre-wrap;color:var(--text2);border-bottom:1px solid var(--border);padding-bottom:12px;margin-bottom:14px">'+e(d.intro)+'</div>';
+  lots.forEach(function(lot){
+    var origIdx=d.lots.indexOf(lot);
+    var intLabel=(lot.metier||lot.entreprise)?((lot.metier||'')+(lot.entreprise?(' — '+lot.entreprise):'')):'';
+    html+='<div style="margin-bottom:18px">'
+      +'<div style="display:flex;justify-content:space-between;align-items:baseline;border-bottom:1.5px solid var(--blue-lt);padding-bottom:4px;margin-bottom:6px"><h3 style="font-size:14px;font-weight:700;color:#5c3d1e;margin:0">Lot '+(origIdx+1)+' — '+e(dgName(lot)||'(sans titre)')+(intLabel?(' <span style="font-size:11px;font-weight:600;color:var(--text3)">· '+e(intLabel)+'</span>'):'')+'</h3><span style="font-weight:700;color:#5c3d1e;font-size:13px">'+suiviEuro(dgTotals(lot).aht)+' HT</span></div>'
+      +'<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:11.5px"><thead><tr style="color:var(--text3)">'
+        +'<th scope="col" style="'+th+';text-align:left">N°</th>'
+        +'<th scope="col" style="'+th+';text-align:left">Désignation</th>'
+        +'<th scope="col" style="'+th+';text-align:center">U.</th>'
+        +'<th scope="col" style="'+th+';text-align:right">Qté</th>'
+        +'<th scope="col" style="'+th+';text-align:right">Qté entr.</th>'
+        +'<th scope="col" style="'+th+';text-align:right">PU HT</th>'
+        +'<th scope="col" style="'+th+';text-align:center">TVA</th>'
+        +'<th scope="col" style="'+th+';text-align:right">Total archi</th>'
+        +'<th scope="col" style="'+th+';text-align:right">Total entr.</th>'
+      +'</tr></thead><tbody>';
+    (lot.children||[]).forEach(function(c,i){html+=viewRows(c,[origIdx,i]);});
+    html+='</tbody></table></div></div>';
+  });
+  var bd=dpgfTvaBreakdown(PROJ);
+  html+='<div style="border-top:2px solid var(--border);margin-top:10px;padding-top:12px;display:flex;flex-direction:column;align-items:flex-end;gap:3px;font-size:12.5px">'
+    +'<div style="display:flex;gap:14px;min-width:300px;justify-content:space-between"><span style="color:var(--text3)">Total architecte HT</span><strong style="color:#5c3d1e">'+suiviEuro(T.aht)+'</strong></div>';
+  if(!dpgfIntFilter)bd.forEach(function(b){html+='<div style="display:flex;gap:14px;min-width:300px;justify-content:space-between;color:var(--text2)"><span>TVA '+b.rate+' % <span style="color:var(--text3)">(sur '+suiviEuro(b.ht)+' HT)</span></span><span>'+suiviEuro(b.tva)+'</span></div>';});
+  html+='<div style="display:flex;gap:14px;min-width:300px;justify-content:space-between;border-top:1px solid var(--border);padding-top:6px;margin-top:4px;font-size:14px"><span style="color:var(--text3)">Total marché architecte TTC</span><strong style="font-size:16px">'+suiviEuro(T.attc)+'</strong></div>'
+    +'<div style="display:flex;gap:14px;min-width:300px;justify-content:space-between;margin-top:8px;padding-top:6px;border-top:1px dashed var(--border)"><span style="color:var(--text3)">Total offre entreprise HT</span><strong style="color:var(--text2)">'+suiviEuro(T.eht)+'</strong></div>'
+    +'<div style="display:flex;gap:14px;min-width:300px;justify-content:space-between;font-size:13px"><span style="color:var(--text3)">Total offre entreprise TTC</span><strong>'+suiviEuro(T.ettc)+'</strong></div></div>';
+  html+='</div>';
+  host.innerHTML=html;
 }
 
 function renderSuivi(){
@@ -5242,7 +5552,7 @@ function logAudit(action,subject,ic){
     PROJ.audit.push({ic:ic||'edit',label:action,sub:subject||'',time:Date.now(),user:userDisplayName()});
     savePROJS();
     if(VIEW==='audit')renderAudit();
-  }catch(e){}
+  }catch(e){console.warn('[logAudit] échec',e);}
 }
 // Temps relatif en français à partir d'un timestamp (ms).
 function auditRelTime(ts){
@@ -6232,6 +6542,11 @@ function pvPostAnnuaire(annuaire){
 if(typeof window!=='undefined'&&!window._pvAnnuaireReqWired){
   window._pvAnnuaireReqWired=true;
   window.addEventListener('message',function(ev){
+    // N'accepter que les messages provenant de l'iframe PV (source faisant autorité ;
+    // l'origine vaut "null" en file:// donc le contrôle de source est le garde-fou principal).
+    var fr=document.getElementById('pv-frame');
+    if(!fr||ev.source!==fr.contentWindow)return;
+    if(location.protocol!=='file:'&&ev.origin!==location.origin)return;
     try{ if(ev.data&&ev.data.type==='archisync-request-annuaire'&&PROJ) pvPostAnnuaire(pvBuildAnnuaire(PROJ)); }catch(e){console.warn('[shell] req annuaire',e);}
   });
 }
@@ -6583,6 +6898,7 @@ function toggleDoss(mid,f){if(!can('manageAccess'))return denyMsg();var m=getMem
 function accessAreaCode(label){for(var k in AREA_TO_FLIST){if(AREA_TO_FLIST[k]===label)return k;}return null;}
 // Cycle d'un override de sous-dossier : Hérité → Accès → Bloqué → Hérité.
 function cycleFolderAccess(mid,fid){
+  if(!can('manageAccess'))return denyMsg();
   var m=getMembresForProj(PROJ).find(function(x){return x.id===mid;}); if(!m)return; normalizeMbr(m);
   var cur=m.folderAccess[fid];
   if(cur===undefined)m.folderAccess[fid]=true; else if(cur===true)m.folderAccess[fid]=false; else delete m.folderAccess[fid];
@@ -6666,6 +6982,7 @@ function removeMbr(mid){
 }
 
 function inviteMbr(){
+  if(!can('manageAccess'))return denyMsg();
   var name=document.getElementById('inv-name')?.value?.trim();
   var email=document.getElementById('inv-e')?.value?.trim()||'';
   // Le nom est requis (l'email reste facultatif : aucun email n'est envoyé).
@@ -7460,6 +7777,9 @@ function toast(msg,opts){
   if(_toastTimer){clearTimeout(_toastTimer);_toastTimer=null;}
   t.className='toast';
   const type=opts.type||'success';
+  // Erreurs annoncées immédiatement par les lecteurs d'écran ; le reste reste « poli ».
+  t.setAttribute('aria-live',type==='error'?'assertive':'polite');
+  t.setAttribute('role',type==='error'?'alert':'status');
   if(type==='error')t.classList.add('t-err');
   else if(type==='warn')t.classList.add('t-warn');
   else if(type==='info')t.classList.add('t-info');
@@ -7790,6 +8110,7 @@ function projAllBlobIds(p){
   });});
   if(p.cctp&&p.cctp.pdf&&p.cctp.pdf.blobId)ids.push(p.cctp.pdf.blobId);
   if(p.cctp&&Array.isArray(p.cctp.additifs))p.cctp.additifs.forEach(function(a){if(a.pdf&&a.pdf.blobId)ids.push(a.pdf.blobId);});
+  if(p.dpgf&&p.dpgf.pdf&&p.dpgf.pdf.blobId)ids.push(p.dpgf.pdf.blobId);
   if(p.contrat){
     if(p.contrat.pdf&&p.contrat.pdf.blobId)ids.push(p.contrat.pdf.blobId);
     (p.contrat.avenants||[]).forEach(function(a){if(a.pdf&&a.pdf.blobId)ids.push(a.pdf.blobId);});
@@ -7811,7 +8132,7 @@ function deleteProj(id){
       // Suppression en ligne (si synchronisé) AVANT de retirer localement — sinon le projet
       // réapparaîtrait à la prochaine connexion. RLS n'autorise que le propriétaire.
       try{if(p._sbId&&typeof isSignedIn==='function'&&isSignedIn()){var sb=p._sbId;
-        supaClient().then(function(c){return c.from('projects').delete().eq('id',sb);}).catch(function(){});}}catch(e){}
+        supaClient().then(function(c){return c.from('projects').delete().eq('id',sb);}).catch(function(er){console.warn('[deleteProject] suppression en ligne échouée',er);toastErr('Projet retiré de cet appareil — la suppression en ligne a échoué, il peut réapparaître à la reconnexion.');});}}catch(e){}
       // Libère les octets (IndexedDB + mémoire) pour ne pas laisser de blobs orphelins.
       projAllBlobIds(p).forEach(function(bid){try{delete BLOBS[bid];BlobDB.del(bid);}catch(e){}});
       try{delete PROJ_PLAN_FOLDERS[p.id];}catch(e){}
@@ -7832,7 +8153,7 @@ function collectProjectBlobs(p){
   ids.forEach(function(id){ if(!id)return; if(BLOBS[id])out[id]=BLOBS[id]; else if(BlobDB.has(id))missing.push(id); });
   if(!missing.length)return Promise.resolve(out);
   return Promise.all(missing.map(function(id){
-    return BlobDB.get(id).then(function(b){if(b){out[id]=b;BLOBS[id]=b;}}).catch(function(){});
+    return BlobDB.get(id).then(function(b){if(b){out[id]=b;BLOBS[id]=b;}}).catch(function(er){console.warn('[collectProjectBlobs] fichier illisible',id,er);});
   })).then(function(){return out;});
 }
 // Exporte un seul projet au format de sauvegarde standard (réimportable).
@@ -8059,6 +8380,32 @@ function buildDemoProject(idSuffix){
   };
   // CCTP de démonstration : le modèle type complet (8 chapitres, 31 articles).
   try{demo.cctp=cctpFromTemplate();demo.cctp.additifs=[{id:'cad'+(uid++),num:'1',date:'2026-04-22',objet:'Ajout d\'un lot domotique (volets et éclairage pilotés)',texte:'Ajout, en cours de projet, d\'un lot domotique non prévu au CCTP initial : pilotage des volets roulants et de l\'éclairage des pièces de vie. Prescriptions, marques et compatibilités à préciser avec l\'électricien. Le présent additif complète l\'article « Électricité » sans le remplacer.',statut:'publie',pdf:null}];}catch(e){}
+  try{var dgl=function(de,u,q,p,t,qe){return{id:'dgg'+(uid++),designation:de,unite:u,qte:q,qteEnt:(qe||''),pu:p,tva:(t||10)};};var dgs=function(na,kids){return{id:'dgs'+(uid++),designation:na,children:kids};};
+  demo.dpgf={intro:'Décomposition du prix global et forfaitaire — base de consultation des entreprises. Quantités et prix unitaires HT à compléter par chaque candidat (colonne « Qté entreprise »).',tvaDefault:10,pdf:null,lots:[
+    {id:'dgl'+(uid++),designation:'Terrassement / Gros œuvre',intId:'',metier:'Gros œuvre',entreprise:'SARL Bâti-Sud',children:[
+      dgs('Fondations',[
+        dgl('Fouilles en rigole et terrassement','m³','38','55',10),
+        dgl('Béton de propreté ép. 5 cm','m²','46','22',10),
+        dgl('Semelles filantes béton armé','ml','42','180',10,'44'),
+        dgl('Ferraillage HA semelles','kg','520','3.2',10)
+      ]),
+      dgs('Élévations',[
+        dgl('Murs agglomérés béton ép. 20 cm','m²','95','85',10,'98'),
+        dgl('Chaînages et raidisseurs BA','ml','60','45',10),
+        dgl('Enduit ciment de dressage','m²','95','28',10)
+      ]),
+      dgl('Plancher poutrelles-hourdis','m²','70','95',10)
+    ]},
+    {id:'dgl'+(uid++),designation:'Charpente / couverture',intId:'',metier:'Charpente-couverture',entreprise:'',children:[
+      dgl('Charpente bois traditionnelle','m²','80','120',10),
+      dgl('Couverture tuiles canal + PST','m²','80','95',10),
+      dgl('Zinguerie et gouttières','ml','38','42',10)
+    ]},
+    {id:'dgl'+(uid++),designation:'Menuiseries extérieures',intId:'',metier:'Menuiserie',entreprise:'',children:[
+      dgl('Fenêtres bois double vitrage','u','8','950',10),
+      dgl('Porte de garage bois motorisée','u','1','3200',10)
+    ]}
+  ]};}catch(e){console.warn('[demo.dpgf]',e);}
   try{var _ct=ctFromTemplate('mission_complete');demo.contrat={type:'mission_complete',client:'Famille Laurens',clientAdr:'14 chemin des Oliviers, 13100 Aix-en-Provence',architecte:'Atelier démo — Alex Démo',ordre:'S12345',budget:'320 000',remu:'11 %',remuMode:'pourcentage du coût des travaux',tauxHoraire:'90',dateSign:'2026-02-10',dateDebut:'2026-03-01',statut:'signe',pdf:null,intro:_ct.intro,articles:_ct.articles,avenants:[{id:'av'+(uid++),num:'1',date:'2026-04-15',objet:'Extension de mission — aménagement paysager',montant:'+8 500',texte:'Ajout d\'une mission de conception des abords et terrasses, non prévue au contrat initial. Honoraires complémentaires forfaitaires.',statut:'signe',pdf:null}]};}catch(e){}
   try{demo.paliers={list:[
     {id:'plr'+(uid++),nom:'Esquisse (ESQ)',livrable:'Esquisse approuvée',statut:'valide',dateValid:'2026-03-05',signe:true,note:'',mods:[]},
@@ -8815,6 +9162,7 @@ function remapImportedBlobs(p,blobsSrc){
   // partageraient le même blobId et la suppression de l'un effacerait le PDF de l'autre.
   if(p.cctp&&p.cctp.pdf&&p.cctp.pdf.blobId)p.cctp.pdf.blobId=move(p.cctp.pdf.blobId,'cctppdf');
   if(p.cctp&&Array.isArray(p.cctp.additifs))p.cctp.additifs.forEach(function(a){if(a.pdf&&a.pdf.blobId)a.pdf.blobId=move(a.pdf.blobId,'cadpdf');});
+  if(p.dpgf&&p.dpgf.pdf&&p.dpgf.pdf.blobId)p.dpgf.pdf.blobId=move(p.dpgf.pdf.blobId,'dgpdf');
   if(p.contrat){
     if(p.contrat.pdf&&p.contrat.pdf.blobId)p.contrat.pdf.blobId=move(p.contrat.pdf.blobId,'ctpdf');
     (p.contrat.avenants||[]).forEach(function(a){if(a.pdf&&a.pdf.blobId)a.pdf.blobId=move(a.pdf.blobId,'avpdf');});
@@ -8867,10 +9215,11 @@ function applyImport(data,mode){
     if(mode==='replace'){
       if(data.user&&typeof data.user==='object'){Object.assign(USER,safeUser(data.user));saveUSER();}
       PROJS=data.projs;
-      PROJS.forEach(function(p){(p.membres||[]).forEach(normalizeMbr);if(p.planFolders)PROJ_PLAN_FOLDERS[p.id]=p.planFolders;});
+      PROJS.forEach(function(p){try{normalizeProject(p);}catch(er){console.warn('[applyImport] normalizeProject',er);}if(p.planFolders)PROJ_PLAN_FOLDERS[p.id]=p.planFolders;});
       if(data.blobs&&typeof data.blobs==='object'){
         Object.keys(data.blobs).forEach(function(k){
-          if(data.blobs[k]){BLOBS[k]=data.blobs[k];try{BlobDB.put(k,data.blobs[k]);}catch(e){}}
+          var bv=data.blobs[k];
+          if(typeof bv==='string'&&/^data:/.test(bv)){BLOBS[k]=bv;try{BlobDB.put(k,bv);}catch(e){}}
         });
       }
       savePROJS();
@@ -8888,7 +9237,7 @@ function applyImport(data,mode){
       if(!ex){
         // Nouveau projet : re-clé les blobs (peut entrer en collision avec des ids locaux d'autres projets).
         remapImportedBlobs(incoming,data.blobs);
-        (incoming.membres||[]).forEach(normalizeMbr);
+        try{normalizeProject(incoming);}catch(er){console.warn('[applyImport] normalizeProject',er);}
         if(incoming.planFolders)PROJ_PLAN_FOLDERS[incoming.id]=incoming.planFolders;
         PROJS.push(incoming);added++;
       } else if(JSON.stringify(ex)===JSON.stringify(incoming)){
@@ -9107,9 +9456,12 @@ function normalizeProject(p){
   if(!p.opts||typeof p.opts!=='object')p.opts={};
   if(!p.cctp||typeof p.cctp!=='object')p.cctp={intro:'',sections:[]};
   try{if(typeof cctpEnsure==='function')cctpEnsure(p);}catch(e){console.warn('[normalizeProject] cctpEnsure',e);}
+  try{if(typeof dpgfEnsure==='function')dpgfEnsure(p);}catch(e){console.warn('[normalizeProject] dpgfEnsure',e);}
   try{if(typeof ctEnsure==='function')ctEnsure(p);}catch(e){console.warn('[normalizeProject] ctEnsure',e);}
   try{if(typeof palEnsure==='function')palEnsure(p);}catch(e){console.warn('[normalizeProject] palEnsure',e);}
   try{if(typeof hrEnsure==='function')hrEnsure(p);}catch(e){console.warn('[normalizeProject] hrEnsure',e);}
+  try{if(typeof ensureSuivi==='function')ensureSuivi(p);}catch(e){console.warn('[normalizeProject] ensureSuivi',e);}
+  try{if(typeof ensurePrechiffrage==='function')ensurePrechiffrage(p);}catch(e){console.warn('[normalizeProject] ensurePrechiffrage',e);}
   // Couleurs issues du cloud : neutralise toute valeur CSS non conforme (anti-injection style).
   try{if(p.color)p.color=sanitizeColor(p.color);if(p.bg)p.bg=sanitizeColor(p.bg);}catch(e){}
   if(!p.docs_data||typeof p.docs_data!=='object')p.docs_data={};
@@ -9219,7 +9571,7 @@ function supaImportLocal(){
 function _supaSetSyncState(s){try{var el=document.getElementById('sync-stamp');if(el)el.textContent=(s==='ok'?'Synchronisé ✓':(s==='pending'?'Synchronisation…':(s==='err'?'Échec de synchro (réessai au prochain enregistrement)':'')));}catch(e){}}
 
 /* ── Codes d'accès entreprise (Phase 4, côté propriétaire) ──────────────────── */
-function _genAccessCode(){var al='ABCDEFGHJKMNPQRSTUVWXYZ23456789';function blk(){var s='';for(var i=0;i<4;i++)s+=al[Math.floor(Math.random()*al.length)];return s;}return blk()+'-'+blk();}
+function _genAccessCode(){var al='ABCDEFGHJKMNPQRSTUVWXYZ23456789';function rnd(n){try{var a=new Uint32Array(1);crypto.getRandomValues(a);return a[0]%n;}catch(_){return Math.floor(Math.random()*n);}}function blk(){var s='';for(var i=0;i<4;i++)s+=al[rnd(al.length)];return s;}return blk()+'-'+blk();}
 function supaLoadAccessCodes(){
   if(!isSignedIn()||!PROJ||!PROJ._sbId)return Promise.resolve([]);
   return supaClient().then(function(c){return c.from('access_codes').select('code,access_role,email,used_by,used_at,created_at').eq('project_id',PROJ._sbId);})
