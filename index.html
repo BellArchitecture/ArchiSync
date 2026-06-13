@@ -8396,14 +8396,54 @@ function buildDemoProject(idSuffix){
       ]),
       dgl('Plancher poutrelles-hourdis','m²','70','95',10)
     ]},
-    {id:'dgl'+(uid++),designation:'Charpente / couverture',intId:'',metier:'Charpente-couverture',entreprise:'',children:[
+    {id:'dgl'+(uid++),designation:'Charpente / couverture',intId:'',metier:'Charpente-couverture',entreprise:'Charpentes du Luberon',children:[
       dgl('Charpente bois traditionnelle','m²','80','120',10),
-      dgl('Couverture tuiles canal + PST','m²','80','95',10),
-      dgl('Zinguerie et gouttières','ml','38','42',10)
+      dgl('Couverture tuiles canal + PST','m²','80','95',10,'82'),
+      dgl('Zinguerie et gouttières zinc','ml','38','42',10)
+    ]},
+    {id:'dgl'+(uid++),designation:'Électricité',intId:'',metier:'Électricité',entreprise:'EURL Volt & Co',children:[
+      dgs('Courants forts',[
+        dgl('Tableau électrique + protections','ens','1','1450',10),
+        dgl('Points lumineux (boîtes + appareillage)','u','32','58',10,'34'),
+        dgl('Prises de courant 16A','u','46','42',10),
+        dgl('Alimentations spécialisées (four, plaque, LL)','u','6','85',10)
+      ]),
+      dgs('Courants faibles',[
+        dgl('Prises RJ45 catégorie 6','u','10','65',10),
+        dgl('Prises TV / coaxial','u','5','55',10)
+      ])
+    ]},
+    {id:'dgl'+(uid++),designation:'Plomberie / CVC',intId:'',metier:'Plomberie-CVC',entreprise:'',children:[
+      dgs('Alimentation & évacuation',[
+        dgl('Réseau alimentation PER encastré','ml','85','18',10),
+        dgl('Réseau évacuation PVC','ml','42','22',10)
+      ]),
+      dgs('Appareils sanitaires',[
+        dgl('Douche italienne + robinetterie','ens','1','1250',10),
+        dgl('WC suspendu + bâti-support','u','2','620',10),
+        dgl('Lavabo / vasque + mitigeur','u','3','340',10)
+      ]),
+      dgs('Chauffage / CVC',[
+        dgl('Pompe à chaleur air/eau + pose','ens','1','8500',10),
+        dgl('Plancher chauffant hydraulique','m²','95','62',10,'97'),
+        dgl('Ventilation VMC double flux','ens','1','2400',10)
+      ])
     ]},
     {id:'dgl'+(uid++),designation:'Menuiseries extérieures',intId:'',metier:'Menuiserie',entreprise:'',children:[
       dgl('Fenêtres bois double vitrage','u','8','950',10),
+      dgl('Baie vitrée coulissante alu','u','2','2200',10),
       dgl('Porte de garage bois motorisée','u','1','3200',10)
+    ]},
+    {id:'dgl'+(uid++),designation:'Plâtrerie / peinture',intId:'',metier:'Plâtrerie-peinture',entreprise:'',children:[
+      dgs('Cloisons & doublages',[
+        dgl('Cloisons distribution placo 72mm','m²','120','38',10),
+        dgl('Doublage thermique murs ext.','m²','140','46',10),
+        dgl('Faux-plafonds placo + isolation','m²','95','42',10)
+      ]),
+      dgs('Peinture & finitions',[
+        dgl('Préparation + peinture murs','m²','310','16',10),
+        dgl('Peinture plafonds','m²','95','15',10)
+      ])
     ]}
   ]};}catch(e){console.warn('[demo.dpgf]',e);}
   try{var _ct=ctFromTemplate('mission_complete');demo.contrat={type:'mission_complete',client:'Famille Laurens',clientAdr:'14 chemin des Oliviers, 13100 Aix-en-Provence',architecte:'Atelier démo — Alex Démo',ordre:'S12345',budget:'320 000',remu:'11 %',remuMode:'pourcentage du coût des travaux',tauxHoraire:'90',dateSign:'2026-02-10',dateDebut:'2026-03-01',statut:'signe',pdf:null,intro:_ct.intro,articles:_ct.articles,avenants:[{id:'av'+(uid++),num:'1',date:'2026-04-15',objet:'Extension de mission — aménagement paysager',montant:'+8 500',texte:'Ajout d\'une mission de conception des abords et terrasses, non prévue au contrat initial. Honoraires complémentaires forfaitaires.',statut:'signe',pdf:null}]};}catch(e){}
