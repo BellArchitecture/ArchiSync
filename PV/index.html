@@ -459,34 +459,73 @@ let CRS = [];
   // réinjecter : on laisse l'espace vide (l'utilisateur créera ses propres CR).
   try { if(localStorage.getItem('plansync_demo_deleted')==='1'){ CRS=[]; return; } } catch(e) {}
   // No saved data — inject a clean generic starter project
-  CRS = [{
-    id:'cr_modele',
-    projet:'Projet modèle',
-    adresse:'Adresse du chantier',
-    date:(function(){var d=new Date();return d.toLocaleDateString('fr-FR');})(),
-    dateProchaine:'',
-    numero:1,
-    redacteur:'Rédacteur',
-    statut:'draft',
-    intervenants:[
-      {id:'im1',lot:'Maîtrise d\'œuvre',entreprise:'Cabinet Architecte',contacts:'Architecte référent',color:'#7a9db5',present:true,convoque:true},
-      {id:'im2',lot:'Lot Gros Œuvre',entreprise:'Entreprise GO',contacts:'Chef de chantier',color:'#c47a00',present:true,convoque:true},
-      {id:'im3',lot:'Lot Électricité',entreprise:'Entreprise Élec',contacts:'Responsable technique',color:'#f59f00',present:false,convoque:true},
-    ],
-    lots:[
-      {id:'lm1',titre:'Gros Œuvre',ouvert:true,intId:'im2',remarques:[
-        {id:'rm1',texte:'Vérifier le ferraillage de la dalle avant coulage.',done:false,flag:true,decision:false,archived:false,createdAt:(function(){var d=new Date();return d.toLocaleDateString('fr-FR');})()},
-        {id:'rm2',texte:'Nettoyage de la zone de coffrage effectué.',done:true,flag:false,decision:false,archived:false,createdAt:(function(){var d=new Date();return d.toLocaleDateString('fr-FR');})(),doneAt:(function(){var d=new Date();return d.toLocaleDateString('fr-FR');})()},
-      ]},
-      {id:'lm2',titre:'Électricité',ouvert:true,intId:'im3',remarques:[
-        {id:'rm3',texte:'Réservations pour passage des gaines à confirmer avec l\'architecte.',done:false,flag:false,decision:false,archived:false,createdAt:(function(){var d=new Date();return d.toLocaleDateString('fr-FR');})()},
-      ]},
-      {id:'lm3',titre:'Coordination générale',ouvert:true,intId:'im1',remarques:[]},
-    ],
-    actions:[
-      {id:'am1',texte:'Transmettre le plan de coffrage mis à jour.',responsable:'Entreprise GO',intId:'im2',echeance:'',done:false},
-    ],
-  }];
+  // ── Démonstration « chantier en cours » : extension de villa, ~3 mois de travaux écoulés. ──
+  var _t=new Date();
+  function _dAgo(n){var d=new Date(_t.getTime());d.setDate(d.getDate()-n);return d.toLocaleDateString('fr-FR');}
+  CRS = [
+    // CR de la semaine en cours (réunion de chantier n°8).
+    {
+      id:'cr_demo8', projet:'Extension Villa Laurens (démo)', adresse:'14 chemin des Oliviers, 13100 Aix-en-Provence',
+      date:_dAgo(2), dateProchaine:_dAgo(-12), numero:8, redacteur:'Architecte référent', statut:'draft',
+      intervenants:[
+        {id:'im_moe',lot:'Maîtrise d\'œuvre',entreprise:'Atelier d\'architecture',contacts:'Architecte référent',color:'#7a9db5',present:true,convoque:true},
+        {id:'im_go',lot:'Gros œuvre',entreprise:'SARL Bâti-Sud',contacts:'Chef de chantier',color:'#c47a00',present:true,convoque:true},
+        {id:'im_charp',lot:'Charpente / couverture',entreprise:'Charpentes du Luberon',contacts:'Conducteur de travaux',color:'#9b6a3b',present:true,convoque:true},
+        {id:'im_elec',lot:'Électricité',entreprise:'EURL Volt & Co',contacts:'Électricien',color:'#f59f00',present:true,convoque:true},
+        {id:'im_plomb',lot:'Plomberie / CVC',entreprise:'Sud Plomberie',contacts:'Plombier',color:'#1c7ed6',present:false,convoque:true},
+        {id:'im_menu',lot:'Menuiseries',entreprise:'Menuiseries Provence',contacts:'Métreur',color:'#2f9e44',present:false,convoque:true},
+      ],
+      lots:[
+        {id:'lo_go',titre:'Gros œuvre',ouvert:true,intId:'im_go',remarques:[
+          {id:'rq_go1',texte:'Dalle RDC coulée et séchée, niveaux conformes au plan.',done:true,flag:false,decision:false,archived:false,createdAt:_dAgo(60),doneAt:_dAgo(48)},
+          {id:'rq_go2',texte:'Élévations et chaînages terminés sur l\'ensemble de l\'extension.',done:true,flag:false,decision:false,archived:false,createdAt:_dAgo(40),doneAt:_dAgo(20)},
+          {id:'rq_go3',texte:'Reprise en sous-œuvre RSO2 validée par le bureau d\'études structure.',done:true,flag:false,decision:true,archived:false,createdAt:_dAgo(35),doneAt:_dAgo(28)},
+          {id:'rq_go4',texte:'Étanchéité des fondations à reprendre à l\'angle nord (infiltration constatée).',done:false,flag:true,decision:false,archived:false,createdAt:_dAgo(2)},
+        ]},
+        {id:'lo_charp',titre:'Charpente / couverture',ouvert:true,intId:'im_charp',remarques:[
+          {id:'rq_ch1',texte:'Charpente bois posée et traitée.',done:true,flag:false,decision:false,archived:false,createdAt:_dAgo(18),doneAt:_dAgo(12)},
+          {id:'rq_ch2',texte:'Couverture tuiles canal en cours — environ 70% posé.',done:false,flag:false,decision:false,archived:false,createdAt:_dAgo(5)},
+          {id:'rq_ch3',texte:'Solins et raccord de cheminée à finaliser avant les pluies.',done:false,flag:true,decision:false,archived:false,createdAt:_dAgo(2)},
+        ]},
+        {id:'lo_elec',titre:'Électricité',ouvert:true,intId:'im_elec',remarques:[
+          {id:'rq_el1',texte:'Emplacement du tableau électrique validé avec la maîtrise d\'œuvre.',done:true,flag:false,decision:true,archived:false,createdAt:_dAgo(9),doneAt:_dAgo(2)},
+          {id:'rq_el2',texte:'Saignées et passage des gaines au RDC en cours.',done:false,flag:false,decision:false,archived:false,createdAt:_dAgo(2)},
+          {id:'rq_el3',texte:'Réservation d\'alimentation pour la PAC à coordonner avec le plombier.',done:false,flag:true,decision:false,archived:false,createdAt:_dAgo(2)},
+        ]},
+        {id:'lo_plomb',titre:'Plomberie / CVC',ouvert:true,intId:'im_plomb',remarques:[
+          {id:'rq_pl1',texte:'Réseau d\'évacuation PVC posé au RDC.',done:true,flag:false,decision:false,archived:false,createdAt:_dAgo(15),doneAt:_dAgo(8)},
+          {id:'rq_pl2',texte:'Choix du modèle de pompe à chaleur en attente de validation du client.',done:false,flag:true,decision:false,archived:false,createdAt:_dAgo(2)},
+        ]},
+        {id:'lo_menu',titre:'Menuiseries extérieures',ouvert:true,intId:'im_menu',remarques:[
+          {id:'rq_me1',texte:'Métrés des fenêtres pris, fabrication lancée — livraison prévue sous 4 semaines.',done:false,flag:false,decision:false,archived:false,createdAt:_dAgo(6)},
+        ]},
+      ],
+      actions:[
+        {id:'ac1',texte:'Reprendre l\'étanchéité des fondations (angle nord).',responsable:'SARL Bâti-Sud',intId:'im_go',echeance:_dAgo(-3),done:false},
+        {id:'ac2',texte:'Transmettre le plan de réservations PAC mis à jour.',responsable:'Maîtrise d\'œuvre',intId:'im_moe',echeance:_dAgo(-1),done:false},
+        {id:'ac3',texte:'Valider le modèle de pompe à chaleur (devis Sud Plomberie).',responsable:'Client / MOE',intId:'im_moe',echeance:_dAgo(2),done:false},
+        {id:'ac4',texte:'Finaliser les solins de couverture avant intempéries.',responsable:'Charpentes du Luberon',intId:'im_charp',echeance:_dAgo(-2),done:false},
+      ],
+    },
+    // CR antérieur archivé (début de chantier, ~2 mois plus tôt).
+    {
+      id:'cr_demo4', projet:'Extension Villa Laurens (démo)', adresse:'14 chemin des Oliviers, 13100 Aix-en-Provence',
+      date:_dAgo(58), dateProchaine:_dAgo(44), numero:4, redacteur:'Architecte référent', statut:'archived',
+      intervenants:[
+        {id:'im_moe4',lot:'Maîtrise d\'œuvre',entreprise:'Atelier d\'architecture',contacts:'Architecte référent',color:'#7a9db5',present:true,convoque:true},
+        {id:'im_go4',lot:'Gros œuvre',entreprise:'SARL Bâti-Sud',contacts:'Chef de chantier',color:'#c47a00',present:true,convoque:true},
+      ],
+      lots:[
+        {id:'lo_go4',titre:'Gros œuvre',ouvert:true,intId:'im_go4',remarques:[
+          {id:'rq_g41',texte:'Terrassement et fouilles en rigole réalisés.',done:true,flag:false,decision:false,archived:false,createdAt:_dAgo(70),doneAt:_dAgo(62)},
+          {id:'rq_g42',texte:'Ferraillage des semelles contrôlé avant coulage.',done:true,flag:false,decision:true,archived:false,createdAt:_dAgo(60),doneAt:_dAgo(58)},
+        ]},
+      ],
+      actions:[
+        {id:'ac41',texte:'Commander les blocs béton pour les élévations.',responsable:'SARL Bâti-Sud',intId:'im_go4',echeance:_dAgo(50),done:true},
+      ],
+    },
+  ];
 })();
 
 // Repositionne le compteur d'ids au-delà du plus grand suffixe numérique déjà présent,
