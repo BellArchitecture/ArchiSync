@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Archisync — dernière modification : 13/06/2026 16:09 -->
+<!-- Archisync — dernière modification : 13/06/2026 17:25 -->
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
@@ -1305,6 +1305,119 @@ function effProgress(p){
 }
 
 /* ══ SIDEBAR ══ */
+/* ══ Menu de gauche configurable (réglages du projet) ══════════════════════
+   p.navLayout = { zoneLabel, groups:[ {id,label,zone:'content'|'gestion',items:[{id,label?,hidden?}]} ] }
+   Catalogue fixe des écrans ; l'utilisateur réorganise/renomme/masque depuis « Informations projet ». */
+var NAV_CAT={
+  plans:{icon:'pdf',label:'Plans'}, photos:{icon:'camera',label:'Photos chantier'}, admin:{icon:'folder',label:'Documents admin'},
+  contrats:{icon:'invoice',label:'Contrats & Devis'}, cctp:{icon:'check-list',label:'CCTP'}, dpgf:{icon:'receipt',label:'DPGF'},
+  pv:{icon:'file-check',label:'PV'}, chantier:{icon:'helmet',label:'Planning'},
+  membres:{icon:'users',label:'Équipe & contacts'}, messagerie:{icon:'message',label:'Notes'},
+  contrat:{icon:'invoice',label:'Contrat & honoraires'}, suivi:{icon:'receipt',label:'Suivi des dépenses'},
+  checklists:{icon:'hat',label:'Checklistes'}, plu:{icon:'arch',label:'Pré-étude PLU'},
+  copilote:{icon:'sparkles',label:'Co-pilote'}, timeline:{icon:'check-list',label:'Historique'}
+};
+var NAV_CAT_ORDER=['plans','photos','admin','contrats','cctp','dpgf','pv','chantier','membres','messagerie','contrat','suivi','checklists','plu','copilote','timeline'];
+function navDefaultLayout(){return {zoneLabel:'Pilotage & conformité',groups:[
+  {id:'g_docs',label:'Documents du projet',zone:'content',items:[{id:'plans'},{id:'photos'},{id:'admin'}]},
+  {id:'g_contrat',label:'Contrat & devis',zone:'content',items:[{id:'contrats'},{id:'cctp'},{id:'dpgf'}]},
+  {id:'g_chantier',label:'Suivi chantier',zone:'content',items:[{id:'pv'},{id:'chantier'}]},
+  {id:'g_equipe',label:'Équipe & contacts',zone:'content',items:[{id:'membres'},{id:'messagerie'}]},
+  {id:'g_fin',label:'Finances',zone:'gestion',items:[{id:'contrat'},{id:'suivi'}]},
+  {id:'g_conf',label:'Conformité',zone:'gestion',items:[{id:'checklists'},{id:'plu'}]},
+  {id:'g_pil',label:'Pilotage',zone:'gestion',items:[{id:'copilote'},{id:'timeline'}]}
+]};}
+function navEnsure(p){
+  if(!p)return;
+  if(!p.navLayout||!p.navLayout.groups||!p.navLayout.groups.length)p.navLayout=navDefaultLayout();
+  var L=p.navLayout;
+  if(typeof L.zoneLabel!=='string')L.zoneLabel='Pilotage & conformité';
+  if(!Array.isArray(L.groups))L.groups=[];
+  var seen={};
+  L.groups.forEach(function(g){
+    if(!g.id)g.id='g'+(uid++);
+    if(typeof g.label!=='string')g.label='';
+    if(g.zone!=='gestion')g.zone='content';
+    if(!Array.isArray(g.items))g.items=[];
+    g.items=g.items.filter(function(it){if(!it||!NAV_CAT[it.id]||seen[it.id])return false;seen[it.id]=true;return true;});
+  });
+  // Tout nouvel écran du catalogue absent de la config est ajouté au dernier groupe.
+  if(!L.groups.length)L.groups.push({id:'g'+(uid++),label:'Menu',zone:'content',items:[]});
+  NAV_CAT_ORDER.forEach(function(id){if(!seen[id]){L.groups[L.groups.length-1].items.push({id:id});seen[id]=true;}});
+}
+function navBadgeFor(id,dCL,tCL){
+  if(id==='messagerie')return (typeof messagerieBadge==='function')?messagerieBadge():'';
+  if(id==='copilote')return (typeof copiloteBadge==='function')?copiloteBadge():'';
+  if(id==='checklists')return '<span class="nb '+((dCL===tCL&&tCL>0)?'ok':'')+'">'+dCL+'/'+tCL+'</span>';
+  return '';
+}
+function navGroupsHtml(p,dCL,tCL){
+  navEnsure(p);var L=p.navLayout,html='',gestionStarted=false;
+  L.groups.forEach(function(g){
+    var vis=g.items.filter(function(it){return !it.hidden&&NAV_CAT[it.id];});
+    if(!vis.length)return;
+    if(g.zone==='gestion'&&!gestionStarted){html+='<div style="border-top:1.5px solid #e6d6bf;margin:14px 4px 0"></div><div class="nl" style="color:#854d0e;margin-top:9px;font-size:10.5px;letter-spacing:.07em">'+e(L.zoneLabel||'')+'</div>';gestionStarted=true;}
+    html+=(g.zone==='gestion')
+      ? '<div class="nl" style="color:#a06a1a;margin-top:5px;padding:3px 6px 2px;font-size:9px">'+e(g.label||'')+'</div>'
+      : '<div class="nl" style="margin-top:4px">'+e(g.label||'')+'</div>';
+    vis.forEach(function(it){var c=NAV_CAT[it.id];html+=navItem(it.id,c.icon,it.label||c.label,'',navBadgeFor(it.id,dCL,tCL));});
+  });
+  return html;
+}
+/* ── Mutateurs (réglages) ── */
+function navFindGroup(gid){return (PROJ&&PROJ.navLayout)?PROJ.navLayout.groups.find(function(g){return g.id===gid;}):null;}
+function navFindItem(itemId){if(!PROJ||!PROJ.navLayout)return null;var gs=PROJ.navLayout.groups;for(var i=0;i<gs.length;i++){var j=gs[i].items.findIndex(function(it){return it.id===itemId;});if(j>=0)return {group:gs[i],gi:i,item:gs[i].items[j],ii:j};}return null;}
+function navRenameGroup(gid,val){if(!can('items'))return;var g=navFindGroup(gid);if(g){g.label=val;saveLater();renderSB();}}
+function navRenameItem(itemId,val){if(!can('items'))return;var r=navFindItem(itemId);if(r){r.item.label=val;saveLater();renderSB();}}
+function navSetZoneLabel(val){if(!can('items'))return;navEnsure(PROJ);PROJ.navLayout.zoneLabel=val;saveLater();renderSB();}
+function navSetGroupZone(gid,zone){if(!can('items'))return denyMsg();var g=navFindGroup(gid);if(g){g.zone=(zone==='gestion'?'gestion':'content');savePROJS();renderSB();renderMain();}}
+function navMoveGroup(gid,dir){if(!can('items'))return denyMsg();var L=PROJ.navLayout,i=L.groups.findIndex(function(g){return g.id===gid;}),j=i+dir;if(i<0||j<0||j>=L.groups.length)return;var t=L.groups[j];L.groups[j]=L.groups[i];L.groups[i]=t;savePROJS();renderSB();renderMain();}
+function navAddGroup(){if(!can('items'))return denyMsg();navEnsure(PROJ);PROJ.navLayout.groups.push({id:'g'+(uid++),label:'Nouveau groupe',zone:'content',items:[]});savePROJS();renderSB();renderMain();}
+function navDelGroup(gid){if(!can('items'))return denyMsg();var L=PROJ.navLayout,i=L.groups.findIndex(function(g){return g.id===gid;});if(i<0||L.groups.length<=1)return;var dest=L.groups[i-1]||L.groups[i+1];(L.groups[i].items||[]).forEach(function(it){dest.items.push(it);});L.groups.splice(i,1);savePROJS();renderSB();renderMain();}
+function navMoveItem(itemId,dir){if(!can('items'))return denyMsg();var r=navFindItem(itemId);if(!r)return;var arr=r.group.items,j=r.ii+dir;if(j<0||j>=arr.length)return;var t=arr[j];arr[j]=arr[r.ii];arr[r.ii]=t;savePROJS();renderSB();renderMain();}
+function navSetItemGroup(itemId,gid){if(!can('items'))return denyMsg();var r=navFindItem(itemId),g=navFindGroup(gid);if(!r||!g||r.group===g)return;r.group.items.splice(r.ii,1);g.items.push(r.item);savePROJS();renderSB();renderMain();}
+function navToggleItemHidden(itemId){if(!can('items'))return denyMsg();var r=navFindItem(itemId);if(r){r.item.hidden=!r.item.hidden;savePROJS();renderSB();renderMain();}}
+function navResetLayout(){if(!can('items'))return denyMsg();confirmModal({title:'Réinitialiser le menu ?',body:'Le menu de gauche reprendra son organisation par défaut.',danger:true,confirmLabel:'Réinitialiser',onConfirm:function(){PROJ.navLayout=navDefaultLayout();savePROJS();renderSB();renderMain();toast('Menu réinitialisé');}});}
+/* ── Éditeur (affiché dans « Informations projet ») ── */
+function navEditorHtml(){
+  navEnsure(PROJ);var L=PROJ.navLayout;
+  var ib='border:1px solid var(--border2);border-radius:6px;padding:4px 7px;font-size:12.5px;background:var(--bg);color:var(--text)';
+  var sb='border:1px solid var(--border2);border-radius:6px;padding:3px 5px;font-size:11.5px;background:var(--bg);color:var(--text)';
+  var mini='border:none;background:none;cursor:pointer;color:var(--text3);padding:2px 4px';
+  function grpOpts(cur){return L.groups.map(function(g){return '<option value="'+e(g.id)+'"'+(g.id===cur?' selected':'')+'>'+e(g.label||'(sans nom)')+'</option>';}).join('');}
+  var h='<div style="border:1px solid var(--border);border-radius:var(--r2);background:var(--panel);padding:14px 16px;margin-top:16px">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:4px"><h3 style="font-size:14px;font-weight:700;margin:0">Organisation du menu</h3>'
+    +'<div style="display:flex;gap:6px"><button class="btn btn-g btn-sm" onclick="navAddGroup()"><svg class="ico ico-xs" style="margin-right:3px" aria-hidden="true"><use href="#i-plus"/></svg>Groupe</button><button class="btn btn-g btn-sm" onclick="navResetLayout()"><svg class="ico ico-xs" style="margin-right:3px" aria-hidden="true"><use href="#i-refresh"/></svg>Réinitialiser</button></div></div>'
+    +'<p style="font-size:11.5px;color:var(--text3);margin:0 0 10px">Renommez les groupes, changez leur ordre et leur zone, déplacez ou masquez chaque écran. Les modifications s\'appliquent au menu de gauche en direct.</p>'
+    +'<label style="display:block;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">En-tête de la zone « gestion »</label>'
+    +'<input value="'+e(L.zoneLabel||'')+'" oninput="navSetZoneLabel(this.value)" aria-label="En-tête de la zone gestion" style="'+ib+';width:100%;box-sizing:border-box;margin-bottom:12px">';
+  L.groups.forEach(function(g,gi){
+    var isMgmt=g.zone==='gestion';
+    h+='<div style="border:1px solid var(--border);border-left:3px solid '+(isMgmt?'#a06a1a':'var(--border2)')+';border-radius:8px;padding:8px 10px;margin-bottom:9px;background:'+(isMgmt?'#fbf6ee':'var(--bg)')+'">'
+      +'<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">'
+        +'<input value="'+e(g.label||'')+'" oninput="navRenameGroup(\''+g.id+'\',this.value)" aria-label="Nom du groupe" placeholder="Nom du groupe" style="'+ib+';flex:1;min-width:120px;font-weight:600">'
+        +'<select onchange="navSetGroupZone(\''+g.id+'\',this.value)" aria-label="Zone du groupe" style="'+sb+'"><option value="content"'+(isMgmt?'':' selected')+'>Contenu</option><option value="gestion"'+(isMgmt?' selected':'')+'>Gestion</option></select>'
+        +'<button onclick="navMoveGroup(\''+g.id+'\',-1)" aria-label="Monter le groupe" style="'+mini+'"><svg class="ico" style="width:13px;height:13px" aria-hidden="true"><use href="#i-chevron-up"/></svg></button>'
+        +'<button onclick="navMoveGroup(\''+g.id+'\',1)" aria-label="Descendre le groupe" style="'+mini+'"><svg class="ico" style="width:13px;height:13px" aria-hidden="true"><use href="#i-chevron-down"/></svg></button>'
+        +'<button onclick="navDelGroup(\''+g.id+'\')" aria-label="Supprimer le groupe" title="Supprimer le groupe (ses écrans rejoignent le groupe précédent)" style="'+mini+';color:var(--red)"><svg class="ico ico-xs" aria-hidden="true"><use href="#i-trash"/></svg></button>'
+      +'</div>';
+    if(!g.items.length)h+='<div style="font-size:11px;color:var(--text3);padding:5px 2px 2px">Aucun écran — déplacez-en un ici depuis un autre groupe.</div>';
+    g.items.forEach(function(it){var c=NAV_CAT[it.id];if(!c)return;
+      h+='<div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;padding:5px 0 0;'+(it.hidden?'opacity:.5':'')+'">'
+        +'<svg class="ico ico-xs" style="color:var(--text3);flex-shrink:0" aria-hidden="true"><use href="#i-'+c.icon+'"/></svg>'
+        +'<input value="'+e(it.label||'')+'" oninput="navRenameItem(\''+it.id+'\',this.value)" aria-label="Nom de l\'écran" placeholder="'+e(c.label)+'" style="'+ib+';flex:1;min-width:110px;font-size:12px">'
+        +'<button onclick="navMoveItem(\''+it.id+'\',-1)" aria-label="Monter l\'écran" style="'+mini+'"><svg class="ico" style="width:12px;height:12px" aria-hidden="true"><use href="#i-chevron-up"/></svg></button>'
+        +'<button onclick="navMoveItem(\''+it.id+'\',1)" aria-label="Descendre l\'écran" style="'+mini+'"><svg class="ico" style="width:12px;height:12px" aria-hidden="true"><use href="#i-chevron-down"/></svg></button>'
+        +'<select onchange="navSetItemGroup(\''+it.id+'\',this.value)" aria-label="Groupe de l\'écran" style="'+sb+';max-width:120px">'+grpOpts(g.id)+'</select>'
+        +'<button onclick="navToggleItemHidden(\''+it.id+'\')" aria-label="'+(it.hidden?'Afficher':'Masquer')+' l\'écran" title="'+(it.hidden?'Afficher':'Masquer')+'" style="'+mini+'"><svg class="ico ico-xs" aria-hidden="true"><use href="#i-'+(it.hidden?'eye':'x')+'"/></svg></button>'
+      +'</div>';
+    });
+    h+='</div>';
+  });
+  h+='</div>';
+  return h;
+}
+
 function renderSB(){
   const el=document.getElementById('sb-body');
   let html='';
@@ -1344,39 +1457,7 @@ function renderSB(){
         <span class="ni-ico">${ico('arrow-left','ico-sm')}</span> Tous les projets
       </button>
 
-      <div class="nl">Documents du projet</div>
-      ${navItem('plans','pdf','Plans')}
-      ${navItem('photos','camera','Photos chantier')}
-      ${navItem('admin','folder','Documents admin')}
-
-      <div class="nl" style="margin-top:4px">Contrat &amp; devis</div>
-      ${navItem('contrats','invoice','Contrats & Devis')}
-      ${navItem('cctp','check-list','CCTP')}
-      ${navItem('dpgf','receipt','DPGF')}
-
-      <div class="nl" style="margin-top:4px">Suivi chantier</div>
-      ${navItem('pv','file-check','PV')}
-      ${navItem('chantier','helmet','Planning')}
-
-      <div class="nl" style="margin-top:4px">Équipe &amp; contacts</div>
-      ${navItem('membres','users','Équipe & contacts')}
-      ${navItem('messagerie','message','Notes','',messagerieBadge())}
-
-      <div style="border-top:1.5px solid #e6d6bf;margin:14px 4px 0"></div>
-      <div class="nl" style="color:#854d0e;margin-top:9px;font-size:10.5px;letter-spacing:.07em">Pilotage &amp; conformité</div>
-
-      <div class="nl" style="color:#a06a1a;margin-top:5px;padding:3px 6px 2px;font-size:9px">Finances</div>
-      ${navItem('contrat','invoice','Contrat & honoraires')}
-      ${navItem('suivi','receipt','Suivi des dépenses')}
-
-      <div class="nl" style="color:#a06a1a;margin-top:5px;padding:3px 6px 2px;font-size:9px">Conformité</div>
-      ${navItem('checklists','hat','Checklistes','',`<span class="nb ${dCL===tCL&&tCL>0?'ok':''}">${dCL}/${tCL}</span>`)}
-      ${navItem('plu','arch','Pré-étude PLU')}
-
-      <div class="nl" style="color:#a06a1a;margin-top:5px;padding:3px 6px 2px;font-size:9px">Pilotage</div>
-      ${navItem('copilote','sparkles','Co-pilote',' ',copiloteBadge())}
-      ${navItem('timeline','check-list','Historique')}
-
+      ${navGroupsHtml(p,dCL,tCL)}
 
       <div class="nl" style="margin-top:4px">Projet</div>
       ${navItem('info','settings','Informations projet')}
@@ -8024,7 +8105,8 @@ function renderInfo(){
       <button class="btn" onclick="discardInfo()">Annuler</button>
       <button class="btn btn-p" onclick="saveInfo()"><svg class="ico ico-sm"><use href="#i-save"/></svg> Enregistrer les modifications</button>
     </div>
-  </div>`;
+  </div>
+  ${can('items')?`<div class="pad" style="padding-top:0">${navEditorHtml()}</div>`:''}`;
 }
 
 let infoType=null;
@@ -9534,6 +9616,7 @@ function normalizeProject(p){
   try{if(typeof hrEnsure==='function')hrEnsure(p);}catch(e){console.warn('[normalizeProject] hrEnsure',e);}
   try{if(typeof ensureSuivi==='function')ensureSuivi(p);}catch(e){console.warn('[normalizeProject] ensureSuivi',e);}
   try{if(typeof ensurePrechiffrage==='function')ensurePrechiffrage(p);}catch(e){console.warn('[normalizeProject] ensurePrechiffrage',e);}
+  try{if(typeof navEnsure==='function')navEnsure(p);}catch(e){console.warn('[normalizeProject] navEnsure',e);}
   // Couleurs issues du cloud : neutralise toute valeur CSS non conforme (anti-injection style).
   try{if(p.color)p.color=sanitizeColor(p.color);if(p.bg)p.bg=sanitizeColor(p.bg);}catch(e){}
   if(!p.docs_data||typeof p.docs_data!=='object')p.docs_data={};
