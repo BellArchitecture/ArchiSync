@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- PlanSync CR (ArchiPV) — dernière modification : 13/06/2026 14:36 -->
+<!-- PlanSync CR (ArchiPV) — dernière modification : 13/06/2026 15:11 -->
 
 <html lang="fr">
 <head>
@@ -458,11 +458,16 @@ let CRS = [];
   // Si l'exemple de démonstration a été supprimé explicitement, ne pas le
   // réinjecter : on laisse l'espace vide (l'utilisateur créera ses propres CR).
   try { if(localStorage.getItem('plansync_demo_deleted')==='1'){ CRS=[]; return; } } catch(e) {}
-  // No saved data — inject a clean generic starter project
-  // ── Démonstration « chantier en cours » : extension de villa, ~3 mois de travaux écoulés. ──
+  // No saved data — inject the demo « chantier en cours ».
+  CRS = _demoCRs();
+})();
+
+// Construit l'exemple de démonstration (extension de villa, ~3 mois de chantier).
+// Réutilisé en mode embarqué pour amorcer le projet démo s'il n'a aucun CR.
+function _demoCRs(){
   var _t=new Date();
   function _dAgo(n){var d=new Date(_t.getTime());d.setDate(d.getDate()-n);return d.toLocaleDateString('fr-FR');}
-  CRS = [
+  return [
     // CR de la semaine en cours (réunion de chantier n°8).
     {
       id:'cr_demo8', projet:'Extension Villa Laurens (démo)', adresse:'14 chemin des Oliviers, 13100 Aix-en-Provence',
@@ -526,7 +531,7 @@ let CRS = [];
       ],
     },
   ];
-})();
+}
 
 // Repositionne le compteur d'ids au-delà du plus grand suffixe numérique déjà présent,
 // pour éviter les collisions d'ids entre sessions (uid repart de 100 à chaque chargement).
@@ -1201,6 +1206,26 @@ function bootLocal(){
       if(_mergeAnnuaireIntoCR(cr)) touched = true;
     });
     if(touched) saveCRS();
+
+    // Projet démo ouvert depuis Archisync mais sans aucun CR (ex. ancien localStorage) :
+    // amorcer l'exemple « chantier en cours » une seule fois (respecte la suppression demo).
+    try{
+      var _isDemo = hostProject.id==='demo_demo' || /\(démo\)/i.test(hostProject.projet||'');
+      var _hasHostCR = CRS.some(function(c){return c.id.indexOf('__order__')!==0 && _belongsToHost(c);});
+      var _demoDeleted=false, _demoSeeded=false;
+      try{ _demoDeleted = localStorage.getItem('plansync_demo_deleted')==='1'; }catch(_){}
+      try{ _demoSeeded  = localStorage.getItem('plansync_demo_embedded_seeded')==='1'; }catch(_){}
+      if(_isDemo && !_hasHostCR && !_demoDeleted && !_demoSeeded && typeof _demoCRs==='function'){
+        var _seed=_demoCRs();
+        _seed.forEach(function(cr){
+          cr.hostProjId=hostProject.id; cr.projet=hostProject.projet;
+          if(hostProject.adresse) cr.adresse=hostProject.adresse;
+        });
+        CRS.unshift.apply(CRS, _seed); // garde l'ordre : CR courant (n°8) en tête
+        try{ localStorage.setItem('plansync_demo_embedded_seeded','1'); }catch(_){}
+        saveCRS();
+      }
+    }catch(e){ console.warn('[bootLocal] amorçage démo', e); }
   }
 
   updateFavicon();
